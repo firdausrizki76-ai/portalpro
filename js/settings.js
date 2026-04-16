@@ -89,6 +89,17 @@ const settings = {
             if (locToggle) {
                 locToggle.checked = allSettings.require_location_tracking !== 'false';
             }
+
+            // Signatures
+            const kasubagName = document.getElementById('setting-kasubag-name');
+            const kasubagNip = document.getElementById('setting-kasubag-nip');
+            const camatName = document.getElementById('setting-camat-name');
+            const camatNip = document.getElementById('setting-camat-nip');
+
+            if (kasubagName) kasubagName.value = allSettings.signature_kasubag_name || '';
+            if (kasubagNip) kasubagNip.value = allSettings.signature_kasubag_nip || '';
+            if (camatName) camatName.value = allSettings.signature_camat_name || '';
+            if (camatNip) camatNip.value = allSettings.signature_camat_nip || '';
         } catch (error) {
             console.error('Error loading settings:', error);
             this.shifts = storage.get('shifts', []);
@@ -150,6 +161,12 @@ const settings = {
         const saveSystemBtn = document.getElementById('btn-save-system');
         if (saveSystemBtn) {
             saveSystemBtn.addEventListener('click', () => this.saveSystemSettings());
+        }
+
+        // Save signature settings
+        const saveSignaturesBtn = document.getElementById('btn-save-signatures');
+        if (saveSignaturesBtn) {
+            saveSignaturesBtn.addEventListener('click', () => this.saveSignatureSettings());
         }
 
         // Get current location button
@@ -253,6 +270,26 @@ const settings = {
         } catch (error) {
             console.error('Error saving system settings:', error);
             toast.error('Gagal menyimpan pengaturan sistem');
+        }
+    },
+
+    async saveSignatureSettings() {
+        const kasubagName = document.getElementById('setting-kasubag-name');
+        const kasubagNip = document.getElementById('setting-kasubag-nip');
+        const camatName = document.getElementById('setting-camat-name');
+        const camatNip = document.getElementById('setting-camat-nip');
+
+        try {
+            await Promise.all([
+                api.saveSetting('signature_kasubag_name', kasubagName ? kasubagName.value : ''),
+                api.saveSetting('signature_kasubag_nip', kasubagNip ? kasubagNip.value : ''),
+                api.saveSetting('signature_camat_name', camatName ? camatName.value : ''),
+                api.saveSetting('signature_camat_nip', camatNip ? camatNip.value : '')
+            ]);
+            toast.success('Informasi tanda tangan berhasil disimpan!');
+        } catch (error) {
+            console.error('Error saving signature settings:', error);
+            toast.error('Gagal menyimpan informasi tanda tangan');
         }
     },
 

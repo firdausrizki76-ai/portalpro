@@ -96,6 +96,34 @@ const cuti = {
 
         if (startDate) startDate.addEventListener('change', calculateDuration);
         if (endDate) endDate.addEventListener('change', calculateDuration);
+
+        // Auto-fill employee info
+        this.fillEmployeeInfo();
+    },
+
+    async fillEmployeeInfo() {
+        const currentUser = auth.getCurrentUser();
+        if (!currentUser) return;
+
+        const nipEl = document.getElementById('leave-nip');
+        const jabatanEl = document.getElementById('leave-jabatan');
+        const masaKerjaEl = document.getElementById('leave-masa-kerja');
+
+        if (nipEl) nipEl.value = currentUser.nip || '';
+        if (jabatanEl) jabatanEl.value = currentUser.position || '';
+        
+        if (masaKerjaEl && currentUser.joinDate) {
+            // Calculate masa kerja (years/months/days since join date)
+            const join = new Date(currentUser.joinDate);
+            const now = new Date();
+            let years = now.getFullYear() - join.getFullYear();
+            let months = now.getMonth() - join.getMonth();
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+            masaKerjaEl.value = `${years} thn ${months} bln`;
+        }
     },
 
     async handleSubmit(e) {
@@ -139,11 +167,17 @@ const cuti = {
 
         const leaveData = {
             userId: currentUser?.id || 'demo-user',
+            employeeName: currentUser?.name || 'User',
+            nip: document.getElementById('leave-nip')?.value || '',
+            jabatan: document.getElementById('leave-jabatan')?.value || '',
+            masaKerja: document.getElementById('leave-masa-kerja')?.value || '',
             type: type.value,
             typeLabel: typeLabels[type.value],
             startDate: startDate.value,
             endDate: endDate.value,
             duration: diffDays,
+            alamatCuti: document.getElementById('leave-alamat')?.value || '',
+            telpCuti: document.getElementById('leave-telp')?.value || '',
             reason: reason.value
         };
 
@@ -261,7 +295,10 @@ const cuti = {
                     <div class="leave-content">
                         <div class="leave-header">
                             <h4 class="leave-type">${leave.typeLabel}</h4>
-                            <span class="leave-status ${leave.status}">${this.getStatusLabel(leave.status)}</span>
+                            <div class="leave-actions-row">
+                                <button class="btn-export-doc" title="Unduh Word" onclick="cuti.exportToWord(${leave.id})"><i class="fas fa-file-word"></i></button>
+                                <span class="leave-status ${leave.status}">${this.getStatusLabel(leave.status)}</span>
+                            </div>
                         </div>
                         <div class="leave-details">
                             <span class="leave-date">
@@ -329,6 +366,204 @@ const cuti = {
         } catch (error) {
             console.error('Error rejecting leave:', error);
         }
+    },
+
+    // WORD EXPORT (Matching cuti.jpg)
+    async exportToWord(leaveId) {
+        const leave = this.leaves.find(l => String(l.id) === String(leaveId));
+        if (!leave) return;
+
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan dokumen...');
+
+        try {
+            const settingsResult = await api.getSettings();
+            const config = settingsResult.data || {};
+
+            const template = this.generateWordTemplate(leave, config);
+            
+            // Standard Word XML trick to trigger download
+            const blob = new Blob(['\ufeff', template], {
+                type: 'application/msword'
+            });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Form_Cuti_${leave.employeeName || 'Pegawai'}_${leave.id}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            toast.success('Dokumen berhasil diunduh!');
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Gagal membuat dokumen');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    generateWordTemplate(leave, config) {
+        const today = new Date();
+        const todayStr = dateTime.formatDate(today, 'long');
+        const startStr = dateTime.formatDate(new Date(leave.startDate), 'long');
+        const endStr = dateTime.formatDate(new Date(leave.endDate), 'long');
+
+        // Helper for checked state in tables
+        const check = (val, target) => (val === target ? '&#10003;' : '');
+
+        return `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.2; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+                th, td { border: 1px solid black; padding: 4px; text-align: left; vertical-align: top; }
+                .no-border td { border: none; padding: 1px; }
+                .center { text-align: center; }
+                .header-table { border: none; margin-bottom: 20px; }
+                .header-table td { border: none; padding: 0; }
+                .title { font-weight: bold; text-decoration: underline; margin-bottom: 10px; text-align: center; display: block; }
+                .section-title { font-weight: bold; background-color: #f2f2f2; }
+                .signature-box { width: 100%; border: none; margin-top: 15px; }
+                .signature-box td { border: none; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <table class="header-table">
+                <tr>
+                    <td width="55%"></td>
+                    <td>
+                        Depok, ${todayStr}<br>
+                        Kepada<br>
+                        Yth. Kasubag UPEP & Kepegawaian<br>
+                        Di<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Depok
+                    </td>
+                </tr>
+            </table>
+
+            <div class="title">FORMULIR PERMINTAAN DAN PEMBERIAN CUTI</div>
+
+            <table>
+                <tr><td colspan="4" class="section-title">I. DATA PEGAWAI</td></tr>
+                <tr>
+                    <td width="15%">Nama</td><td width="35%">${leave.employeeName || '-'}</td>
+                    <td width="15%">NIP</td><td>${leave.nip || '-'}</td>
+                </tr>
+                <tr>
+                    <td>Jabatan</td><td>${leave.jabatan || '-'}</td>
+                    <td>Masa Kerja</td><td>${leave.masaKerja || '-'}</td>
+                </tr>
+                <tr>
+                    <td>Unit Kerja</td><td colspan="3">UPEP</td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td colspan="4" class="section-title">II. JENIS CUTI YANG DIAMBIL **</td></tr>
+                <tr>
+                    <td width="40%">1. Cuti Tahunan</td><td width="10%" class="center">${check(leave.type, 'annual')}</td>
+                    <td width="40%">2. Cuti Besar</td><td width="10%" class="center">${check(leave.type, 'large')}</td>
+                </tr>
+                <tr>
+                    <td>3. Cuti Sakit</td><td class="center">${check(leave.type, 'sick')}</td>
+                    <td>4. Cuti Melahirkan</td><td class="center">${check(leave.type, 'maternity')}</td>
+                </tr>
+                <tr>
+                    <td>5. Cuti Karena Alasan Penting</td><td class="center">${check(leave.type, 'important')}</td>
+                    <td>6. Cuti di Luar Tanggungan Negara</td><td class="center">${check(leave.type, 'other')}</td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td class="section-title">III. ALASAN CUTI</td></tr>
+                <tr><td style="height: 40px;">${leave.reason || ''}</td></tr>
+            </table>
+
+            <table>
+                <tr><td colspan="6" class="section-title">IV. LAMANYA CUTI</td></tr>
+                <tr>
+                    <td width="10%">Selama</td><td width="15%" class="center">${leave.duration} hari</td>
+                    <td width="15%">Mulai tanggal</td><td width="20%" class="center">${startStr}</td>
+                    <td width="10%">s/d</td><td width="30%" class="center">${endStr}</td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td colspan="5" class="section-title">V. CATATAN CUTI ***</td></tr>
+                <tr>
+                    <td width="40%" colspan="3">1. CUTI TAHUNAN</td>
+                    <td colspan="2">2. CUTI BESAR</td>
+                </tr>
+                <tr>
+                    <td width="10%">Tahun</td><td width="10%">Sisa</td><td width="20%">Keterangan</td>
+                    <td colspan="2" rowspan="4"></td>
+                </tr>
+                <tr><td>N-2</td><td>-</td><td></td></tr>
+                <tr><td>N-1</td><td>-</td><td></td></tr>
+                <tr><td>N</td><td>-</td><td></td></tr>
+            </table>
+
+            <table>
+                <tr><td colspan="2" class="section-title">VI. ALAMAT SELAMA MENJALANKAN CUTI</td></tr>
+                <tr>
+                    <td width="60%" style="height: 60px;">
+                        ${leave.alamatCuti || ''}
+                    </td>
+                    <td width="40%">
+                        TELP: ${leave.telpCuti || ''}<br><br>
+                        Hormat saya,<br><br><br>
+                        <b>${leave.employeeName || ''}</b>
+                    </td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td class="section-title">VII. PERTIMBANGAN ATASAN LANGSUNG**</td></tr>
+                <tr>
+                    <td style="border: none;">
+                        <table class="no-border">
+                            <tr><td>DISETUJUI</td><td>PERUBAHAN****</td><td>DITANGGUHKAN****</td><td>TIDAK DISETUJUI****</td></tr>
+                            <tr><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td></tr>
+                        </table>
+                        <br>
+                        <div style="text-align: right; padding-right: 20px;">
+                            Kasubag UPEP & Kepegawaian<br><br><br><br>
+                            <b><u>${config.signature_kasubag_name || '...'}</u></b><br>
+                            NIP. ${config.signature_kasubag_nip || '...'}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td class="section-title">VIII. KEPUTUSAN PEJABAT YANG BERWENANG MEMBERIKAN CUTI**</td></tr>
+                <tr>
+                    <td style="border: none;">
+                        <table class="no-border">
+                            <tr><td>DISETUJUI</td><td>PERUBAHAN****</td><td>DITANGGUHKAN****</td><td>TIDAK DISETUJUI****</td></tr>
+                            <tr><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td></tr>
+                        </table>
+                        <br>
+                        <div style="text-align: right; padding-right: 20px;">
+                            <b>CAMAT CINERE</b><br><br><br><br>
+                            <b><u>${config.signature_camat_name || '...'}</u></b><br>
+                            NIP. ${config.signature_camat_nip || '...'}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <div style="font-size: 8pt; margin-top: 5px;">
+                Catatan:<br>
+                * Coret yang tidak perlu<br>
+                ** Pilih salah satu dengan memberi tanda centang (v)<br>
+                *** diisi oleh pejabat yang menangani bidang kepegawaian sebelum PNS mengajukan cuti<br>
+                **** diberi tanda centang dan alasannya.
+            </div>
+        </body>
+        </html>`;
     }
 };
 

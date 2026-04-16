@@ -854,17 +854,33 @@
                                 <div class="card-header">
                                     <h3>Form Pengajuan Cuti</h3>
                                 </div>
-                                <form id="cuti-form" class="cuti-form">
-                                    <div class="form-group">
-                                        <label for="leave-type">Jenis Cuti</label>
-                                        <select id="leave-type" required>
-                                            <option value="">Pilih Jenis Cuti</option>
-                                            <option value="annual">Cuti Tahunan</option>
-                                            <option value="sick">Cuti Sakit</option>
-                                            <option value="important">Cuti Penting</option>
-                                            <option value="maternity">Cuti Melahirkan</option>
-                                            <option value="other">Lainnya</option>
-                                        </select>
+                                    <div class="form-row two-col">
+                                        <div class="form-group">
+                                            <label for="leave-type">Jenis Cuti</label>
+                                            <select id="leave-type" required>
+                                                <option value="">Pilih Jenis Cuti</option>
+                                                <option value="annual">1. Cuti Tahunan</option>
+                                                <option value="large">2. Cuti Besar</option>
+                                                <option value="sick">3. Cuti Sakit</option>
+                                                <option value="maternity">4. Cuti Melahirkan</option>
+                                                <option value="important">5. Cuti Karena Alasan Penting</option>
+                                                <option value="other">6. Cuti di Luar Tanggungan Negara</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="leave-nip">NIP</label>
+                                            <input type="text" id="leave-nip" readonly placeholder="-">
+                                        </div>
+                                    </div>
+                                    <div class="form-row two-col">
+                                        <div class="form-group">
+                                            <label for="leave-jabatan">Jabatan</label>
+                                            <input type="text" id="leave-jabatan" readonly placeholder="-">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="leave-masa-kerja">Masa Kerja</label>
+                                            <input type="text" id="leave-masa-kerja" readonly placeholder="-">
+                                        </div>
                                     </div>
                                     <div class="form-row two-col">
                                         <div class="form-group"><label for="leave-start">Tanggal Mulai</label><input
@@ -874,6 +890,16 @@
                                     </div>
                                     <div class="form-group"><label for="leave-duration">Durasi</label><input type="text"
                                             id="leave-duration" readonly placeholder="0 hari"></div>
+                                    <div class="form-row two-col">
+                                        <div class="form-group">
+                                            <label for="leave-alamat">Alamat Selama Cuti</label>
+                                            <textarea id="leave-alamat" rows="2" placeholder="Masukkan alamat lengkap..." required></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="leave-telp">No. Telepon</label>
+                                            <input type="text" id="leave-telp" placeholder="Contoh: 0812..." required>
+                                        </div>
+                                    </div>
                                     <div class="form-group"><label for="leave-reason">Alasan Cuti</label><textarea
                                             id="leave-reason" rows="3" placeholder="Jelaskan alasan pengajuan cuti..."
                                             required></textarea></div>
@@ -1466,6 +1492,45 @@
                                 <div class="form-actions" style="margin-top: var(--spacing-md);"><button type="button"
                                         class="btn-primary btn-sm" id="btn-save-system"><i
                                             class="fas fa-save"></i><span>Simpan Pengaturan</span></button></div>
+                            </div>
+
+                            <div class="settings-card">
+                                <div class="card-header">
+                                    <h3>Informasi Tanda Tangan</h3>
+                                </div>
+                                <div class="system-settings">
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <span class="setting-name">Nama Kasubag</span>
+                                            <span class="setting-desc">Nama untuk tanda tangan Atasan Langsung</span>
+                                        </div>
+                                        <div class="setting-control"><input type="text" id="setting-kasubag-name" placeholder="Contoh: Annisa Ristyanti, S.AP"></div>
+                                    </div>
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <span class="setting-name">NIP Kasubag</span>
+                                            <span class="setting-desc">NIP untuk tanda tangan Atasan Langsung</span>
+                                        </div>
+                                        <div class="setting-control"><input type="text" id="setting-kasubag-nip" placeholder="Contoh: 199001132010012001"></div>
+                                    </div>
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <span class="setting-name">Nama Camat</span>
+                                            <span class="setting-desc">Nama untuk tanda tangan Pejabat Berwenang</span>
+                                        </div>
+                                        <div class="setting-control"><input type="text" id="setting-camat-name" placeholder="Contoh: Mursalim, S.Ag, M.Si"></div>
+                                    </div>
+                                    <div class="setting-item">
+                                        <div class="setting-info">
+                                            <span class="setting-name">NIP Camat</span>
+                                            <span class="setting-desc">NIP untuk tanda tangan Pejabat Berwenang</span>
+                                        </div>
+                                        <div class="setting-control"><input type="text" id="setting-camat-nip" placeholder="Contoh: 197302042008011003"></div>
+                                    </div>
+                                </div>
+                                <div class="form-actions" style="margin-top: var(--spacing-md);"><button type="button"
+                                        class="btn-primary btn-sm" id="btn-save-signatures"><i
+                                            class="fas fa-save"></i><span>Simpan Info Tanda Tangan</span></button></div>
                             </div>
                         </div>
                     </div>
