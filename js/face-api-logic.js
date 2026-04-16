@@ -316,42 +316,58 @@ const faceRecognition = {
         document.getElementById('btn-register-face').style.display = 'none';
         
         if (this.isRegistering) {
-            // Specifically for registration: Add a centered BIG button under the preview
-            const preview = document.getElementById('camera-preview');
-            const saveBtnContainer = document.createElement('div');
-            saveBtnContainer.id = 'registration-save-container';
-            saveBtnContainer.style.textAlign = 'center';
-            saveBtnContainer.style.marginTop = '20px';
-            saveBtnContainer.innerHTML = `
-                <button id="btn-save-registration" class="btn-primary" style="padding: 12px 30px; font-size: 16px; width: 100%; border-radius: 12px;">
-                    <i class="fas fa-user-check"></i> Simpan Pendaftaran Wajah
-                </button>
-                <button id="btn-retake-registration" class="btn-secondary" style="margin-top: 10px; width: 100%; border-radius: 12px;">
-                    <i class="fas fa-redo"></i> Foto Ulang
-                </button>
-            `;
-            preview.parentNode.appendChild(saveBtnContainer);
-
-            // ATTACH LISTENERS DIRECTLY (More reliable than onclick string)
-            const saveBtn = document.getElementById('btn-save-registration');
-            const redoBtn = document.getElementById('btn-retake-registration');
+            // Use existing static buttons in HTML - no dynamic creation needed
+            let saveBtnContainer = document.getElementById('registration-save-container');
             
+            if (!saveBtnContainer) {
+                // Create container if not exists
+                saveBtnContainer = document.createElement('div');
+                saveBtnContainer.id = 'registration-save-container';
+                saveBtnContainer.style.cssText = 'text-align:center; margin-top:20px; padding: 0 16px;';
+                saveBtnContainer.innerHTML = [
+                    '<button id="btn-save-reg" class="btn-primary" ',
+                    'onclick="doSaveRegistration()" ',
+                    'style="padding:14px 30px;font-size:16px;width:100%;border-radius:12px;',
+                    'cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;',
+                    'position:relative;z-index:999;">',
+                    '<i class="fas fa-user-check"></i> Simpan Pendaftaran Wajah</button>',
+                    '<button id="btn-retake-reg" class="btn-secondary" ',
+                    'onclick="doRetakePhoto()" ',
+                    'style="margin-top:10px;width:100%;border-radius:12px;cursor:pointer;',
+                    'touch-action:manipulation;-webkit-tap-highlight-color:transparent;">',
+                    '<i class="fas fa-redo"></i> Foto Ulang</button>'
+                ].join('');
+            
+                // Find best insertion point
+                const cameraSection = document.querySelector('.camera-section') || 
+                                      document.querySelector('.face-camera-container') ||
+                                      (preview && preview.parentNode);
+                if (cameraSection) {
+                    cameraSection.appendChild(saveBtnContainer);
+                }
+            } else {
+                saveBtnContainer.style.display = 'block';
+            }
+
+            // Use querySelector on the container itself (100% reliable)
+            const saveBtn = saveBtnContainer.querySelector('#btn-save-reg');
+            const redoBtn = saveBtnContainer.querySelector('#btn-retake-reg');
+            
+            // Clone to remove any stale listeners
             if (saveBtn) {
-                ['click', 'touchstart'].forEach(type => {
-                    saveBtn.addEventListener(type, (e) => {
-                        e.preventDefault();
-                        this.confirmRegistration();
-                    }, { passive: false });
-                });
+                const freshSave = saveBtn.cloneNode(true);
+                saveBtn.parentNode.replaceChild(freshSave, saveBtn);
+                freshSave.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); faceRecognition.confirmRegistration(); }, true);
+                freshSave.addEventListener('touchend', (e) => { e.stopPropagation(); e.preventDefault(); faceRecognition.confirmRegistration(); }, { passive: false, capture: true });
             }
             if (redoBtn) {
-                ['click', 'touchstart'].forEach(type => {
-                    redoBtn.addEventListener(type, (e) => {
-                        e.preventDefault();
-                        this.retakePhoto();
-                    }, { passive: false });
-                });
+                const freshRedo = redoBtn.cloneNode(true);
+                redoBtn.parentNode.replaceChild(freshRedo, redoBtn);
+                freshRedo.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); faceRecognition.retakePhoto(); }, true);
+                freshRedo.addEventListener('touchend', (e) => { e.stopPropagation(); e.preventDefault(); faceRecognition.retakePhoto(); }, { passive: false, capture: true });
             }
+            
+            console.log('Registration buttons attached. saveBtn found:', !!saveBtnContainer.querySelector('#btn-save-reg'));
         } else {
             document.getElementById('btn-retake').style.display = 'flex';
         }
@@ -513,3 +529,13 @@ const faceRecognition = {
 
 window.initFaceRecognition = (action) => faceRecognition.init(action);
 window.faceRecognition = faceRecognition;
+
+// Expose critical methods as top-level globals for onclick fallback on all mobile browsers
+window.doSaveRegistration = function() {
+    console.log('doSaveRegistration global called');
+    faceRecognition.confirmRegistration();
+};
+window.doRetakePhoto = function() {
+    console.log('doRetakePhoto global called');
+    faceRecognition.retakePhoto();
+};
