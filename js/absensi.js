@@ -458,7 +458,7 @@ const absensi = {
 
         // Clean up temp data
         storage.remove('temp_attendance');
-    },    
+
         // Auto navigate back to attendance page
         setTimeout(() => {
             if (window.location.hash === '#face-recognition') {

@@ -273,6 +273,34 @@ const auth = {
         if (welcomeNameEl) welcomeNameEl.textContent = this.currentUser.name.split(' ')[0];
     },
 
+    /**
+     * Refresh the current user's profile from the backend
+     */
+    async refreshProfile() {
+        if (!this.currentUser || !this.currentUser.id) return null;
+        
+        try {
+            const result = await api.getEmployeeProfile(this.currentUser.id);
+            if (result && result.success && result.data) {
+                // Update specific fields while preserving core session data
+                const profile = result.data;
+                this.currentUser.department = profile.department || this.currentUser.department;
+                this.currentUser.position = profile.position || this.currentUser.position;
+                this.currentUser.shift = profile.shift || this.currentUser.shift;
+                
+                // Keep local storage in sync
+                storage.set('session', this.currentUser);
+                
+                // Update UI elements that depend on profile data
+                this.updateUserUI();
+                return this.currentUser;
+            }
+        } catch (error) {
+            console.error('Error refreshing profile:', error);
+        }
+        return null;
+    },
+
     async openProfileModal() {
         const modal = document.getElementById('modal-profile');
         if (!modal) return;
