@@ -128,7 +128,7 @@ const faceRecognition = {
         const loop = async () => {
             if (!this.stream) return;
             
-            const detections = await faceapi.detectSingleFace(this.video, new faceapi.TinyFaceDetectorOptions());
+            const detections = await faceapi.detectSingleFace(this.video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 }));
             
             const overlay = document.getElementById('face-overlay');
             if (detections) {
@@ -138,7 +138,7 @@ const faceRecognition = {
                 if (captureBtn) captureBtn.disabled = false;
                 if (registerBtn) registerBtn.disabled = false;
             } else {
-                if (overlay) overlay.style.borderColor = 'var(--color-warning)';
+                if (overlay) overlay.style.borderColor = 'rgba(255, 255, 255, 0.3)';
             }
 
             if (this.stream) requestAnimationFrame(loop);
@@ -146,11 +146,20 @@ const faceRecognition = {
         loop();
     },
 
+    stopCamera() {
+        if (this.stream) {
+            console.log('Stopping camera stream...');
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+    },
+
     async capturePhoto() {
         if (this.photoCaptured) return;
         
         // 1. Get current descriptor
-        const detections = await faceapi.detectSingleFace(this.video, new faceapi.TinyFaceDetectorOptions())
+        // 1. Get current descriptor - using higher input size for better accuracy
+        const detections = await faceapi.detectSingleFace(this.video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 }))
                                        .withFaceLandmarks()
                                        .withFaceDescriptor();
 
