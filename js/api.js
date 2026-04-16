@@ -7,7 +7,7 @@
  * - Jika API_BASE_URL diisi → semua request dikirim ke Google Apps Script
  */
 
-const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbyy3u2yAPJgT91N_hXLKiPD0dnWNiCJuRZuGu5jXn67LZfYlKX3YmwGhkR4q5LJaSZ2/exec'; // v40 DB-first registration
+const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwWfN84WXxHN2OL-35JQ2t0IqVJF9fUVvdqoRWJ-JkVqrw44VWb4LnYzEQsWyIppiOD/exec'; // v41 DB-first registration (stable URL)
 
 const api = {
 
