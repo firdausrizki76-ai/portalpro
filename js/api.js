@@ -7,7 +7,7 @@
  * - Jika API_BASE_URL diisi → semua request dikirim ke Google Apps Script
  */
 
-const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwovD1pSO-Rh1814ZU9ppj5HQXQiztMWbGK0s_JqEJJDHg7iV_EAXSJHgfF7AbbB3I8/exec'; // Kosongkan untuk mode localStorage, isi dengan URL Web App GAS
+const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbyy3u2yAPJgT91N_hXLKiPD0dnWNiCJuRZuGu5jXn67LZfYlKX3YmwGhkR4q5LJaSZ2/exec'; // v40 DB-first registration
 
 const api = {
 
@@ -19,9 +19,10 @@ const api = {
             return this._localFallback(action, data);
         }
 
-        // Dynamic timeout: 30s for actions involving file uploads, 15s for standard requests
-        const isUploadAction = ['registerFace', 'saveAttendance', 'submitIzin', 'submitLeave', 'saveJournal'].includes(action);
-        const timeoutMs = isUploadAction ? 30000 : 15000;
+        // Dynamic timeout: 60s for face registration (Drive upload), 30s for other uploads, 15s for standard requests
+        const isFaceRegAction = action === 'registerFace';
+        const isUploadAction = ['saveAttendance', 'submitIzin', 'submitLeave', 'saveJournal'].includes(action);
+        const timeoutMs = isFaceRegAction ? 60000 : isUploadAction ? 30000 : 15000;
 
         try {
             const timeoutPromise = new Promise((_, reject) => 
