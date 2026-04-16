@@ -18,8 +18,8 @@ const api = {
             return this._localFallback(action, data);
         }
 
-        const isFaceRegAction = action === 'registerFace';
-        const timeoutMs = isFaceRegAction ? 90000 : 20000;
+        const isLargePayloadAction = action === 'registerFace' || action === 'saveAttendance';
+        const timeoutMs = isLargePayloadAction ? 90000 : 20000;
 
         try {
             const timeoutPromise = new Promise((_, reject) =>
