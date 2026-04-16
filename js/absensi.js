@@ -20,43 +20,59 @@ const absensi = {
 
         try {
             console.log('Initializing absensi page...');
-            await this.loadTodayAttendance();
-            await this.loadAttendanceHistory();
+            
+            // PRIORITY 1: Initialize local/visual elements first so page is responsive immediately
             this.initLiveClock();
             this.initButtons();
             this.renderTimeline();
-            this.updateUI();
+            this.updateUI(); // Initial render with cached/default data
+
+            // PRIORITY 2: Background load of heavy data
+            await this.loadTodayAttendance();
+            await this.loadAttendanceHistory();
+            
+            this.updateUI(); // Final render with fresh data
             this.initialized = true;
         } catch (error) {
             console.error('Absensi init error:', error);
+            // Fallback UI update in case of failure
+            this.updateUI();
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
     },
 
     async loadTodayAttendance() {
-        // SYNC: Refresh the profile to get latest shift/data from backend first
-        await auth.refreshProfile();
+        try {
+            // SYNC: Refresh the profile to get latest shift/data from backend first
+            await auth.refreshProfile();
+        } catch (e) {
+            console.warn('Profile refresh failed, using cached data');
+        }
 
         const currentUser = auth.getCurrentUser();
         const userId = currentUser?.id || 'demo-user';
 
+        // Initialize with core profile data FIRST to avoid 'Pagi' fallback if possible
+        const today = dateTime.getLocalDate();
+        let currentShift = currentUser?.shift || 'Pagi';
+
         try {
-            const [result, settingsRes, shiftRes] = await Promise.all([
+            const [result, settingsRes, shiftRes] = await Promise.allSettled([
                 api.getTodayAttendance(userId),
                 api.getSettings(),
                 api.getShifts()
             ]);
 
-            // Sync fresh shifts to local storage to avoid stale data
-            if (shiftRes && shiftRes.success && shiftRes.data) {
-                storage.set('shifts', shiftRes.data);
+            // Sync fresh shifts to local storage
+            if (shiftRes.status === 'fulfilled' && shiftRes.value.success) {
+                storage.set('shifts', shiftRes.value.data);
             }
 
-            // Sync global schedule shift mapping from Admin to this employee's local instance
-            if (settingsRes && settingsRes.success && settingsRes.data) {
-                this.systemSettings = settingsRes.data;
-                const globalSettings = settingsRes.data;
+            // Sync global schedule shift mapping
+            if (settingsRes.status === 'fulfilled' && settingsRes.value.success) {
+                this.systemSettings = settingsRes.value.data;
+                const globalSettings = settingsRes.value.data;
                 const loadedSchedules = {};
                 Object.keys(globalSettings).forEach(k => {
                     if (k.startsWith('shift_schedule_')) {
@@ -71,12 +87,9 @@ const absensi = {
                 }
             }
 
-            let todayAttendance = result?.data || {};
+            let todayAttendance = (result.status === 'fulfilled' && result.value.success) ? result.value.data : {};
 
             if (!todayAttendance.date) {
-                const today = dateTime.getLocalDate();
-                let currentShift = currentUser?.shift || 'Pagi';
-
                 // Automated shift lookup from admin schedule
                 try {
                     const stringUserId = String(userId);
@@ -87,16 +100,12 @@ const absensi = {
                     const currentDay = todayObj.getDate();
                     const key = `${currentYear}-${currentMonth}`;
 
-                    console.log('Absen Shift Sync - Key:', key, 'UserId:', stringUserId, 'Day:', currentDay);
-
                     if (schedules[key] && schedules[key][stringUserId]) {
                         const assignedShift = schedules[key][stringUserId][currentDay];
-                        console.log('Absen Shift Sync - Found Shift:', assignedShift);
-                        if (assignedShift) {
+                        if (assignedShift && assignedShift !== '') {
+                            console.log('Absen Shift Sync - Overriding with Schedule:', assignedShift);
                             currentShift = assignedShift;
                         }
-                    } else {
-                        console.log('Absen Shift Sync - Missing Schedule key or User record.');
                     }
                 } catch (e) {
                     console.error('Error reading shift schedule:', e);
@@ -225,12 +234,17 @@ const absensi = {
         const updateClock = () => {
             const clockEl = document.getElementById('live-clock');
             const dateEl = document.getElementById('live-date');
+            const statusSubtext = document.getElementById('status-subtext');
 
-            if (clockEl) {
-                clockEl.textContent = dateTime.getCurrentTime();
-            }
-            if (dateEl) {
-                dateEl.textContent = dateTime.getCurrentDate();
+            const time = dateTime.getCurrentTime();
+            const date = dateTime.getCurrentDate();
+
+            if (clockEl) clockEl.textContent = time;
+            if (dateEl) dateEl.textContent = date;
+            
+            // Also update the status ring subtext if we're waiting to Clock In
+            if (this.currentState === 'waiting' && statusSubtext) {
+                statusSubtext.innerHTML = `<span style="font-size:24px;color:var(--text-main);font-weight:700;">${time}</span><br>${date}`;
             }
         };
 
@@ -520,7 +534,9 @@ const absensi = {
                 case 'waiting':
                     statusRing.classList.add('waiting');
                     if (statusText) statusText.textContent = 'Siap Clock In';
-                    if (statusSubtext) statusSubtext.textContent = 'Tekan tombol di bawah untuk memulai';
+                    if (statusSubtext) {
+                        statusSubtext.innerHTML = `<span style="font-size:24px;color:var(--text-main);font-weight:700;">${dateTime.getCurrentTime()}</span><br>${dateTime.getCurrentDate()}`;
+                    }
                     break;
                 case 'clocked-in':
                     statusRing.classList.add('active');
