@@ -19,12 +19,15 @@ const api = {
             return this._localFallback(action, data);
         }
 
-        // Timeout promise
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('API Timeout')), 15000);
-        });
+        // Dynamic timeout: 30s for actions involving file uploads, 15s for standard requests
+        const isUploadAction = ['registerFace', 'saveAttendance', 'submitIzin', 'submitLeave', 'saveJournal'].includes(action);
+        const timeoutMs = isUploadAction ? 30000 : 15000;
 
         try {
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
+            );
+
             const fetchPromise = fetch(API_BASE_URL, {
                 method: 'POST',
                 redirect: 'follow',

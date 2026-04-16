@@ -270,7 +270,7 @@ const faceRecognition = {
             isMatch = true; // Skip matching on registration
         }
 
-        // 3. SUCCESS: Save Captured Frame and update UI
+        // 3. SUCCESS: Save Captured Frame as JPEG (much smaller payload than PNG)
         const ctx = this.canvas.getContext('2d');
         this.canvas.width = this.video.videoWidth;
         this.canvas.height = this.video.videoHeight;
@@ -284,7 +284,7 @@ const faceRecognition = {
         const preview = document.getElementById('camera-preview');
         if (preview) {
             preview.innerHTML = `
-                <img src="${this.canvas.toDataURL('image/png')}" class="captured-photo" alt="Captured">
+                <img src="${this.canvas.toDataURL('image/jpeg', 0.7)}" class="captured-photo" alt="Captured">
                 <div class="verification-status show" id="verification-status">
                     <div class="status-icon"><i class="fas fa-check-circle"></i></div>
                     <p>${this.isRegistering ? 'Wajah Terdeteksi' : 'Wajah Terverifikasi'}</p>
@@ -331,7 +331,7 @@ const faceRecognition = {
                 latitude: this.position.coords.latitude,
                 longitude: this.position.coords.longitude
             } : null,
-            photo: this.canvas.toDataURL('image/png')
+            photo: this.canvas.toDataURL('image/jpeg', 0.7)
         };
 
         storage.set('temp_attendance', attendanceData);
@@ -351,15 +351,17 @@ const faceRecognition = {
         modal.showLoading('Mendaftarkan wajah...');
         
         try {
-            const photo = this.canvas.toDataURL('image/png');
-            const result = await api.registerFace(user.id, this.currentDescriptor, photo);
+            const photo = this.canvas.toDataURL('image/jpeg', 0.7);
             
-            modal.close();
+            // Normalize descriptor (convert Float32Array to standard Array for clean JSON)
+            const descriptorArray = Array.from(this.currentDescriptor);
+            const result = await api.registerFace(user.id, descriptorArray, photo);
+            
             if (result.success) {
                 toast.success('Pendaftaran wajah berhasil!');
                 
                 // Update local session data to ensure immediate pass on next try
-                user.faceData = JSON.stringify(this.currentDescriptor);
+                user.faceData = JSON.stringify(descriptorArray);
                 user.facePhotoId = result.data.facePhotoId;
                 
                 // Synchronize with auth service and storage
@@ -372,8 +374,10 @@ const faceRecognition = {
                 this.retakePhoto();
             }
         } catch (e) {
-            modal.close();
+            console.error('Registration error:', e);
             toast.error('Terjadi kesalahan koneksi.');
+        } finally {
+            modal.close();
         }
     },
 
