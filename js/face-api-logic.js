@@ -112,10 +112,13 @@ const faceRecognition = {
 
         try {
             this.stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: 640 },
+                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
                 audio: false
             });
             this.video.srcObject = this.stream;
+            
+            // Explicitly call play for mobile browsers
+            await this.video.play().catch(e => console.warn('Video play blocked:', e));
         } catch (error) {
             console.error('Camera error:', error);
             toast.error('Gagal mengakses kamera.');
@@ -421,10 +424,28 @@ const faceRecognition = {
         const retakeBtn = document.getElementById('btn-retake');
         const confirmBtn = document.getElementById('btn-confirm-attendance');
 
-        if (captureBtn) captureBtn.onclick = () => this.capturePhoto();
-        if (registerBtn) registerBtn.onclick = () => this.capturePhoto();
-        if (retakeBtn) retakeBtn.onclick = () => this.retakePhoto();
-        if (confirmBtn) confirmBtn.onclick = () => this.confirmAttendance();
+        const buttons = [
+            { el: captureBtn, handler: () => this.capturePhoto() },
+            { el: registerBtn, handler: () => this.capturePhoto() },
+            { el: retakeBtn, handler: () => this.retakePhoto() },
+            { el: confirmBtn, handler: () => this.confirmAttendance() }
+        ];
+
+        buttons.forEach(btn => {
+            if (btn.el) {
+                // Remove old listeners by replacing the element or just setting onclick to null
+                btn.el.onclick = null;
+                
+                // Add both click and touchend for mobile responsiveness
+                ['click', 'touchstart'].forEach(eventType => {
+                    btn.el.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        btn.handler();
+                    }, { passive: false });
+                });
+            }
+        });
     },
 
     checkCanSubmit() {
