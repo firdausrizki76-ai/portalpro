@@ -1,0 +1,632 @@
+/**
+ * Portal Karyawan - Absensi
+ * Attendance/Clock In-Out functionality
+ */
+
+const absensi = {
+    currentState: 'waiting', // waiting, clocked-in, on-break, completed
+    attendanceData: {},
+    liveClockInterval: null,
+    systemSettings: {},
+
+    initialized: false,
+
+    async init() {
+        if (this.initialized) {
+            // Background sync
+            this.loadTodayAttendance().then(() => this.updateUI());
+            return;
+        }
+
+        try {
+            console.log('Initializing absensi page...');
+            await this.loadTodayAttendance();
+            await this.loadAttendanceHistory();
+            this.initLiveClock();
+            this.initButtons();
+            this.renderTimeline();
+            this.updateUI();
+            this.initialized = true;
+        } catch (error) {
+            console.error('Absensi init error:', error);
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    async loadTodayAttendance() {
+        // SYNC: Refresh the profile to get latest shift/data from backend first
+        await auth.refreshProfile();
+
+        const currentUser = auth.getCurrentUser();
+        const userId = currentUser?.id || 'demo-user';
+
+        try {
+            const [result, settingsRes, shiftRes] = await Promise.all([
+                api.getTodayAttendance(userId),
+                api.getSettings(),
+                api.getShifts()
+            ]);
+
+            // Sync fresh shifts to local storage to avoid stale data
+            if (shiftRes && shiftRes.success && shiftRes.data) {
+                storage.set('shifts', shiftRes.data);
+            }
+
+            // Sync global schedule shift mapping from Admin to this employee's local instance
+            if (settingsRes && settingsRes.success && settingsRes.data) {
+                this.systemSettings = settingsRes.data;
+                const globalSettings = settingsRes.data;
+                const loadedSchedules = {};
+                Object.keys(globalSettings).forEach(k => {
+                    if (k.startsWith('shift_schedule_')) {
+                        const monthKey = k.replace('shift_schedule_', '');
+                        try {
+                            loadedSchedules[monthKey] = JSON.parse(globalSettings[k]);
+                        } catch (e) { }
+                    }
+                });
+                if (Object.keys(loadedSchedules).length > 0) {
+                    storage.set('shift_schedule', loadedSchedules);
+                }
+            }
+
+            let todayAttendance = result?.data || {};
+
+            if (!todayAttendance.date) {
+                const today = dateTime.getLocalDate();
+                let currentShift = currentUser?.shift || 'Pagi';
+
+                // Automated shift lookup from admin schedule
+                try {
+                    const stringUserId = String(userId);
+                    const schedules = storage.get('shift_schedule', {});
+                    const todayObj = new Date();
+                    const currentYear = todayObj.getFullYear();
+                    const currentMonth = todayObj.getMonth();
+                    const currentDay = todayObj.getDate();
+                    const key = `${currentYear}-${currentMonth}`;
+
+                    console.log('Absen Shift Sync - Key:', key, 'UserId:', stringUserId, 'Day:', currentDay);
+
+                    if (schedules[key] && schedules[key][stringUserId]) {
+                        const assignedShift = schedules[key][stringUserId][currentDay];
+                        console.log('Absen Shift Sync - Found Shift:', assignedShift);
+                        if (assignedShift) {
+                            currentShift = assignedShift;
+                        }
+                    } else {
+                        console.log('Absen Shift Sync - Missing Schedule key or User record.');
+                    }
+                } catch (e) {
+                    console.error('Error reading shift schedule:', e);
+                }
+
+                todayAttendance = {
+                    date: today,
+                    shift: currentShift,
+                    clockIn: null,
+                    clockOut: null,
+                    breakStart: null,
+                    breakEnd: null,
+                    overtimeStart: null,
+                    status: 'waiting'
+                };
+            }
+
+            // Ensure null values are explicitly set (not undefined)
+            todayAttendance.clockIn = todayAttendance.clockIn || null;
+            todayAttendance.clockOut = todayAttendance.clockOut || null;
+            todayAttendance.breakStart = todayAttendance.breakStart || null;
+            todayAttendance.breakEnd = todayAttendance.breakEnd || null;
+            todayAttendance.overtimeStart = todayAttendance.overtimeStart || null;
+
+            // Determine current state
+            const isAlfaTime = this.checkAlfaStatus(todayAttendance.shift);
+            
+            if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
+                this.currentState = 'libur';
+            } else if (todayAttendance.clockOut) {
+                this.currentState = 'completed';
+            } else if (!todayAttendance.clockIn && isAlfaTime) {
+                this.currentState = 'alfa';
+                todayAttendance.status = 'Alfa';
+            } else if (todayAttendance.clockIn) {
+                this.currentState = 'clocked-in';
+            } else {
+                this.currentState = 'waiting';
+            }
+
+            this.attendanceData = todayAttendance;
+            console.log('Loaded attendance for today:', todayAttendance.date, this.attendanceData);
+        } catch (error) {
+            console.error('Error loading attendance:', error);
+        }
+    },
+
+    async loadAttendanceHistory() {
+        try {
+            const result = await api.getAllAttendance();
+            const allData = result.data || [];
+
+            // Filter by current user
+            const currentUser = auth.getCurrentUser();
+            const userId = currentUser?.id || 'demo-user';
+            const historyData = allData.filter(d => String(d.userId) === String(userId));
+
+            this.renderHistory(historyData);
+        } catch (error) {
+            console.error('Error loading history:', error);
+        }
+    },
+
+    renderHistory(historyData) {
+        const tbody = document.getElementById('attendance-history');
+        if (!tbody) return;
+
+        if (historyData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">Belum ada riwayat absensi.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = historyData.slice(0, 10).map(record => {
+            // Calculate duration if clocked out
+            let duration = '--';
+            if (record.clockIn && record.clockOut) {
+                const [inH, inM] = record.clockIn.split(':').map(Number);
+                const [outH, outM] = record.clockOut.split(':').map(Number);
+                let diffInMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+
+                if (diffInMinutes > 0) {
+                    const h = Math.floor(diffInMinutes / 60);
+                    const m = diffInMinutes % 60;
+                    duration = `${h}j ${m}m`;
+                }
+
+                if (diffInMinutes > 0) {
+                    const h = Math.floor(diffInMinutes / 60);
+                    const m = diffInMinutes % 60;
+                    duration = `${h}j ${m}m`;
+                }
+            }
+
+            // Status Badge
+            let statusBadge = '<span class="badge-status">Waiting</span>';
+            if (record.status.toLowerCase() === 'ontime') {
+                statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
+            } else if (record.status.toLowerCase() === 'terlambat' || record.status.toLowerCase() === 'late') {
+                statusBadge = '<span class="badge-status warning">Terlambat</span>';
+            }
+
+            // Format date to local standard UI string
+            const [y, m, d] = record.date.split('-');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+            const dateStr = `${d} ${months[parseInt(m) - 1] || m} ${y}`;
+
+            return `
+                <tr>
+                    <td>${dateStr}</td>
+                    <td>${record.shift || '-'}</td>
+                    <td>${record.clockIn || '--:--'}</td>
+                    <td>${record.clockOut || '--:--'}</td>
+                    <td>${duration}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    initLiveClock() {
+        // Clear existing interval
+        if (this.liveClockInterval) {
+            clearInterval(this.liveClockInterval);
+        }
+
+        const updateClock = () => {
+            const clockEl = document.getElementById('live-clock');
+            const dateEl = document.getElementById('live-date');
+
+            if (clockEl) {
+                clockEl.textContent = dateTime.getCurrentTime();
+            }
+            if (dateEl) {
+                dateEl.textContent = dateTime.getCurrentDate();
+            }
+        };
+
+        updateClock();
+        this.liveClockInterval = setInterval(updateClock, 1000);
+    },
+
+    initButtons() {
+        // Clock In - Add both click and touch events for mobile
+        const btnClockIn = document.getElementById('btn-clock-in');
+        if (btnClockIn) {
+            btnClockIn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleClockIn();
+            });
+            btnClockIn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleClockIn();
+            });
+            console.log('Clock In button initialized, disabled:', btnClockIn.disabled);
+        }
+
+
+
+        // Overtime
+        const btnOvertime = document.getElementById('btn-overtime');
+        if (btnOvertime) {
+            btnOvertime.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleOvertime();
+            });
+            btnOvertime.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleOvertime();
+            });
+        }
+
+        // Clock Out
+        const btnClockOut = document.getElementById('btn-clock-out');
+        if (btnClockOut) {
+            btnClockOut.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleClockOut();
+            });
+            btnClockOut.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleClockOut();
+            });
+        }
+    },
+
+    handleClockIn() {
+        if (this.attendanceData.clockIn) return;
+
+        // Double check Alfa status right before proceeding
+        if (this.checkAlfaStatus(this.attendanceData.shift)) {
+            modal.show(
+                'Peringatan Absensi Terlambat',
+                '<div style="text-align: center; padding: 20px;">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
+                'Anda sudah tidak diizinkan untuk melakukan absen, silahkan hubungi admin secara langsung untuk meminta izin' +
+                '</p>' +
+                '</div>',
+                [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
+            );
+            
+            this.currentState = 'alfa';
+            this.attendanceData.status = 'Alfa';
+            this.updateUI();
+            return;
+        }
+
+        // New: Check if face is registered
+        const currentUser = auth.getCurrentUser();
+        if (!currentUser.faceData) {
+            modal.show(
+                'Wajah Belum Terdaftar',
+                '<div style="text-align: center; padding: 20px;">' +
+                '<i class="fas fa-user-shield" style="font-size: 48px; color: var(--color-primary); margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
+                'Wajah Anda belum terdaftar di database. Silakan ambil foto selfie untuk mendaftarkan wajah Anda.' +
+                '</p>' +
+                '</div>',
+                [
+                    { label: 'Batal', class: 'btn-secondary', onClick: () => modal.close() },
+                    { label: 'Daftarkan Wajah', class: 'btn-primary', onClick: () => {
+                        modal.close();
+                        router.navigate('face-recognition');
+                        setTimeout(() => {
+                            if (window.faceRecognition) {
+                                window.faceRecognition.init('register-face');
+                            }
+                        }, 100);
+                    }}
+                ]
+            );
+            return;
+        }
+
+        // Navigate to face recognition first
+        router.navigate('face-recognition');
+        setTimeout(() => {
+            if (window.faceRecognition) {
+                window.faceRecognition.init('clock-in');
+            }
+        }, 100);
+    },
+
+
+
+    handleOvertime() {
+        if (!this.attendanceData.clockIn) return;
+
+        // Navigate to face recognition
+        router.navigate('face-recognition');
+        setTimeout(() => {
+            if (window.faceRecognition) {
+                window.faceRecognition.init('overtime');
+            }
+        }, 100);
+    },
+
+    handleClockOut() {
+        if (!this.attendanceData.clockIn || this.attendanceData.clockOut) return;
+
+        // Navigate to face recognition
+        router.navigate('face-recognition');
+        setTimeout(() => {
+            if (window.faceRecognition) {
+                window.faceRecognition.init('clock-out');
+            }
+        }, 100);
+    },
+
+    // Process attendance after face recognition verification
+    async processWithVerification(action, verificationData) {
+        // Pre-save Check: Always check Alfa before allowing process
+        if (action === 'clock-in' && this.checkAlfaStatus(this.attendanceData.shift)) {
+            modal.show(
+                'Peringatan Absensi Terlambat',
+                '<div style="text-align: center; padding: 20px;">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
+                'Anda sudah tidak diizinkan untuk melakukan absen, silahkan hubungi admin secara langsung untuk meminta izin' +
+                '</p>' +
+                '</div>',
+                [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
+            );
+            router.navigate('absensi');
+            return;
+        }
+
+        switch (action) {
+            case 'clock-in':
+                this.attendanceData.clockIn = timeStr;
+                this.attendanceData.status = 'ontime';
+                break;
+            case 'overtime':
+                this.attendanceData.overtimeStart = timeStr;
+                break;
+            case 'clock-out':
+                this.attendanceData.clockOut = timeStr;
+                break;
+        }
+
+        // Save verification data
+        this.attendanceData.verification = {
+            timestamp: verificationData.timestamp,
+            location: verificationData.location,
+            photo: verificationData.photo
+        };
+
+        const result = await this.saveAttendance();
+        
+        if (result && result.success) {
+            // Only update UI and show success if save actually worked
+            switch (action) {
+                case 'clock-in':
+                    this.currentState = 'clocked-in';
+                    toast.success(`Clock In berhasil: ${timeStr}`);
+                    break;
+                case 'overtime':
+                    toast.info(`Mulai lembur: ${timeStr}`);
+                    break;
+                case 'clock-out':
+                    this.currentState = 'completed';
+                    toast.success(`Clock Out berhasil: ${timeStr}`);
+                    break;
+            }
+            this.updateUI();
+            this.renderTimeline();
+        } else {
+            // Handle error (e.g. Alfa rejected by server)
+            const errorMsg = (result && result.error) ? result.error : 'Gagal menyimpan absensi';
+            toast.error(errorMsg, 'Error');
+            
+            // Re-load to ensure UI reflects server state
+            await this.loadTodayAttendance();
+            this.updateUI();
+        }
+
+        // Clean up temp data
+        storage.remove('temp_attendance');
+        
+        // Auto navigate back to attendance page
+        setTimeout(() => {
+            if (window.location.hash === '#face-recognition') {
+                router.navigate('absensi');
+            }
+        }, 3000);
+    },
+
+    async saveAttendance() {
+        const currentUser = auth.getCurrentUser();
+        this.attendanceData.userId = currentUser?.id || 'demo-user';
+
+        try {
+            const result = await api.saveAttendance(this.attendanceData);
+            if (result && result.success && result.data) {
+                // Keep the frontend in sync with server-calculated data (especially 'status')
+                this.attendanceData = result.data;
+                return result;
+            }
+            return result || { success: false, error: 'Network problem' };
+        } catch (error) {
+            console.error('Error saving attendance:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    checkAlfaStatus(shiftName) {
+        if (!shiftName || shiftName === 'Libur') return false;
+
+        const now = new Date();
+        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+        // Get shift start time
+        let shiftStartTimeStr = "08:00"; // fallback
+        const shifts = storage.get('shifts', []);
+        const userShift = shifts.find(s => String(s.name) === String(shiftName));
+        
+        if (userShift && userShift.startTime) {
+            shiftStartTimeStr = userShift.startTime.replace('.', ':');
+        }
+        
+        const [sH, sM] = shiftStartTimeStr.split(':').map(Number);
+        const shiftStartInMinutes = (sH || 0) * 60 + (sM || 0);
+
+        return currentTimeInMinutes > (shiftStartInMinutes + 60);
+    },
+
+    updateUI() {
+        // Update status ring
+        const statusRing = document.querySelector('.status-ring');
+        const statusText = document.querySelector('.status-text');
+        const statusSubtext = document.querySelector('.status-subtext');
+        
+        // Update Shift Info Card (Real-time from Spreadsheet)
+        const shiftNameEl = document.getElementById('current-shift-name');
+        const shiftTimeEl = document.getElementById('current-shift-time');
+        
+        const shifts = storage.get('shifts', []);
+        const activeShift = shifts.find(s => String(s.name) === String(this.attendanceData.shift)) || shifts[0] || { name: 'Pagi', startTime: '08:00', endTime: '17:00' };
+
+        if (shiftNameEl) shiftNameEl.textContent = activeShift.name;
+        if (shiftTimeEl) shiftTimeEl.textContent = `${activeShift.startTime} - ${activeShift.endTime}`;
+
+        if (statusRing) {
+            statusRing.className = 'status-ring';
+
+            switch (this.currentState) {
+                case 'libur':
+                    statusRing.classList.add('waiting'); // Reuse waiting style or custom if desired
+                    if (statusText) statusText.textContent = 'Hari Libur';
+                    if (statusSubtext) statusSubtext.textContent = 'Anda tidak memiliki jadwal kerja hari ini.';
+                    break;
+                case 'waiting':
+                    statusRing.classList.add('waiting');
+                    if (statusText) statusText.textContent = 'Siap Clock In';
+                    if (statusSubtext) statusSubtext.textContent = 'Tekan tombol di bawah untuk memulai';
+                    break;
+                case 'clocked-in':
+                    statusRing.classList.add('active');
+                    if (statusText) statusText.textContent = 'Sedang Bekerja';
+                    if (statusSubtext) statusSubtext.textContent = 'Semangat bekerja!';
+                    break;
+                case 'completed':
+                    statusRing.classList.add('completed');
+                    if (statusText) statusText.textContent = 'Selesai Bekerja';
+                    if (statusSubtext) statusSubtext.textContent = 'Terima kasih atas kerja kerasnya!';
+                    break;
+                case 'alfa':
+                    statusRing.classList.add('waiting'); // Reuse color for failure/exclusion
+                    statusRing.style.borderColor = '#EF4444'; // Red for Alfa
+                    if (statusText) statusText.textContent = 'Terlewat (Alfa)';
+                    if (statusSubtext) statusSubtext.textContent = 'Batas waktu absen telah berakhir.';
+                    break;
+            }
+        }
+
+        // Update buttons
+        const btnClockIn = document.getElementById('btn-clock-in');
+        const btnBreak = document.getElementById('btn-break');
+        const btnAfterBreak = document.getElementById('btn-after-break');
+        const btnOvertime = document.getElementById('btn-overtime');
+        const btnClockOut = document.getElementById('btn-clock-out');
+
+        // Clock In button
+        if (btnClockIn) {
+            const isClockedIn = this.attendanceData.clockIn !== null && this.attendanceData.clockIn !== undefined;
+            const isAlfa = this.currentState === 'alfa';
+            const isLibur = this.currentState === 'libur';
+
+            btnClockIn.disabled = isClockedIn || isLibur || isAlfa;
+
+            if (isClockedIn) {
+                btnClockIn.classList.add('completed');
+                const timeEl = document.getElementById('clock-in-time');
+                if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
+            } else if (isLibur) {
+                btnClockIn.classList.add('completed');
+            } else {
+                btnClockIn.classList.remove('completed');
+            }
+        }
+
+
+
+        // Overtime button
+        if (btnOvertime) {
+            btnOvertime.disabled = !this.attendanceData.clockIn || this.attendanceData.clockOut !== null;
+            if (this.attendanceData.overtimeStart) {
+                btnOvertime.classList.add('completed');
+                document.getElementById('overtime-time').textContent = this.attendanceData.overtimeStart;
+            }
+        }
+
+        // Clock Out button
+        if (btnClockOut) {
+            btnClockOut.disabled = !this.attendanceData.clockIn || this.attendanceData.clockOut !== null;
+            if (this.attendanceData.clockOut) {
+                btnClockOut.classList.add('completed');
+                document.getElementById('clock-out-time').textContent = this.attendanceData.clockOut;
+            }
+        }
+    },
+
+    renderTimeline() {
+        const timeline = document.getElementById('attendance-timeline');
+        if (!timeline) return;
+
+        const items = timeline.querySelectorAll('.timeline-item');
+
+        items.forEach(item => {
+            const type = item.dataset.type;
+            const timeEl = item.querySelector('.timeline-time');
+
+            item.className = 'timeline-item pending';
+
+            switch (type) {
+                case 'clock-in':
+                    if (this.attendanceData.clockIn) {
+                        item.classList.remove('pending');
+                        item.classList.add('completed');
+                        if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
+                    }
+                    break;
+
+                case 'clock-out':
+                    if (this.attendanceData.clockOut) {
+                        item.classList.remove('pending');
+                        item.classList.add('completed');
+                        if (timeEl) timeEl.textContent = this.attendanceData.clockOut;
+                    }
+                    break;
+            }
+        });
+
+        // Set active state for current
+        if (this.currentState === 'clocked-in' && !this.attendanceData.clockOut) {
+            const activeItem = timeline.querySelector('.timeline-item.completed:last-child');
+            if (activeItem && activeItem.nextElementSibling) {
+                activeItem.nextElementSibling.classList.add('active');
+            }
+
+        }
+    }
+};
+
+// Global init function
+window.initAbsensi = () => {
+    absensi.init();
+};
+
+window.absensi = absensi;

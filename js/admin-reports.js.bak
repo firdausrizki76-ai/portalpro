@@ -1,0 +1,968 @@
+/**
+ * Portal Pegawai - Admin Reports
+ * Reports and exports for admin
+ */
+
+const adminReports = {
+    attendanceData: [],
+    jurnalData: [],
+    leaveData: [],
+    rawEmployees: [],
+    rawAttendance: [],
+    filters: {
+        attendance: { month: new Date().toISOString().substring(0, 7), dept: '', status: '' },
+        jurnal: { month: new Date().toISOString().substring(0, 7), employee: '', status: '' },
+        leave: { month: new Date().toISOString().substring(0, 7), type: '', status: '' }
+    },
+    initialized: false,
+    loadedMonths: {
+        attendance: null,
+        jurnal: null,
+        leave: null,
+        izin: null,
+        employees: false
+    },
+
+    /**
+     * Helper: look up employee info by userId from loaded employee list
+     */
+    getEmployeeInfo(userId) {
+        const emp = this.rawEmployees.find(e => String(e.id) === String(userId));
+        if (emp) {
+            return { name: emp.name || 'Unknown', department: emp.department || '-' };
+        }
+        return { name: 'Unknown', department: '-' };
+    },
+
+    /**
+     * Helper: normalize date values from Google Sheets
+     * Sheets can return Date objects, ISO strings, or yyyy-MM-dd strings
+     */
+    _normalizeDate(val) {
+        if (!val) return '';
+        if (typeof val === 'string') {
+            // Already yyyy-MM-dd
+            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+            // ISO string like "2026-04-13T..." — take first 10 chars
+            if (val.length >= 10 && val.includes('-')) return val.substring(0, 10);
+            // Try to parse dd/MM/yyyy or other formats
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) {
+                return d.toISOString().substring(0, 10);
+            }
+        }
+        if (val instanceof Date && !isNaN(val.getTime())) {
+            return val.toISOString().substring(0, 10);
+        }
+        if (val === undefined || val === null) return '';
+        const s = String(val).trim();
+        // Final sanity check: if it doesn't contain at least one digit, it's NOT a date
+        if (!/[\d]/.test(s)) return '';
+        return s;
+    },
+
+    async initAttendanceReports() {
+        try {
+            if (!auth.isAdmin()) {
+                toast.error('Anda tidak memiliki akses!');
+                router.navigate('dashboard');
+                return;
+            }
+
+            const monthInput = document.getElementById('attendance-month');
+            if (monthInput && !this.filters.attendance.month) {
+                this.filters.attendance.month = monthInput.value;
+            } else if (monthInput) {
+                monthInput.value = this.filters.attendance.month;
+            }
+
+            if (typeof loader !== 'undefined') loader.show();
+            await this.loadData(this.filters.attendance.month);
+            this.bindAttendanceEvents();
+            this.updateDynamicDeptFilter();
+            this.renderAttendanceReports();
+        } catch (error) {
+            console.error('Attendance reports init error:', error);
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    async initJurnalReports() {
+        try {
+            if (!auth.isAdmin()) {
+                toast.error('Anda tidak memiliki akses!');
+                router.navigate('dashboard');
+                return;
+            }
+
+            const monthInput = document.getElementById('jurnal-month');
+            if (monthInput && !this.filters.jurnal.month) {
+                this.filters.jurnal.month = monthInput.value;
+            } else if (monthInput) {
+                monthInput.value = this.filters.jurnal.month;
+            }
+
+            if (typeof loader !== 'undefined') loader.show();
+            await this.loadData(this.filters.jurnal.month);
+            this.bindJurnalEvents();
+            this.populateEmployeeFilter();
+            this.renderJurnalReports();
+        } catch (error) {
+            console.error('Jurnal reports init error:', error);
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    async initLeaveReports() {
+        try {
+            if (!auth.isAdmin()) {
+                toast.error('Anda tidak memiliki akses!');
+                router.navigate('dashboard');
+                return;
+            }
+
+            const monthInput = document.getElementById('leave-month');
+            if (monthInput) {
+                monthInput.value = this.filters.leave.month;
+            }
+
+            await this.loadData();
+            this.bindLeaveEvents();
+            this.renderLeaveReports();
+        } catch (error) {
+            console.error('Leave reports init error:', error);
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    async loadData(targetMonth = new Date().toISOString().substring(0, 7), forceRefresh = false) {
+        // If we already loaded this month and not forcing refresh, skip
+        const isAlreadyLoaded = 
+            this.loadedMonths.attendance === targetMonth && 
+            this.loadedMonths.jurnal === targetMonth && 
+            this.loadedMonths.leave === targetMonth &&
+            this.loadedMonths.employees;
+
+        if (isAlreadyLoaded && !forceRefresh) {
+            console.log('Using cached data for:', targetMonth);
+            return;
+        }
+
+        if (typeof loader !== 'undefined') loader.show('Memuat data laporan...');
+
+        try {
+            // 1. Fetch Employees FIRST or use cached
+            if (!this.rawEmployees || this.rawEmployees.length === 0 || !this.loadedMonths.employees || forceRefresh) {
+                console.log('Fetching employees...');
+                const empRes = await api.getEmployees();
+                this.rawEmployees = empRes.data || [];
+                this.loadedMonths.employees = true;
+            }
+            
+            // 2. Clear current data and fetch in parallel
+            let attendances = [];
+            let jurnals = [];
+            let leaves = [];
+            let izinList = [];
+
+            console.log('Fetching report data for:', targetMonth);
+            const reportPromises = [
+                api.getAllAttendance(targetMonth).then(res => attendances = res.data || []),
+                api.getAllJournals(targetMonth).then(res => jurnals = res.data || []),
+                api.getAllLeaves(targetMonth).then(res => leaves = res.data || []),
+                api.getAllIzin(targetMonth).then(res => izinList = res.data || [])
+            ];
+
+            await Promise.all(reportPromises);
+
+            // Update loaded flags
+            this.loadedMonths.attendance = targetMonth;
+            this.loadedMonths.jurnal = targetMonth;
+            this.loadedMonths.leave = targetMonth;
+            this.loadedMonths.izin = targetMonth;
+
+            // Store raw attendance for detail views
+            this.rawAttendance = attendances;
+
+            // Generate attendance summary per employee
+            this.attendanceData = this.rawEmployees.map(emp => {
+                const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
+                let present = 0;
+                let late = 0;
+
+                empAtt.forEach(a => {
+                    if (a.clockIn) {
+                        present++;
+                        if (a.status && a.status.toLowerCase() === 'terlambat') {
+                            late++;
+                        }
+                    }
+                });
+
+                const empLeaves = leaves.filter(l => String(l.userId) === String(emp.id) && l.status === 'approved');
+                const empIzin = izinList.filter(i => String(i.userId) === String(emp.id) && i.status === 'approved');
+
+                let leaveDays = 0;
+                empLeaves.forEach(l => leaveDays += parseInt(l.duration) || 1);
+                empIzin.forEach(i => leaveDays += parseInt(i.duration) || 1);
+
+                const absent = leaveDays;
+
+                return {
+                    id: emp.id,
+                    name: emp.name,
+                    department: emp.department || '-',
+                    present: present,
+                    late: late,
+                    absent: absent,
+                    total: present + absent
+                };
+            });
+            
+            // Store jurnals and leaves for processing below
+            this.rawJurnals = jurnals;
+            this.rawLeaves = leaves;
+            this.rawIzin = izinList;
+
+        } catch (e) {
+            console.error('Error loading report data:', e);
+            toast.error('Gagal memuat beberapa data laporan. Silakan coba lagi.');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+
+        // Process journal data
+        const currentJurnals = this.rawJurnals || [];
+        this.jurnalData = currentJurnals.map(j => {
+            const emp = this.getEmployeeInfo(j.userId) || { name: 'Pegawai', department: '-' };
+            
+            // --- DETECT COLUMN SHIFT (e.g. tasks content in date field) ---
+            let rawDate = (j.date || j.Date || j.tanggal || j.Tanggal || '').toString().trim();
+            let rawTasks = (j.tasks || '').toString().trim();
+            
+            // If rawDate contains a lot of text and no digits, it's definitely a task
+            const isProbablyTask = rawDate.length > 5 && !/[\d]/.test(rawDate);
+            
+            if (isProbablyTask && !rawTasks) {
+                rawTasks = rawDate;
+                rawDate = j.updatedAt ? j.updatedAt.split('T')[0] : '';
+            }
+
+            const normalizedDate = this._normalizeDate(rawDate);
+            return {
+                ...j,
+                date: normalizedDate,
+                employeeName: emp.name || 'Pegawai',
+                department: emp.department || '-',
+                tasks: rawTasks || j.tasks || '-',
+                achievements: j.achievements || '-',
+                obstacles: j.obstacles || '-',
+                plan: j.plan || '-',
+                photo: j.photo || null,
+                status: (rawTasks || j.tasks) ? 'filled' : 'empty',
+                updatedAt: j.updatedAt
+            };
+        });
+
+        // Process Leave/Permission Recap
+        const currentLeaves = this.rawLeaves || [];
+        const currentIzin = this.rawIzin || [];
+        
+        this.leaveData = [
+            ...currentLeaves.map(l => {
+                const emp = this.getEmployeeInfo(l.userId);
+                return {
+                    ...l,
+                    _source: 'leave',
+                    name: emp.name,
+                    department: emp.department,
+                    type: l.type === 'annual' ? 'Cuti' : l.typeLabel || l.type,
+                    dates: l.startDate === l.endDate ? l.startDate : `${l.startDate} - ${l.endDate}`,
+                    duration: l.duration,
+                    reason: l.reason,
+                    status: l.status
+                };
+            }),
+            ...currentIzin.map(i => {
+                const emp = this.getEmployeeInfo(i.userId);
+                return {
+                    ...i,
+                    _source: 'izin',
+                    name: emp.name,
+                    department: emp.department,
+                    type: 'Izin',
+                    dates: i.date,
+                    duration: i.duration,
+                    reason: i.reason,
+                    status: i.status
+                };
+            })
+        ];
+    },
+
+    updateDynamicDeptFilter() {
+        if (!this.rawEmployees || this.rawEmployees.length === 0) return;
+        
+        const depts = [...new Set(this.rawEmployees.map(e => e.department).filter(d => d))].sort();
+        const select = document.getElementById('report-dept-filter');
+        if (select) {
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Semua Departemen</option>' +
+                depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            select.value = currentVal;
+        }
+    },
+
+    populateEmployeeFilter() {
+        const employees = this.rawEmployees || [];
+        const select = document.getElementById('jurnal-employee-filter');
+        if (select) {
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Semua Pegawai</option>' +
+                employees.map(emp => `<option value="${emp.name}">${emp.name}</option>`).join('');
+            select.value = currentVal;
+        }
+    },
+
+    getFilteredAttendance() {
+        if (!this.attendanceData) return [];
+        return this.attendanceData.filter(row => {
+            const matchesDept = !this.filters.attendance.dept || row.department === this.filters.attendance.dept;
+            const matchesStatus = !this.filters.attendance.status ||
+                (this.filters.attendance.status === 'present' && row.present > 0) ||
+                (this.filters.attendance.status === 'absent' && row.absent > 0) ||
+                (this.filters.attendance.status === 'late' && row.late > 0);
+            return matchesDept && matchesStatus;
+        });
+    },
+
+    getFilteredJurnal() {
+        if (!this.jurnalData) return [];
+        const { employee, month, status } = this.filters.jurnal;
+        return this.jurnalData.filter(row => {
+            const matchesMonth = !month || (row.date && row.date.startsWith(month));
+            const matchesEmp = !employee || row.employeeName === employee || row.name === employee;
+            const matchesStatus = !status || row.status === status;
+            return matchesMonth && matchesEmp && matchesStatus;
+        });
+    },
+
+    getFilteredLeave() {
+        if (!this.leaveData) return [];
+        const currentMonth = this.filters.leave.month;
+        return this.leaveData.filter(row => {
+            const matchesMonth = !currentMonth || (row.startDate && row.startDate.startsWith(currentMonth)) || (row.endDate && row.endDate.startsWith(currentMonth));
+            const matchesType = !this.filters.leave.type ||
+                (this.filters.leave.type === 'cuti' && row.type.toLowerCase().includes('cuti')) ||
+                (this.filters.leave.type === 'izin' && row.type.toLowerCase().includes('izin')) ||
+                (this.filters.leave.type === 'sakit' && row.type.toLowerCase().includes('sakit'));
+            const matchesStatus = !this.filters.leave.status || row.status === this.filters.leave.status;
+            return matchesMonth && matchesType && matchesStatus;
+        });
+    },
+
+    bindAttendanceEvents() {
+        // Export button
+        const exportBtn = document.getElementById('btn-export-attendance');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToExcel('attendance'));
+        }
+
+        // Print button
+        const printBtn = document.getElementById('btn-print-attendance');
+        if (printBtn) {
+            printBtn.addEventListener('click', () => this.printReport('attendance'));
+        }
+
+        // Month filter
+        const monthFilter = document.getElementById('attendance-month');
+        if (monthFilter) {
+            monthFilter.addEventListener('change', async (e) => {
+                this.filters.attendance.month = e.target.value;
+                if (typeof loader !== 'undefined') loader.show();
+                try {
+                    await this.loadData(this.filters.attendance.month);
+                    this.renderAttendanceReports();
+                } finally {
+                    if (typeof loader !== 'undefined') loader.hide();
+                }
+            });
+        }
+
+        // Department filter
+        const deptFilter = document.getElementById('report-dept-filter');
+        if (deptFilter) {
+            deptFilter.addEventListener('change', (e) => {
+                this.filters.attendance.dept = e.target.value;
+                this.renderAttendanceReports();
+            });
+        }
+
+        // Status filter
+        const statusFilter = document.getElementById('report-status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filters.attendance.status = e.target.value;
+                this.renderAttendanceReports();
+            });
+        }
+    },
+
+    bindJurnalEvents() {
+        const exportBtn = document.getElementById('btn-export-jurnal');
+        const printBtn = document.getElementById('btn-print-jurnal');
+
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToExcel('jurnal'));
+        }
+
+        if (printBtn) {
+            printBtn.addEventListener('click', () => this.printReport('jurnal'));
+        }
+
+        // Month filter
+        const monthFilter = document.getElementById('jurnal-month');
+        if (monthFilter) {
+            monthFilter.addEventListener('change', async (e) => {
+                this.filters.jurnal.month = e.target.value;
+                if (typeof loader !== 'undefined') loader.show();
+                try {
+                    await this.loadData(this.filters.jurnal.month);
+                    this.renderJurnalReports();
+                } finally {
+                    if (typeof loader !== 'undefined') loader.hide();
+                }
+            });
+        }
+
+        // Employee filter
+        const empFilter = document.getElementById('jurnal-employee-filter');
+        if (empFilter) {
+            empFilter.addEventListener('change', (e) => {
+                this.filters.jurnal.employee = e.target.value;
+                this.renderJurnalReports();
+            });
+        }
+
+        // Status filter
+        const statusFilter = document.getElementById('jurnal-status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filters.jurnal.status = e.target.value;
+                this.renderJurnalReports();
+            });
+        }
+    },
+
+    bindLeaveEvents() {
+        const exportBtn = document.getElementById('btn-export-leave');
+        const printBtn = document.getElementById('btn-print-leave');
+
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToExcel('leave'));
+        }
+
+        if (printBtn) {
+            printBtn.addEventListener('click', () => this.printReport('leave'));
+        }
+
+        // Month filter
+        const monthFilter = document.getElementById('leave-month');
+        if (monthFilter) {
+            monthFilter.addEventListener('change', async (e) => {
+                this.filters.leave.month = e.target.value;
+                if (typeof loader !== 'undefined') loader.show();
+                try {
+                    await this.loadData(this.filters.leave.month);
+                    this.renderLeaveReports();
+                } finally {
+                    if (typeof loader !== 'undefined') loader.hide();
+                }
+            });
+        }
+
+        // Type filter
+        const typeFilter = document.getElementById('leave-type-filter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', (e) => {
+                this.filters.leave.type = e.target.value;
+                this.renderLeaveReports();
+            });
+        }
+
+        // Status filter
+        const statusFilter = document.getElementById('leave-status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.filters.leave.status = e.target.value;
+                this.renderLeaveReports();
+            });
+        }
+    },
+
+    renderAttendanceReports() {
+        const tbody = document.getElementById('attendance-reports-body');
+        if (!tbody) return;
+
+        const data = this.getFilteredAttendance();
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Tidak ada data ditemukan</td></tr>';
+            if (mobileContainer) mobileContainer.innerHTML = '<div class="text-center p-4">Tidak ada data ditemukan</div>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(row => `
+            <tr>
+                <td>
+                    <div class="employee-info">
+                        <div class="employee-details">
+                            <span class="employee-name">${row.name}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>${row.department}</td>
+                <td class="text-center" style="color: var(--color-success); font-weight: 600;">${row.present}</td>
+                <td class="text-center" style="color: var(--color-warning); font-weight: 600;">${row.late}</td>
+                <td class="text-center" style="color: var(--color-danger); font-weight: 600;">${row.absent}</td>
+                <td class="text-center">${row.total}</td>
+                <td>
+                    <button type="button" class="btn-action view" onclick="adminReports.viewDetail('${row.id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Render mobile cards
+        const mobileContainer = document.getElementById('attendance-mobile-cards');
+        if (mobileContainer) {
+            mobileContainer.innerHTML = data.map(row => `
+                <div class="mobile-card">
+                    <div class="mobile-card-header">
+                        <span class="mobile-card-title">${row.name}</span>
+                        <span style="font-size: var(--font-size-xs); color: var(--text-muted);">${row.department}</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Hadir</span>
+                        <span class="mobile-card-value" style="color: var(--color-success);">${row.present}</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Terlambat</span>
+                        <span class="mobile-card-value" style="color: var(--color-warning);">${row.late}</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Absen</span>
+                        <span class="mobile-card-value" style="color: var(--color-danger);">${row.absent}</span>
+                    </div>
+                    <div class="mobile-card-row">
+                        <span class="mobile-card-label">Total</span>
+                        <span class="mobile-card-value">${row.total}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    },
+
+    renderJurnalReports() {
+        const tbody = document.getElementById('jurnal-reports-body');
+        if (!tbody) return;
+
+        const data = this.getFilteredJurnal();
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Tidak ada data ditemukan</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(row => {
+            const employeeName = row.employeeName || row.name || 'Pegawai';
+            const department = row.department || '-';
+            const statusLabel = row.status === 'filled' ? 'TERISI' : 'KOSONG';
+            const statusClass = row.status === 'filled' ? 'success' : 'warning';
+
+            return `
+                <tr>
+                    <td>${row.date || '[Tanpa Tanggal]'}</td>
+                    <td>${employeeName}</td>
+                    <td>${department}</td>
+                    <td>${row.tasks.substring(0, 50)}${row.tasks.length > 50 ? '...' : ''}</td>
+                    <td>
+                        ${row.photo ?
+                `<img src="${row.photo}" class="table-img" onclick="adminReports.viewPhoto('${row.photo}')" title="Klik untuk melihat">` :
+                '-'
+            }
+                    </td>
+                    <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                    <td>
+                        <button type="button" class="btn-action view" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    renderLeaveReports() {
+        const tbody = document.getElementById('leave-reports-body');
+        if (!tbody) return;
+
+        const data = this.getFilteredLeave();
+        
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Tidak ada data ditemukan</td></tr>';
+            return;
+        }
+
+        const statusLabels = {
+            'pending': 'Menunggu',
+            'approved': 'Disetujui',
+            'rejected': 'Ditolak'
+        };
+
+        tbody.innerHTML = data.map(row => {
+            // Build approval buttons only for pending items
+            let approvalButtons = '';
+            if (row.status === 'pending') {
+                approvalButtons = `
+                    <button type="button" class="btn-action" style="background:#10B981;color:#fff;" 
+                        onclick="adminReports.approveLeaveItem('${row.id}', '${row._source}')" title="Setujui">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button type="button" class="btn-action" style="background:#EF4444;color:#fff;" 
+                        onclick="adminReports.rejectLeaveItem('${row.id}', '${row._source}')" title="Tolak">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            }
+
+            return `
+                <tr>
+                    <td>${row.name}</td>
+                    <td>${row.department}</td>
+                    <td>${row.type}</td>
+                    <td>${row.dates}</td>
+                    <td>${row.duration} hari</td>
+                    <td>${row.reason}</td>
+                    <td>
+                        <span class="status-badge ${row.status}">
+                            ${statusLabels[row.status] || row.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-action view" onclick="adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${approvalButtons}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    exportToExcel(type) {
+        let data = [];
+        let filename = '';
+
+        switch (type) {
+            case 'attendance':
+                data = this.getFilteredAttendance();
+                filename = 'Rekap_Absensi.csv';
+                break;
+            case 'jurnal':
+                data = this.getFilteredJurnal();
+                filename = 'Rekap_Jurnal.csv';
+                break;
+            case 'leave':
+                data = this.getFilteredLeave();
+                filename = 'Rekap_Cuti_Izin.csv';
+                break;
+        }
+
+        // For demo, we'll export as CSV
+        const csv = this.convertToCSV(data);
+        this.downloadFile(csv, filename, 'text/csv');
+
+        toast.success(`Data berhasil diexport ke ${filename}`);
+    },
+
+    convertToCSV(data) {
+        if (data.length === 0) return '';
+
+        const headers = Object.keys(data[0]);
+        const rows = data.map(row =>
+            headers.map(header => {
+                const val = row[header];
+                return `"${val}"`;
+            }).join(',')
+        );
+
+        return [headers.join(','), ...rows].join('\n');
+    },
+
+    downloadFile(content, filename, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    },
+
+    printReport(type) {
+        window.print();
+    },
+
+    async viewDetail(id) {
+        const emp = this.rawEmployees.find(e => String(e.id) === String(id));
+        if (!emp) {
+            console.error('Employee not found for attendance detail id:', id);
+            return;
+        }
+
+        try {
+            const result = await api.getAttendance(emp.id);
+            const data = result.data || [];
+            const currentMonth = this.filters.attendance.month || new Date().toISOString().substring(0, 7);
+            const filtered = data.filter(a => a.date.startsWith(currentMonth));
+
+            const tableRows = filtered.map(a => `
+                <tr>
+                    <td>${dateTime.formatDate(a.date, 'short')}</td>
+                    <td>${a.clockIn || '-'}</td>
+                    <td>${a.clockOut || '-'}</td>
+                    <td>
+                        <span class="status-badge ${a.status === 'ontime' ? 'active' : 'inactive'}">
+                            ${a.status === 'ontime' ? 'Ontime' : (a.status || 'Hadir')}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            const content = `
+                <div class="report-detail-view">
+                    <div class="report-detail-header">
+                        <div class="profile-main-info">
+                            <h4>${emp.name}</h4>
+                            <p>${emp.department} • Periode: ${currentMonth}</p>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="report-detail-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Masuk</th>
+                                    <th>Pulang</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows || '<tr><td colspan="4" style="text-align:center">Tidak ada data di periode ini</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            modal.show('Rincian Kehadiran Pegawai', content, [
+                { label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }
+            ]);
+
+        } catch (error) {
+            console.error('Error viewing attendance detail:', error);
+            toast.error('Gagal memuat detail kehadiran');
+        }
+    },
+
+    viewJurnalDetail(userId, date) {
+        const jurnal = this.jurnalData.find(j => String(j.userId) === String(userId) && j.date === date);
+        if (!jurnal) {
+            toast.error('Data jurnal tidak ditemukan');
+            return;
+        }
+
+        const photoHtml = jurnal.photo ? `
+            <div class="detail-photo-section">
+                <label>Foto Lampiran:</label>
+                <img src="${jurnal.photo}" alt="Foto jurnal" class="jurnal-photo-preview" onclick="window.open('${jurnal.photo}', '_blank')">
+            </div>
+        ` : '<div class="detail-photo-section"><label>Foto Lampiran:</label><p class="no-photo">Tidak ada foto</p></div>';
+
+        const content = `
+            <div class="jurnal-detail-content">
+                <div class="profile-details-grid" style="margin-bottom: var(--spacing-lg);">
+                    <div class="detail-item">
+                        <label>Nama</label>
+                        <p>${jurnal.name}</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Departemen</label>
+                        <p>${jurnal.department}</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Tanggal</label>
+                        <p>${jurnal.date ? dateTime.formatDate(jurnal.date, 'long') : '[Tanpa Tanggal]'}</p>
+                    </div>
+                </div>
+                
+                <div class="detail-section" style="margin-bottom: var(--spacing);">
+                    <label style="font-size: var(--font-size-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Tugas</label>
+                    <p style="font-size: var(--font-size-sm); color: var(--text-primary); margin-top: 4px;">${jurnal.tasks.replace(/\n/g, '<br>')}</p>
+                </div>
+                <div class="detail-section" style="margin-bottom: var(--spacing);">
+                    <label style="font-size: var(--font-size-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Pencapaian</label>
+                    <p style="font-size: var(--font-size-sm); color: var(--text-primary); margin-top: 4px;">${jurnal.achievements.replace(/\n/g, '<br>')}</p>
+                </div>
+                <div class="detail-section" style="margin-bottom: var(--spacing);">
+                    <label style="font-size: var(--font-size-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Kendala</label>
+                    <p style="font-size: var(--font-size-sm); color: var(--text-primary); margin-top: 4px;">${jurnal.obstacles.replace(/\n/g, '<br>')}</p>
+                </div>
+                <div class="detail-section" style="margin-bottom: var(--spacing);">
+                    <label style="font-size: var(--font-size-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Rencana</label>
+                    <p style="font-size: var(--font-size-sm); color: var(--text-primary); margin-top: 4px;">${jurnal.plan.replace(/\n/g, '<br>')}</p>
+                </div>
+                ${photoHtml}
+            </div>
+        `;
+
+        modal.show('Detail Jurnal', content, [
+            { label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }
+        ]);
+    },
+
+    viewPhoto(photoUrl) {
+        if (!photoUrl) return;
+
+        const content = `
+            <div class="photo-viewer-modal">
+                <img src="${photoUrl}" alt="Foto jurnal" class="full-photo">
+            </div>
+        `;
+
+        modal.show('Foto Lampiran', content, [
+            { label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() },
+            { label: 'Buka di Tab Baru', class: 'btn-primary', onClick: () => window.open(photoUrl, '_blank') }
+        ]);
+    },
+
+    viewLeaveDetail(userId, dates) {
+        console.log('adminReports.viewLeaveDetail called with:', userId, dates);
+        const leave = this.leaveData.find(l => String(l.userId) === String(userId) && l.dates === dates);
+        if (!leave) {
+            console.error('Leave entry not found for:', userId, dates);
+            toast.error('Data cuti tidak ditemukan');
+            return;
+        }
+
+        const content = `
+            <div class="profile-view-content">
+                <div class="profile-header">
+                    <div class="profile-main-info">
+                        <h4>${leave.name}</h4>
+                        <p>${leave.department}</p>
+                        <span class="status-badge ${leave.status}">${leave.status.toUpperCase()}</span>
+                    </div>
+                </div>
+                <div class="profile-details-grid">
+                    <div class="detail-item">
+                        <label>Jenis Pengajuan</label>
+                        <p>${leave.type}</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Durasi</label>
+                        <p>${leave.duration} Hari</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Tanggal</label>
+                        <p>${leave.dates}</p>
+                    </div>
+                    <div class="detail-section" style="grid-column: span 2; margin-top: var(--spacing);">
+                        <label style="font-size: var(--font-size-xs); font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Alasan / Keterangan</label>
+                        <p style="padding: var(--spacing-md); background: var(--bg-primary); border-radius: var(--radius-md); font-style: italic; font-size: var(--font-size-sm); margin-top: 4px; border: 1px solid var(--border-color);">
+                            "${leave.reason || 'Tidak ada keterangan'}"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modal.show('Detail Pengajuan Cuti/Izin', content, [
+            { label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }
+        ]);
+    },
+
+    // ========== APPROVAL ACTIONS ==========
+
+    async approveLeaveItem(id, source) {
+        if (!confirm('Setujui pengajuan ini?')) return;
+
+        try {
+            let result;
+            if (source === 'izin') {
+                result = await api.approveIzin(id);
+            } else {
+                result = await api.approveLeave(id);
+            }
+
+            if (result.success) {
+                toast.success('Pengajuan berhasil disetujui!');
+                // Reload data and re-render
+                await this.loadData();
+                this.renderLeaveReports();
+            } else {
+                toast.error(result.error || 'Gagal menyetujui pengajuan');
+            }
+        } catch (error) {
+            console.error('Error approving:', error);
+            toast.error('Terjadi kesalahan saat menyetujui');
+        }
+    },
+
+    async rejectLeaveItem(id, source) {
+        if (!confirm('Tolak pengajuan ini?')) return;
+
+        try {
+            let result;
+            if (source === 'izin') {
+                result = await api.rejectIzin(id);
+            } else {
+                result = await api.rejectLeave(id);
+            }
+
+            if (result.success) {
+                toast.success('Pengajuan berhasil ditolak.');
+                await this.loadData();
+                this.renderLeaveReports();
+            } else {
+                toast.error(result.error || 'Gagal menolak pengajuan');
+            }
+        } catch (error) {
+            console.error('Error rejecting:', error);
+            toast.error('Terjadi kesalahan saat menolak');
+        }
+    }
+};
+
+// Global init functions
+window.initAttendanceReports = () => {
+    adminReports.initAttendanceReports();
+};
+
+window.initJurnalReports = () => {
+    adminReports.initJurnalReports();
+};
+
+window.initLeaveReports = () => {
+    adminReports.initLeaveReports();
+};
+
+// Expose
+window.adminReports = adminReports;
