@@ -516,11 +516,12 @@ const absensi = {
         const shiftNameEl = document.getElementById('current-shift-name');
         const shiftTimeEl = document.getElementById('current-shift-time');
         
-        const shifts = storage.get('shifts', []);
-        const activeShift = shifts.find(s => String(s.name) === String(this.attendanceData.shift)) || shifts[0] || { name: 'Pagi', startTime: '08:00', endTime: '17:00' };
+        const shifts = storage.get('shifts') || [];
+        const activeShift = shifts.find(s => String(s.name) === String(this.attendanceData ? this.attendanceData.shift : '')) 
+                         || (shifts.length > 0 ? shifts[0] : { name: this.attendanceData?.shift || 'Pagi', startTime: '08:00', endTime: '17:00' });
 
-        if (shiftNameEl) shiftNameEl.textContent = activeShift.name;
-        if (shiftTimeEl) shiftTimeEl.textContent = `${activeShift.startTime} - ${activeShift.endTime}`;
+        if (shiftNameEl) shiftNameEl.textContent = activeShift?.name || 'Pagi';
+        if (shiftTimeEl) shiftTimeEl.textContent = activeShift ? `${activeShift.startTime} - ${activeShift.endTime}` : '08:00 - 17:00';
 
         if (statusRing) {
             statusRing.className = 'status-ring';

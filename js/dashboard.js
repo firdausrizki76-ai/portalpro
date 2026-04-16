@@ -138,13 +138,14 @@ const dashboard = {
         } catch (e) { }
 
         // MAPPING: Get real times from the shifts sheet data we just fetched
-        const activeShift = shifts.find(s => String(s.name) === String(currentShiftName)) || shifts[0] || { name: currentShiftName, startTime: '08:00', endTime: '17:00' };
+        const activeShift = shifts.find(s => String(s.name) === String(currentShiftName)) 
+                         || (shifts.length > 0 ? shifts[0] : { name: currentShiftName, startTime: '08:00', endTime: '17:00' });
 
         if (shiftEl) {
             if (currentShiftName === 'Libur') {
                 shiftEl.textContent = `Shift: Libur (Tidak ada jadwal)`;
             } else {
-                shiftEl.textContent = `Shift: ${activeShift.name} (${activeShift.startTime} - ${activeShift.endTime})`;
+                shiftEl.textContent = `Shift: ${activeShift?.name || currentShiftName} (${activeShift?.startTime || '08:00'} - ${activeShift?.endTime || '17:00'})`;
             }
         }
     },
