@@ -7,7 +7,7 @@
  * - Jika API_BASE_URL diisi → semua request dikirim ke Google Apps Script
  */
 
-const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbz3mxmoP52awLiPEhCPd6d_2CM6Il3nrCJ_0YAdMjP8Gw56KyMxcVKWkmL8pPjMEwFu/exec'; // v42 Final Autonomous Fix (Dual Verification)
+const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzq1rsse_tHG5X8shyIxT0QBLc6TxxbBk0WHgHrFvNmY9wtxhrAnBxLyqv7aKYkbWSR/exec'; // v44 Maintenance & Cleanup Release
 
 const api = {
 
@@ -50,9 +50,10 @@ const api = {
         } catch (error) {
             console.error(`API Error (${action}):`, error.message);
             if (error.message && error.message.startsWith('TIMEOUT_')) {
-                return { success: false, error: 'Server tidak merespons setelah menunggu. Cek koneksi internet Anda.' };
+                return { success: false, error: 'Server tidak merespons setelah menunggu (Timeout). Cek koneksi internet Anda.' };
             }
-            return this._localFallback(action, data);
+            // Enhance other errors with raw message inclusion
+            return this._localFallback(action, { ...data, serverError: error.message });
         }
     },
 
