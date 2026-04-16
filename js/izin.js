@@ -324,6 +324,24 @@ const izin = {
                             </span>
                         </div>
                         <p class="izin-reason">${izin.reason}</p>
+                        
+                        <!-- Verification Display -->
+                        ${izin.verificationPhoto ? `
+                            <div class="timeline-verification">
+                                <img src="${izin.verificationPhoto}" class="verification-thumbnail">
+                                <div class="verification-info">
+                                    <span class="verification-loc">
+                                        <i class="fas fa-map-marker-alt"></i> 
+                                        ${typeof izin.verificationLocation === 'string' && izin.verificationLocation.includes('{') 
+                                            ? (JSON.parse(izin.verificationLocation).latitude.toFixed(4) + ', ' + JSON.parse(izin.verificationLocation).longitude.toFixed(4))
+                                            : (izin.verificationLocation?.latitude ? izin.verificationLocation.latitude.toFixed(4) + ', ' + izin.verificationLocation.longitude.toFixed(4) : (izin.verificationLocation || 'Lokasi tidak ada'))
+                                        }
+                                    </span>
+                                    <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
+                                </div>
+                            </div>
+                        ` : ''}
+
                         ${izin.hasAttachment ? `
                             <span class="izin-attachment">
                                 <i class="fas fa-paperclip"></i>
