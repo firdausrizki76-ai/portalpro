@@ -130,6 +130,22 @@ const absensi = {
             todayAttendance.breakEnd = todayAttendance.breakEnd || null;
             todayAttendance.overtimeStart = todayAttendance.overtimeStart || null;
 
+            // Handle dual verification mapping
+            if (todayAttendance.verificationInPhoto) {
+                todayAttendance.verificationIn = {
+                    photo: todayAttendance.verificationInPhoto,
+                    location: todayAttendance.verificationInLocation ? JSON.parse(todayAttendance.verificationInLocation) : null,
+                    timestamp: todayAttendance.verificationInTimestamp
+                };
+            }
+            if (todayAttendance.verificationOutPhoto) {
+                todayAttendance.verificationOut = {
+                    photo: todayAttendance.verificationOutPhoto,
+                    location: todayAttendance.verificationOutLocation ? JSON.parse(todayAttendance.verificationOutLocation) : null,
+                    timestamp: todayAttendance.verificationOutTimestamp
+                };
+            }
+
             // Determine current state
             const isAlfaTime = this.checkAlfaStatus(todayAttendance.shift);
             
@@ -415,12 +431,24 @@ const absensi = {
                 break;
         }
 
-        // Save verification data
-        this.attendanceData.verification = {
-            timestamp: verificationData.timestamp,
-            location: verificationData.location,
-            photo: verificationData.photo
-        };
+        // Save verification data locally to the correct action slot
+        if (action === 'clock-in') {
+            this.attendanceData.verificationIn = {
+                timestamp: verificationData.timestamp,
+                location: verificationData.location,
+                photo: verificationData.photo
+            };
+            // For backend compatibility with saveAttendance generic 'verification' key
+            this.attendanceData.verification = this.attendanceData.verificationIn;
+        } else if (action === 'clock-out') {
+            this.attendanceData.verificationOut = {
+                timestamp: verificationData.timestamp,
+                location: verificationData.location,
+                photo: verificationData.photo
+            };
+            // For backend compatibility with saveAttendance generic 'verification' key
+            this.attendanceData.verification = this.attendanceData.verificationOut;
+        }
 
         const result = await this.saveAttendance();
         
@@ -636,12 +664,12 @@ const absensi = {
                         if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
                         
                         // Show Thumbnail & Location
-                        if (this.attendanceData.verification) {
-                            const ver = this.attendanceData.verification;
+                        const ver = this.attendanceData.verificationIn;
+                        if (ver && ver.photo) {
                             let html = `<div class="timeline-verification">`;
-                            if (ver.photo) html += `<img src="${ver.photo}" class="verification-thumbnail">`;
+                            html += `<img src="${ver.photo}" class="verification-thumbnail">`;
                             html += `<div class="verification-info">
-                                <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? ver.location.latitude.toFixed(4) + ', ' + ver.location.longitude.toFixed(4) : 'Lokasi tidak ada'}</span>
+                                <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
                             </div></div>`;
                             
@@ -658,6 +686,22 @@ const absensi = {
                         item.classList.remove('pending');
                         item.classList.add('completed');
                         if (timeEl) timeEl.textContent = this.attendanceData.clockOut;
+
+                        // Show Thumbnail & Location for Clock Out
+                        const ver = this.attendanceData.verificationOut;
+                        if (ver && ver.photo) {
+                            let html = `<div class="timeline-verification">`;
+                            html += `<img src="${ver.photo}" class="verification-thumbnail">`;
+                            html += `<div class="verification-info">
+                                <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
+                                <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
+                            </div></div>`;
+                            
+                            // Only add if not already present
+                            if (!item.querySelector('.timeline-verification')) {
+                                item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
+                            }
+                        }
                     }
                     break;
             }
