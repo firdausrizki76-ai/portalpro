@@ -39,13 +39,19 @@ const dashboard = {
             
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
-                // Fetch attendance and global settings concurrently with individual safety
-                const [attResult, settingsRes] = await Promise.all([
+                // Fetch attendance, settings, and fresh shift definitions concurrently
+                const [attResult, settingsRes, shiftRes] = await Promise.all([
                     api.getAttendance(currentUser.id).catch(e => ({ success: false, error: e.message })),
-                    api.getSettings().catch(e => ({ success: false, error: e.message }))
+                    api.getSettings().catch(e => ({ success: false, error: e.message })),
+                    api.getShifts().catch(e => ({ success: false, error: e.message }))
                 ]);
 
                 this.attendanceData = (attResult && attResult.success) ? attResult.data : [];
+
+                // Sync fresh shifts to local storage
+                if (shiftRes && shiftRes.success && shiftRes.data) {
+                    storage.set('shifts', shiftRes.data);
+                }
 
                 // Sync global schedule shift mapping from Admin to this employee's local instance
                 if (settingsRes && settingsRes.success && settingsRes.data) {
@@ -125,18 +131,14 @@ const dashboard = {
 
             if (schedules[key] && schedules[key][userId]) {
                 const assignedShift = schedules[key][userId][currentDay];
-                console.log('Dashboard Shift Sync - Found Shift:', assignedShift);
-                if (assignedShift) {
+                if (assignedShift && assignedShift !== '') {
                     currentShiftName = assignedShift;
                 }
-            } else {
-                console.log('Dashboard Shift Sync - Missing Schedule key or User record.');
             }
-        } catch (e) {
-            console.error('Error reading shift schedule:', e);
-        }
+        } catch (e) { }
 
-        const activeShift = shifts.find(s => s.name === currentShiftName) || shifts[0] || { name: 'Pagi', startTime: '08:00', endTime: '17:00' };
+        // MAPPING: Get real times from the shifts sheet data we just fetched
+        const activeShift = shifts.find(s => String(s.name) === String(currentShiftName)) || shifts[0] || { name: currentShiftName, startTime: '08:00', endTime: '17:00' };
 
         if (shiftEl) {
             if (currentShiftName === 'Libur') {
