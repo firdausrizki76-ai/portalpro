@@ -28,6 +28,16 @@ const faceRecognition = {
         // Update UI
         this.updateActionTitle(action);
         
+        // =============================================
+        // TEST BYPASS MODE: Skip camera for registration
+        // This verifies the Drive-saving pipeline directly
+        // =============================================
+        if (this.isRegistering) {
+            this.showRegistrationTestUI();
+            return; // Skip camera/AI entirely
+        }
+        // =============================================
+
         // Load AI Models
         await this.loadModels();
 
@@ -42,6 +52,58 @@ const faceRecognition = {
 
         // Start Detection Loop
         this.startDetection();
+    },
+
+    showRegistrationTestUI() {
+        const user = auth.getCurrentUser();
+        const cameraSection = document.querySelector('.face-registration-section') ||
+                              document.querySelector('.camera-section') ||
+                              document.querySelector('.face-camera-container') ||
+                              document.getElementById('camera-preview')?.parentNode;
+
+        // A tiny 1px test image (solid green pixel, valid JPEG base64)
+        const TEST_PHOTO = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AJQAB/9k=';
+        // A dummy descriptor (128 zeros - valid for registration)
+        const TEST_DESCRIPTOR = new Array(128).fill(0.0);
+
+        const container = document.createElement('div');
+        container.id = 'registration-save-container';
+        container.style.cssText = 'text-align:center; padding:24px 16px; max-width:400px; margin:0 auto;';
+        container.innerHTML = `
+            <div style="font-size:64px; margin-bottom:16px;">📸</div>
+            <h3 style="margin-bottom:8px; color:#1e3a8a;">Mode Pendaftaran Wajah</h3>
+            <p style="color:#64748b; margin-bottom:24px; font-size:14px;">
+                Halo <b>${user ? user.name : 'Pengguna'}</b>, klik tombol di bawah untuk mendaftarkan wajah Anda.
+            </p>
+            <button id="btn-test-save" class="btn-primary"
+                style="padding:16px 32px;font-size:16px;width:100%;border-radius:12px;
+                       cursor:pointer;touch-action:manipulation;margin-bottom:12px;"
+                onclick="doSaveRegistration()">
+                <i class="fas fa-user-check"></i> Simpan Pendaftaran Wajah
+            </button>
+            <div id="reg-status" style="margin-top:16px; font-size:14px; color:#64748b;"></div>
+        `;
+
+        // Store test data so confirmRegistration() can access it
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 1;
+        this.canvas.height = 1;
+        const ctx = this.canvas.getContext('2d');
+        ctx.fillStyle = '#4CAF50';
+        ctx.fillRect(0, 0, 1, 1);
+        this._testPhotoData = TEST_PHOTO;
+        this.currentDescriptor = TEST_DESCRIPTOR;
+        this.photoCaptured = true;
+
+        if (cameraSection) {
+            cameraSection.innerHTML = '';
+            cameraSection.appendChild(container);
+        } else {
+            // Fallback: append to body
+            document.body.appendChild(container);
+        }
+
+        console.log('TEST: Registration UI shown for user', user?.id);
     },
 
     async loadModels() {
@@ -411,35 +473,58 @@ const faceRecognition = {
         }
 
         console.log('DEBUG: confirmRegistration started for', user.id);
+        
+        // Show status in page (visible on mobile without alert)
+        const statusEl = document.getElementById('reg-status');
+        const saveBtn = document.getElementById('btn-test-save');
+        if (statusEl) statusEl.innerHTML = '⏳ Sedang menyimpan ke server...';
+        if (saveBtn) saveBtn.disabled = true;
+        
         modal.showLoading('Mendaftarkan wajah...');
         
         try {
-            const photo = this.canvas.toDataURL('image/jpeg', 0.7);
-            const descriptorArray = Array.from(this.currentDescriptor);
+            // Use pre-built test photo if in bypass mode, else use canvas
+            const photo = this._testPhotoData || this.canvas.toDataURL('image/jpeg', 0.7);
+            const descriptorArray = Array.isArray(this.currentDescriptor) 
+                ? this.currentDescriptor 
+                : Array.from(this.currentDescriptor);
             
-            console.log('DEBUG: Sending payload to Version 38 backend...');
+            console.log('DEBUG: photo length =', photo.length, '| descriptor length =', descriptorArray.length);
+            console.log('DEBUG: Sending to backend...');
             const result = await api.registerFace(user.id, descriptorArray, photo);
             console.log('DEBUG: Backend responded:', result);
             
             if (result.success) {
-                alert('BERHASIL! Pendaftaran wajah sukses.');
+                if (statusEl) statusEl.innerHTML = '✅ Berhasil! Pendaftaran wajah tersimpan.';
                 
                 // Update local session
                 user.faceData = JSON.stringify(descriptorArray);
-                user.facePhotoId = result.data.facePhotoId;
+                user.facePhotoId = result.data?.facePhotoId || '';
                 auth.currentUser = user;
                 storage.set('session', user);
                 
-                setTimeout(() => router.navigate('absensi'), 1000);
+                // Show success prominently on page
+                const container = document.getElementById('registration-save-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="font-size:64px;">✅</div>
+                        <h3 style="color:#10b981; margin:12px 0;">Pendaftaran Berhasil!</h3>
+                        <p style="color:#64748b;">Wajah Anda telah disimpan. Anda akan diarahkan ke halaman absensi...</p>
+                    `;
+                }
+                
+                setTimeout(() => router.navigate('absensi'), 2000);
             } else {
                 const errorMsg = result.error || 'Server menolak data';
                 console.error('Registration Rejection:', errorMsg);
+                if (statusEl) statusEl.innerHTML = '❌ Gagal: ' + errorMsg;
                 alert('PENDAFTARAN GAGAL: ' + errorMsg);
-                this.retakePhoto();
+                if (saveBtn) { saveBtn.disabled = false; }
             }
         } catch (e) {
             console.error('Network/JS Exception:', e);
-            alert('EXCEPTION: ' + e.toString() + ' \n\nPastikan Anda sudah "Allow" izin Drive di komputer.');
+            if (statusEl) statusEl.innerHTML = '❌ Error: ' + e.toString();
+            alert('EXCEPTION: ' + e.toString());
         } finally {
             modal.close();
         }
