@@ -19,24 +19,33 @@ const api = {
             return this._localFallback(action, data);
         }
 
+        // Timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API Timeout')), 15000);
+        });
+
         try {
-            const response = await fetch(API_BASE_URL, {
+            const fetchPromise = fetch(API_BASE_URL, {
                 method: 'POST',
                 redirect: 'follow',
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify({ action, ...data })
+            }).then(async res => {
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse response:', text.substring(0, 200));
+                    return { success: false, error: 'Invalid response from server' };
+                }
             });
 
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('Failed to parse response:', text.substring(0, 200));
-                return { success: false, error: 'Invalid response from server' };
-            }
+            // Race against timeout
+            return await Promise.race([fetchPromise, timeoutPromise]);
+            
         } catch (error) {
-            console.error('API Error:', error);
-            // Fallback to localStorage on network error
+            console.error('API Error:', error.message);
+            // If it's a timeout or network error, fallback to localStorage
             return this._localFallback(action, data);
         }
     },

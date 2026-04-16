@@ -17,6 +17,15 @@ var loader = {
             const textEl = this.element.querySelector('.loader-text');
             if (textEl) textEl.textContent = message;
             this.element.classList.remove('hidden');
+            
+            // Failsafe: hide loader anyway after 20 seconds to prevent total lock
+            clearTimeout(this.failsafe);
+            this.failsafe = setTimeout(() => {
+                if (!this.element.classList.contains('hidden')) {
+                    console.warn('Loader failsafe triggered (20s timeout)');
+                    this.hide();
+                }
+            }, 20000);
         }
     },
 

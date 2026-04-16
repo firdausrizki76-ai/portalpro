@@ -39,10 +39,10 @@ const dashboard = {
             
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
-                // Fetch attendance and global settings concurrently
+                // Fetch attendance and global settings concurrently with individual safety
                 const [attResult, settingsRes] = await Promise.all([
-                    api.getAttendance(currentUser.id),
-                    api.getSettings()
+                    api.getAttendance(currentUser.id).catch(e => ({ success: false, error: e.message })),
+                    api.getSettings().catch(e => ({ success: false, error: e.message }))
                 ]);
 
                 this.attendanceData = (attResult && attResult.success) ? attResult.data : [];
