@@ -14,42 +14,44 @@ const api = {
     // ========== CORE REQUEST ==========
 
     async request(action, data = {}) {
-        // Jika API_BASE_URL kosong, gunakan localStorage fallback
         if (!API_BASE_URL) {
             return this._localFallback(action, data);
         }
 
-        // Dynamic timeout: 60s for face registration (Drive upload), 30s for other uploads, 15s for standard requests
         const isFaceRegAction = action === 'registerFace';
-        const isUploadAction = ['saveAttendance', 'submitIzin', 'submitLeave', 'saveJournal'].includes(action);
-        const timeoutMs = isFaceRegAction ? 60000 : isUploadAction ? 30000 : 15000;
+        const timeoutMs = isFaceRegAction ? 90000 : 20000;
 
         try {
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT_' + action)), timeoutMs)
             );
 
+            const payload = JSON.stringify({ action, ...data });
+            console.log(`API Request: ${action} (${payload.length} bytes, timeout: ${timeoutMs}ms)`);
+
+            // GAS requires very specific fetch config to handle CORS redirects
             const fetchPromise = fetch(API_BASE_URL, {
                 method: 'POST',
-                redirect: 'follow',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({ action, ...data })
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: payload
             }).then(async res => {
                 const text = await res.text();
+                console.log(`API Response (${action}):`, text.substring(0, 100));
                 try {
                     return JSON.parse(text);
                 } catch (e) {
-                    console.error('Failed to parse response:', text.substring(0, 200));
-                    return { success: false, error: 'Invalid response from server' };
+                    console.error('Parse error:', text.substring(0, 300));
+                    return { success: false, error: 'Server returned invalid JSON: ' + text.substring(0, 100) };
                 }
             });
 
-            // Race against timeout
             return await Promise.race([fetchPromise, timeoutPromise]);
-            
+
         } catch (error) {
-            console.error('API Error:', error.message);
-            // If it's a timeout or network error, fallback to localStorage
+            console.error(`API Error (${action}):`, error.message);
+            if (error.message && error.message.startsWith('TIMEOUT_')) {
+                return { success: false, error: 'Server tidak merespons setelah menunggu. Cek koneksi internet Anda.' };
+            }
             return this._localFallback(action, data);
         }
     },
