@@ -390,25 +390,23 @@ const faceRecognition = {
     async confirmRegistration() {
         const user = auth.getCurrentUser();
         if (!user) {
-            toast.error('Sesi berakhir. Silakan login kembali.');
+            alert('CRITICAL: User session not found. Please re-login.');
             return;
         }
 
-        console.log('Starting face registration for user:', user.id);
-        modal.showLoading('Mendaftarkan wajah, mohon tunggu...');
+        console.log('DEBUG: confirmRegistration started for', user.id);
+        modal.showLoading('Mendaftarkan wajah...');
         
         try {
             const photo = this.canvas.toDataURL('image/jpeg', 0.7);
-            
-            // Normalize descriptor (convert Float32Array to standard Array)
             const descriptorArray = Array.from(this.currentDescriptor);
-            console.log('Payload ready, sending to API...');
-
+            
+            console.log('DEBUG: Sending payload to Version 38 backend...');
             const result = await api.registerFace(user.id, descriptorArray, photo);
-            console.log('API Result:', result);
+            console.log('DEBUG: Backend responded:', result);
             
             if (result.success) {
-                toast.success('Pendaftaran wajah berhasil!');
+                alert('BERHASIL! Pendaftaran wajah sukses.');
                 
                 // Update local session
                 user.faceData = JSON.stringify(descriptorArray);
@@ -416,16 +414,16 @@ const faceRecognition = {
                 auth.currentUser = user;
                 storage.set('session', user);
                 
-                setTimeout(() => router.navigate('absensi'), 1500);
+                setTimeout(() => router.navigate('absensi'), 1000);
             } else {
-                const errorMsg = result.error || 'Gagal mendaftar wajah';
-                console.error('Registration failed:', errorMsg);
-                alert('Pendaftaran Gagal: ' + errorMsg); // Emergency feedback for mobile
+                const errorMsg = result.error || 'Server menolak data';
+                console.error('Registration Rejection:', errorMsg);
+                alert('PENDAFTARAN GAGAL: ' + errorMsg);
                 this.retakePhoto();
             }
         } catch (e) {
-            console.error('Registration error Exception:', e);
-            alert('Gangguan Koneksi: Pastikan internet Anda stabil dan coba lagi.');
+            console.error('Network/JS Exception:', e);
+            alert('EXCEPTION: ' + e.toString() + ' \n\nPastikan Anda sudah "Allow" izin Drive di komputer.');
         } finally {
             modal.close();
         }
