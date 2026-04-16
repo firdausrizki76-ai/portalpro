@@ -369,34 +369,43 @@ const faceRecognition = {
 
     async confirmRegistration() {
         const user = auth.getCurrentUser();
-        modal.showLoading('Mendaftarkan wajah...');
+        if (!user) {
+            toast.error('Sesi berakhir. Silakan login kembali.');
+            return;
+        }
+
+        console.log('Starting backup face registration for user:', user.id);
+        modal.showLoading('Mendaftarkan wajah, mohon tunggu...');
         
         try {
             const photo = this.canvas.toDataURL('image/jpeg', 0.7);
             
-            // Normalize descriptor (convert Float32Array to standard Array for clean JSON)
+            // Normalize descriptor
             const descriptorArray = Array.from(this.currentDescriptor);
+            console.log('Backup Payload ready, sending to API...');
+
             const result = await api.registerFace(user.id, descriptorArray, photo);
+            console.log('Backup API Result:', result);
             
             if (result.success) {
                 toast.success('Pendaftaran wajah berhasil!');
                 
-                // Update local session data to ensure immediate pass on next try
+                // Update local session
                 user.faceData = JSON.stringify(descriptorArray);
                 user.facePhotoId = result.data.facePhotoId;
-                
-                // Synchronize with auth service and storage
                 auth.currentUser = user;
                 storage.set('session', user);
                 
-                setTimeout(() => router.navigate('absensi'), 1000);
+                setTimeout(() => router.navigate('absensi'), 1500);
             } else {
-                toast.error(result.error || 'Gagal mendaftar wajah');
+                const errorMsg = result.error || 'Gagal mendaftar wajah';
+                console.error('Backup Registration failed:', errorMsg);
+                alert('Pendaftaran Gagal: ' + errorMsg);
                 this.retakePhoto();
             }
         } catch (e) {
-            console.error('Registration error:', e);
-            toast.error('Terjadi kesalahan koneksi.');
+            console.error('Backup Registration error:', e);
+            alert('Gangguan Koneksi: ' + e.toString());
         } finally {
             modal.close();
         }
