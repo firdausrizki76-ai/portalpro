@@ -16,11 +16,13 @@ const faceRecognition = {
     isRegistering: false,
     labeledDescriptors: null,
     matchThreshold: 0.5, // 50% accuracy
+    capturedPhotoBase64: null, // Store captured photo string
 
     async init(action) {
         console.log('Face Recognition UI initialized with action:', action);
         this.currentAction = action;
         this.photoCaptured = false;
+        this.capturedPhotoBase64 = null; 
         this.locationVerified = false;
         this.position = null;
         this.isRegistering = (action === 'register-face');
@@ -287,26 +289,33 @@ const faceRecognition = {
         }
 
         // 3. SUCCESS: Save Captured frame with FORCED DOWN-SAMPLING to 640px
-        // This is crucial to prevent browser hangs on 4K/High-res mobile cameras
         const ctx = this.canvas.getContext('2d');
         const MAX_WIDTH = 640;
-        const scale = Math.min(1, MAX_WIDTH / this.video.videoWidth);
         
-        this.canvas.width = this.video.videoWidth * scale;
-        this.canvas.height = this.video.videoHeight * scale;
+        // SAFETY: Fallback for videoWidth if not yet available or 0
+        const vWidth = this.video.videoWidth || 640;
+        const vHeight = this.video.videoHeight || 480;
+        const scale = Math.min(1, MAX_WIDTH / vWidth);
         
-        console.log(`Resizing capture: ${this.video.videoWidth}x${this.video.videoHeight} -> ${this.canvas.width}x${this.canvas.height}`);
+        this.canvas.width = vWidth * scale;
+        this.canvas.height = vHeight * scale;
+        
+        console.log(`Resizing capture: ${vWidth}x${vHeight} -> ${this.canvas.width}x${this.canvas.height}`);
         ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
         
+        // IMMEDIATELY Convert to Base64 and store it to prevent 'data:,' error
+        this.capturedPhotoBase64 = this.canvas.toDataURL('image/jpeg', 0.8);
+        console.log('Photo captured successfully! Data length:', this.capturedPhotoBase64.length);
+
         this.currentDescriptor = descriptor;
         this.photoCaptured = true;
         this.stopCamera();
 
         // Update UI Preview
         const preview = document.getElementById('camera-preview');
-        if (preview) {
+        if (preview && this.capturedPhotoBase64) {
             preview.innerHTML = `
-                <img src="${this.canvas.toDataURL('image/jpeg', 0.7)}" class="captured-photo" alt="Captured">
+                <img src="${this.capturedPhotoBase64}" class="captured-photo" alt="Captured">
                 <div class="verification-status show" id="verification-status">
                     <div class="status-icon"><i class="fas fa-check-circle"></i></div>
                     <p>${this.isRegistering ? 'Wajah Terdeteksi' : 'Wajah Terverifikasi'}</p>
@@ -396,7 +405,7 @@ const faceRecognition = {
                 latitude: this.position.coords.latitude,
                 longitude: this.position.coords.longitude
             } : null,
-            photo: this.canvas.toDataURL('image/jpeg', 0.7)
+            photo: this.capturedPhotoBase64 || 'data:,'
         };
 
         storage.set('temp_attendance', attendanceData);
@@ -429,8 +438,8 @@ const faceRecognition = {
         if (typeof loader !== 'undefined') loader.show('Mendaftarkan wajah...');
         
         try {
-            // Use captured photo from canvas
-            const photo = this.canvas.toDataURL('image/jpeg', 0.7);
+            // Use captured photo from our stored variable
+            const photo = this.capturedPhotoBase64 || 'data:,';
             const descriptorArray = Array.isArray(this.currentDescriptor) 
                 ? this.currentDescriptor 
                 : Array.from(this.currentDescriptor);
