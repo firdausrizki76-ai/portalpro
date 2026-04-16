@@ -90,9 +90,10 @@ const faceRecognition = {
         if (this.isRegistering) {
             if (registerBtn) registerBtn.style.display = 'flex';
             if (captureBtn) captureBtn.style.display = 'none';
-            if (locationSec) locationSec.style.display = 'none';
+            if (locationSec) locationSec.style.display = 'block'; // Always show location for 'real' feel
             if (confirmBtn) {
                 confirmBtn.innerHTML = '<i class="fas fa-user-check"></i> Konfirmasi Pendaftaran';
+                confirmBtn.style.display = 'none'; // Will show after capture
             }
         } else {
             if (registerBtn) registerBtn.style.display = 'none';
@@ -100,6 +101,7 @@ const faceRecognition = {
             if (locationSec) locationSec.style.display = 'block';
             if (confirmBtn) {
                 confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Konfirmasi Absensi';
+                confirmBtn.style.display = 'none'; // Will show after capture
             }
         }
     },
@@ -370,6 +372,12 @@ const faceRecognition = {
             console.log('Registration buttons attached. saveBtn found:', !!saveBtnContainer.querySelector('#btn-save-reg'));
         } else {
             document.getElementById('btn-retake').style.display = 'flex';
+            // CRITICAL: Show the confirmation button for attendance
+            const confirmBtn = document.getElementById('btn-confirm-attendance');
+            if (confirmBtn) {
+                confirmBtn.style.display = 'flex';
+                confirmBtn.disabled = false;
+            }
         }
         
         this.checkCanSubmit();
