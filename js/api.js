@@ -351,6 +351,16 @@ const api = {
         return this.request('getSettings');
     },
 
+    async setupDailyTrigger() {
+        if (!API_BASE_URL) return { success: true };
+        return this.request('setupDailyTrigger');
+    },
+
+    async repairDatabase() {
+        if (!API_BASE_URL) return { success: true };
+        return this.request('repairDatabase');
+    },
+
     async saveSetting(key, value) {
         if (!API_BASE_URL) {
             if (key === 'company_name' || key === 'company_logo') {

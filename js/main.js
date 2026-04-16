@@ -49,22 +49,47 @@ window.syncData = async function() {
         loader.show('Sinkronisasi database terbaru...');
     }
 
-    // List of all page modules that have an 'initialized' flag
-    const modules = [
-        'dashboard', 'absensi', 'faceRecognition', 'izin', 'jurnal', 'cuti',
-        'adminDashboard', 'adminEmployees', 'adminReports', 'shiftSchedule', 'settings'
-    ];
-
-    // Reset all modules to non-initialized state
-    modules.forEach(m => {
-        if (window[m]) {
-            window[m].initialized = false;
+    try {
+        // Step 1: Trigger backend repair/alignment
+        if (typeof api !== 'undefined' && api.repairDatabase) {
+            console.log('Sync: Triggering backend repairDatabase...');
+            const repairResult = await api.repairDatabase();
+            if (repairResult && repairResult.success) {
+                console.log('Sync: Backend repair successful');
+            }
         }
-    });
 
-    // Re-trigger the current page's initialization
-    if (typeof router !== 'undefined' && router.currentPage) {
-        router.showPage(router.currentPage, false);
+        // List of all page modules that have an 'initialized' flag
+        const modules = [
+            'dashboard', 'absensi', 'faceRecognition', 'izin', 'jurnal', 'cuti',
+            'adminDashboard', 'adminEmployees', 'adminReports', 'shiftSchedule', 'settings'
+        ];
+
+        // Reset all modules to non-initialized state
+        modules.forEach(m => {
+            if (window[m]) {
+                window[m].initialized = false;
+            }
+        });
+
+        // Re-trigger the current page's initialization
+        if (typeof router !== 'undefined' && router.currentPage) {
+            router.showPage(router.currentPage, false);
+        }
+
+        if (typeof toast !== 'undefined') {
+            toast.success('Inkronisasi database berhasil.');
+        }
+
+    } catch (error) {
+        console.error('Sync Error:', error);
+        if (typeof toast !== 'undefined') {
+            toast.error('Gagal sinkronisasi: ' + error.message);
+        }
+    } finally {
+        if (typeof loader !== 'undefined') {
+            loader.hide();
+        }
     }
 };
 
