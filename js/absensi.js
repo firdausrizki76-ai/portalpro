@@ -371,6 +371,8 @@ const absensi = {
 
     // Process attendance after face recognition verification
     async processWithVerification(action, verificationData) {
+        const timeStr = dateTime.formatTime(new Date());
+
         // Pre-save Check: Always check Alfa before allowing process
         if (action === 'clock-in' && this.checkAlfaStatus(this.attendanceData.shift)) {
             modal.show(
@@ -390,7 +392,6 @@ const absensi = {
         switch (action) {
             case 'clock-in':
                 this.attendanceData.clockIn = timeStr;
-                this.attendanceData.status = 'ontime';
                 break;
             case 'overtime':
                 this.attendanceData.overtimeStart = timeStr;
@@ -426,6 +427,11 @@ const absensi = {
             }
             this.updateUI();
             this.renderTimeline();
+            
+            // Success navigation
+            setTimeout(() => {
+                router.navigate('absensi');
+            }, 1000);
         } else {
             // Handle error (e.g. Alfa rejected by server)
             const errorMsg = (result && result.error) ? result.error : 'Gagal menyimpan absensi';
@@ -438,7 +444,7 @@ const absensi = {
 
         // Clean up temp data
         storage.remove('temp_attendance');
-        
+    },    
         // Auto navigate back to attendance page
         setTimeout(() => {
             if (window.location.hash === '#face-recognition') {
