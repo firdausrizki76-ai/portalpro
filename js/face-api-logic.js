@@ -480,7 +480,7 @@ const faceRecognition = {
         if (statusEl) statusEl.innerHTML = '⏳ Sedang menyimpan ke server...';
         if (saveBtn) saveBtn.disabled = true;
         
-        modal.showLoading('Mendaftarkan wajah...');
+        if (typeof loader !== 'undefined') loader.show('Mendaftarkan wajah...');
         
         try {
             // Use pre-built test photo if in bypass mode, else use canvas
@@ -527,6 +527,7 @@ const faceRecognition = {
             alert('EXCEPTION: ' + e.toString());
         } finally {
             modal.close();
+            if (typeof loader !== 'undefined') loader.hide();
         }
     },
 

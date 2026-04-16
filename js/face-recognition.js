@@ -380,7 +380,7 @@ const faceRecognition = {
         }
 
         console.log('Starting backup face registration for user:', user.id);
-        modal.showLoading('Mendaftarkan wajah, mohon tunggu...');
+        if (typeof loader !== 'undefined') loader.show('Mendaftarkan wajah, mohon tunggu...');
         
         try {
             const photo = this.canvas.toDataURL('image/jpeg', 0.7);
@@ -413,6 +413,7 @@ const faceRecognition = {
             alert('Gangguan Koneksi: ' + e.toString());
         } finally {
             modal.close();
+            if (typeof loader !== 'undefined') loader.hide();
         }
     },
 
