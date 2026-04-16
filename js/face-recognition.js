@@ -303,14 +303,35 @@ const faceRecognition = {
             saveBtnContainer.style.textAlign = 'center';
             saveBtnContainer.style.marginTop = '20px';
             saveBtnContainer.innerHTML = `
-                <button class="btn-primary" style="padding: 12px 30px; font-size: 16px; width: 100%; border-radius: 12px;" onclick="faceRecognition.confirmRegistration()">
+                <button id="btn-save-registration" class="btn-primary" style="padding: 12px 30px; font-size: 16px; width: 100%; border-radius: 12px;">
                     <i class="fas fa-user-check"></i> Simpan Pendaftaran Wajah
                 </button>
-                <button class="btn-secondary" style="margin-top: 10px; width: 100%; border-radius: 12px;" onclick="faceRecognition.retakePhoto()">
+                <button id="btn-retake-registration" class="btn-secondary" style="margin-top: 10px; width: 100%; border-radius: 12px;">
                     <i class="fas fa-redo"></i> Foto Ulang
                 </button>
             `;
             preview.parentNode.appendChild(saveBtnContainer);
+
+            // ATTACH LISTENERS DIRECTLY
+            const saveBtn = document.getElementById('btn-save-registration');
+            const redoBtn = document.getElementById('btn-retake-registration');
+            
+            if (saveBtn) {
+                ['click', 'touchstart'].forEach(type => {
+                    saveBtn.addEventListener(type, (e) => {
+                        e.preventDefault();
+                        this.confirmRegistration();
+                    }, { passive: false });
+                });
+            }
+            if (redoBtn) {
+                ['click', 'touchstart'].forEach(type => {
+                    redoBtn.addEventListener(type, (e) => {
+                        e.preventDefault();
+                        this.retakePhoto();
+                    }, { passive: false });
+                });
+            }
         } else {
             document.getElementById('btn-retake').style.display = 'flex';
         }
