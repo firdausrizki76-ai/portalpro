@@ -226,7 +226,7 @@ const izin = {
             reason: formData.reason,
             hasAttachment: !!this.currentFile,
             verificationPhoto: verificationData.photo || '',
-            verificationLocation: verificationData.location || '',
+            verificationLocation: verificationData.location ? JSON.stringify(verificationData.location) : '',
             verificationTimestamp: verificationData.timestamp || ''
         };
 
