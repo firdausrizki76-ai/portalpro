@@ -507,7 +507,7 @@ const absensi = {
 
             switch (this.currentState) {
                 case 'libur':
-                    statusRing.classList.add('waiting'); // Reuse waiting style or custom if desired
+                    statusRing.classList.add('waiting');
                     if (statusText) statusText.textContent = 'Hari Libur';
                     if (statusSubtext) statusSubtext.textContent = 'Anda tidak memiliki jadwal kerja hari ini.';
                     break;
@@ -520,6 +520,17 @@ const absensi = {
                     statusRing.classList.add('active');
                     if (statusText) statusText.textContent = 'Sedang Bekerja';
                     if (statusSubtext) statusSubtext.textContent = 'Semangat bekerja!';
+                    
+                    // Show verification photo if available
+                    if (this.attendanceData.verification && this.attendanceData.verification.photo) {
+                        statusRing.classList.add('has-photo');
+                        statusRing.innerHTML = `<img src="${this.attendanceData.verification.photo}" class="status-photo" alt="Me">`;
+                        
+                        if (statusSubtext && this.attendanceData.verification.location) {
+                            const loc = this.attendanceData.verification.location;
+                            statusSubtext.innerHTML = `Semangat bekerja!<br><span style="font-size:11px;color:var(--color-primary)">📍 Terverifikasi di (${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)})</span>`;
+                        }
+                    }
                     break;
                 case 'completed':
                     statusRing.classList.add('completed');
@@ -527,8 +538,8 @@ const absensi = {
                     if (statusSubtext) statusSubtext.textContent = 'Terima kasih atas kerja kerasnya!';
                     break;
                 case 'alfa':
-                    statusRing.classList.add('waiting'); // Reuse color for failure/exclusion
-                    statusRing.style.borderColor = '#EF4444'; // Red for Alfa
+                    statusRing.classList.add('waiting');
+                    statusRing.style.borderColor = '#EF4444'; 
                     if (statusText) statusText.textContent = 'Terlewat (Alfa)';
                     if (statusSubtext) statusSubtext.textContent = 'Batas waktu absen telah berakhir.';
                     break;
@@ -600,6 +611,22 @@ const absensi = {
                         item.classList.remove('pending');
                         item.classList.add('completed');
                         if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
+                        
+                        // Show Thumbnail & Location
+                        if (this.attendanceData.verification) {
+                            const ver = this.attendanceData.verification;
+                            let html = `<div class="timeline-verification">`;
+                            if (ver.photo) html += `<img src="${ver.photo}" class="verification-thumbnail">`;
+                            html += `<div class="verification-info">
+                                <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? ver.location.latitude.toFixed(4) + ', ' + ver.location.longitude.toFixed(4) : 'Lokasi tidak ada'}</span>
+                                <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
+                            </div></div>`;
+                            
+                            // Only add if not already present
+                            if (!item.querySelector('.timeline-verification')) {
+                                item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
+                            }
+                        }
                     }
                     break;
 

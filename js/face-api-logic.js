@@ -28,16 +28,6 @@ const faceRecognition = {
         // Update UI
         this.updateActionTitle(action);
         
-        // =============================================
-        // TEST BYPASS MODE: Skip camera for registration
-        // This verifies the Drive-saving pipeline directly
-        // =============================================
-        if (this.isRegistering) {
-            this.showRegistrationTestUI();
-            return; // Skip camera/AI entirely
-        }
-        // =============================================
-
         // Load AI Models
         await this.loadModels();
 
@@ -52,58 +42,6 @@ const faceRecognition = {
 
         // Start Detection Loop
         this.startDetection();
-    },
-
-    showRegistrationTestUI() {
-        const user = auth.getCurrentUser();
-        const cameraSection = document.querySelector('.face-registration-section') ||
-                              document.querySelector('.camera-section') ||
-                              document.querySelector('.face-camera-container') ||
-                              document.getElementById('camera-preview')?.parentNode;
-
-        // A tiny 1px test image (solid green pixel, valid JPEG base64)
-        const TEST_PHOTO = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AJQAB/9k=';
-        // A dummy descriptor (128 zeros - valid for registration)
-        const TEST_DESCRIPTOR = new Array(128).fill(0.0);
-
-        const container = document.createElement('div');
-        container.id = 'registration-save-container';
-        container.style.cssText = 'text-align:center; padding:24px 16px; max-width:400px; margin:0 auto;';
-        container.innerHTML = `
-            <div style="font-size:64px; margin-bottom:16px;">📸</div>
-            <h3 style="margin-bottom:8px; color:#1e3a8a;">Mode Pendaftaran Wajah</h3>
-            <p style="color:#64748b; margin-bottom:24px; font-size:14px;">
-                Halo <b>${user ? user.name : 'Pengguna'}</b>, klik tombol di bawah untuk mendaftarkan wajah Anda.
-            </p>
-            <button id="btn-test-save" class="btn-primary"
-                style="padding:16px 32px;font-size:16px;width:100%;border-radius:12px;
-                       cursor:pointer;touch-action:manipulation;margin-bottom:12px;"
-                onclick="doSaveRegistration()">
-                <i class="fas fa-user-check"></i> Simpan Pendaftaran Wajah
-            </button>
-            <div id="reg-status" style="margin-top:16px; font-size:14px; color:#64748b;"></div>
-        `;
-
-        // Store test data so confirmRegistration() can access it
-        this.canvas = document.createElement('canvas');
-        this.canvas.width = 1;
-        this.canvas.height = 1;
-        const ctx = this.canvas.getContext('2d');
-        ctx.fillStyle = '#4CAF50';
-        ctx.fillRect(0, 0, 1, 1);
-        this._testPhotoData = TEST_PHOTO;
-        this.currentDescriptor = TEST_DESCRIPTOR;
-        this.photoCaptured = true;
-
-        if (cameraSection) {
-            cameraSection.innerHTML = '';
-            cameraSection.appendChild(container);
-        } else {
-            // Fallback: append to body
-            document.body.appendChild(container);
-        }
-
-        console.log('TEST: Registration UI shown for user', user?.id);
     },
 
     async loadModels() {
@@ -483,8 +421,8 @@ const faceRecognition = {
         if (typeof loader !== 'undefined') loader.show('Mendaftarkan wajah...');
         
         try {
-            // Use pre-built test photo if in bypass mode, else use canvas
-            const photo = this._testPhotoData || this.canvas.toDataURL('image/jpeg', 0.7);
+            // Use captured photo from canvas
+            const photo = this.canvas.toDataURL('image/jpeg', 0.7);
             const descriptorArray = Array.isArray(this.currentDescriptor) 
                 ? this.currentDescriptor 
                 : Array.from(this.currentDescriptor);
@@ -552,9 +490,27 @@ const faceRecognition = {
     },
 
     initLocation() {
+        const statusEl = document.getElementById('location-status');
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mencari sinyal GPS...';
+
         navigator.geolocation.getCurrentPosition(
-            (pos) => { this.position = pos; this.locationVerified = true; this.checkCanSubmit(); },
-            () => { this.locationVerified = true; this.checkCanSubmit(); } // Fallback
+            (pos) => { 
+                this.position = pos; 
+                this.locationVerified = true; 
+                this.checkCanSubmit(); 
+                if (statusEl) {
+                    statusEl.innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--color-success)"></i> Lokasi Terdeteksi (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`;
+                }
+            },
+            (err) => { 
+                console.warn('Geolocation error:', err);
+                this.locationVerified = true; // Still allow as per fallback logic but log it
+                this.checkCanSubmit(); 
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i> GPS tidak ditemukan (Izin?)';
+                }
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
     },
 
