@@ -338,12 +338,10 @@ const jurnal = {
             const day = date.getDate();
             const month = date.toLocaleDateString('id-ID', { month: 'short' });
             const preview = jurnal.tasks?.substring(0, 60) + '...' || 'Tidak ada deskripsi';
-            const hasPhoto = jurnal.photo ? '<span class="photo-badge"><i class="fas fa-image"></i></span>' : '';
-
             // Thumbnail logic: Show photo if exists, otherwise show date circle
             const thumbnailHtml = jurnal.photo ? `
-                <div class="jurnal-photo-thumb" onclick="jurnal.viewPhoto('${jurnal.photo}')">
-                    <img src="${jurnal.photo}" alt="Foto Jurnal">
+                <div class="jurnal-photo-thumb" onclick="jurnal.viewPhoto('${jurnal.photo}')" style="width: 45px; height: 45px; border-radius: 8px; overflow: hidden; margin-right: 12px; cursor: pointer;">
+                    <img src="${jurnal.photo}" alt="Foto Jurnal" style="width: 100%; height: 100%; object-fit: cover;">
                 </div>
             ` : `
                 <div class="jurnal-date">
@@ -371,10 +369,33 @@ const jurnal = {
                         <button class="btn-icon-sm" title="Edit" onclick="jurnal.editJurnal('${jurnal.date}')">
                             <i class="fas fa-edit"></i>
                         </button>
+                        <button class="btn-icon-sm btn-delete" title="Hapus" onclick="jurnal.deleteJurnal('${jurnal.date}')" style="color: #EF4444;">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             `;
         }).join('');
+    },
+
+    async deleteJurnal(date) {
+        if (!confirm('Apakah Anda yakin ingin menghapus jurnal untuk tanggal ' + date + '?')) return;
+        
+        if (typeof loader !== 'undefined') loader.show('Menghapus jurnal...');
+        try {
+            const res = await api.call('deleteJournal', { date: date });
+            if (res.success) {
+                toast.success('Jurnal berhasil dihapus');
+                await this.init(); // Reload
+            } else {
+                toast.error(res.error || 'Gagal menghapus jurnal');
+            }
+        } catch (e) {
+            console.error('Delete jurnal error:', e);
+            toast.error('Terjadi kesalahan saat menghapus');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
     },
 
     viewPhoto(url) {
@@ -384,8 +405,9 @@ const jurnal = {
     },
 
     updateSummary() {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
 
         // Count jurnals for current month
         const monthJurnals = this.jurnals.filter(j => {
@@ -393,11 +415,45 @@ const jurnal = {
             return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
         });
 
-        // Count filled days
-        const filledCount = monthJurnals.length;
+        // Update UI
+        const filledEl = document.getElementById('jurnal-filled-days');
+        const missedEl = document.getElementById('jurnal-missed-days');
+        
+        if (filledEl) filledEl.textContent = monthJurnals.length;
+        
+        // Simple logic for missed days: working days passed - journals filled
+        const today = now.getDate();
+        let workingDaysPassed = 0;
+        for (let i = 1; i <= today; i++) {
+            const d = new Date(currentYear, currentMonth, i);
+            if (d.getDay() !== 0 && d.getDay() !== 6) workingDaysPassed++;
+        }
+        
+        const missed = Math.max(0, workingDaysPassed - monthJurnals.length);
+        if (missedEl) missedEl.textContent = missed;
 
-        // Calculate working days passed this month
-        const today = new Date().getDate();
+        // Streak calculation (consecutive days with journals, going backwards from today)
+        let streak = 0;
+        let d = new Date();
+        const journalDates = this.jurnals.map(j => j.date);
+        
+        while (true) {
+            const iso = d.toISOString().split('T')[0];
+            if (journalDates.includes(iso)) {
+                streak++;
+                d.setDate(d.getDate() - 1);
+            } else {
+                // Skip weekends for streak if desired, or just break
+                if (d.getDay() === 0 || d.getDay() === 6) {
+                    d.setDate(d.getDate() - 1);
+                    continue;
+                }
+                break;
+            }
+        }
+        const streakEl = document.getElementById('jurnal-streak-days');
+        if (streakEl) streakEl.textContent = streak;
+    },
         const workingDaysPassed = Math.min(today, 26); // Assume ~26 working days per month
 
         // Calculate streak

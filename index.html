@@ -826,17 +826,17 @@
                                 <div class="summary-stats">
                                     <div class="summary-item">
                                         <div class="summary-icon filled"><i class="fas fa-check-circle"></i></div>
-                                        <div class="summary-content"><span class="summary-value">18</span><span
+                                        <div class="summary-content"><span class="summary-value" id="jurnal-filled-days">0</span><span
                                                 class="summary-label">Jurnal Terisi</span></div>
                                     </div>
                                     <div class="summary-item">
                                         <div class="summary-icon pending"><i class="fas fa-clock"></i></div>
-                                        <div class="summary-content"><span class="summary-value">4</span><span
+                                        <div class="summary-content"><span class="summary-value" id="jurnal-missed-days">0</span><span
                                                 class="summary-label">Belum Diisi</span></div>
                                     </div>
                                     <div class="summary-item">
                                         <div class="summary-icon streak"><i class="fas fa-fire"></i></div>
-                                        <div class="summary-content"><span class="summary-value">5</span><span
+                                        <div class="summary-content"><span class="summary-value" id="jurnal-streak-days">0</span><span
                                                 class="summary-label">Streak Hari</span></div>
                                     </div>
                                 </div>
@@ -1798,9 +1798,25 @@
     <script src="js/admin-dashboard.js?v=48"></script>
     <script src="js/admin-employees.js?v=48"></script>
     <script src="js/admin-reports-v2.js?v=48"></script>
-    <script src="js/shift-schedule.js?v=48"></script>
-    <script src="js/settings.js?v=12"></script>
-    <script src="js/mobile.js?v=12"></script>
+    <script src="js/shift-schedule.js?v=49"></script>
+    <script src="js/settings.js?v=13"></script>
+    <script src="js/mobile.js?v=13"></script>
+    <style>
+        .jurnal-photo-thumb {
+            width: 45px;
+            height: 45px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-right: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid var(--border-color);
+        }
+        .jurnal-photo-thumb:hover {
+            transform: scale(1.05);
+            border-color: var(--color-primary);
+        }
+    </style>
 </body>
 
 </html>
