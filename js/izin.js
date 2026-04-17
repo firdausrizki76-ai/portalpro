@@ -402,13 +402,14 @@ const izin = {
 
             const template = this.generateWordTemplate(item, config);
             
-            const blob = new Blob(['\ufeff', template], {
+            // Standard Blob without BOM for better Word compatibility
+            const blob = new Blob([template], {
                 type: 'application/msword'
             });
             
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Form_Izin_${item.employeeName || 'Pegawai'}_${item.id}.doc`;
+            link.download = `Form_Izin_${item.employeeName || 'Pegawai'}.doc`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -425,180 +426,171 @@ const izin = {
     generateWordTemplate(item, config) {
         const today = new Date();
         const todayStr = dateTime.formatDate(today, 'long');
-        
-        // Ensure date is a valid Date object
         const itemDate = new Date(item.date);
         const startStr = dateTime.formatDate(itemDate, 'long');
-        
-        // Calculate end date based on duration
         const endDate = new Date(itemDate);
         endDate.setDate(endDate.getDate() + (parseInt(item.duration) || 1) - 1);
         const endStr = dateTime.formatDate(endDate, 'long');
 
         const check = (val, target) => (val === target ? '&#10003;' : '');
         
-        // Map Izin types to Cuti categories for the official form
-        // Izin type in app: sick, permission, emergency
-        // Official Form: 1. Tahunan, 2. Besar, 3. Sakit, 4. Melahirkan, 5. Alasan Penting, 6. Luar Tanggungan
         const mappedType = {
             'sick': 'sick',
             'permission': 'important',
-            'emergency': 'important' // Emergency mapped to Important
+            'emergency': 'important'
         }[item.type] || 'important';
 
-        return `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
             <meta charset="utf-8">
+            <!--[if gte mso 9]>
+            <xml>
+                <w:WordDocument>
+                    <w:View>Print</w:View>
+                    <w:Zoom>100</w:Zoom>
+                    <w:DoNotOptimizeForBrowser/>
+                </w:WordDocument>
+            </xml>
+            <![endif]-->
             <style>
-                @page { size: 8.5in 13in; margin: 15mm; }
-                body { font-family: 'Times New Roman', serif; font-size: 10pt; line-height: 1.1; margin: 0; padding: 0; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-                th, td { border: 1px solid black; padding: 2px 4px; text-align: left; vertical-align: top; }
-                .no-border { border: none !important; }
-                .no-border td { border: none !important; padding: 1px; }
+                @page Section1 {
+                    size: 8.5in 13.0in;
+                    margin: 1.0in 0.75in 1.0in 0.75in;
+                    mso-header-margin: .5in;
+                    mso-footer-margin: .5in;
+                    mso-paper-source: 0;
+                }
+                div.Section1 { page: Section1; }
+                body { font-family: 'Times New Roman', serif; font-size: 10.5pt; color: black; background: white; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 5px; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+                td { border: 1px solid black; padding: 4px; vertical-align: top; mso-border-alt: solid windowtext .5pt; }
+                .no-border td { border: none; padding: 1px; mso-border-alt: none; }
                 .center { text-align: center; }
-                .header-table { border: none; margin-bottom: 5px; }
-                .header-table td { border: none; padding: 0; }
-                .title { font-weight: bold; text-decoration: underline; margin-bottom: 5px; text-align: center; display: block; font-size: 11pt; }
-                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 9pt; }
-                .signature-box { width: 100%; border: none; margin-top: 5px; }
-                .signature-box td { border: none; text-align: center; }
+                .header-table { border: none; margin-bottom: 10px; }
+                .header-table td { border: none; }
+                .title { font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; margin-bottom: 10px; }
+                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 10pt; }
+                p.MsoNormal { margin: 0; padding: 0; line-height: normal; }
             </style>
         </head>
         <body>
+            <div class="Section1">
             <table class="header-table">
                 <tr>
                     <td width="55%"></td>
                     <td>
-                        Depok, ${todayStr}<br>
-                        Kepada<br>
-                        Yth. Kasubag UPEP & Kepegawaian<br>
-                        Di<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Depok
+                        <p class="MsoNormal">Depok, ${todayStr}</p>
+                        <p class="MsoNormal">Kepada</p>
+                        <p class="MsoNormal">Yth. Kasubag UPEP & Kepegawaian</p>
+                        <p class="MsoNormal">Di</p>
+                        <p class="MsoNormal">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Depok</p>
                     </td>
                 </tr>
             </table>
 
-            <div class="title">FORMULIR PERMINTAAN DAN PEMBERIAN IZIN/CUTI</div>
+            <p class="title">FORMULIR PERMINTAAN DAN PEMBERIAN IZIN/CUTI</p>
 
             <table>
-                <tr><td colspan="4" class="section-title">I. DATA PEGAWAI</td></tr>
+                <tr><td colspan="4" class="section-title"><p class="MsoNormal">I. DATA PEGAWAI</p></td></tr>
                 <tr>
-                    <td width="15%">Nama</td><td width="35%">${item.employeeName || '-'}</td>
-                    <td width="15%">NIP</td><td>${item.nip || '-'}</td>
+                    <td width="15%"><p class="MsoNormal">Nama</p></td><td width="35%"><p class="MsoNormal">${item.employeeName || '-'}</p></td>
+                    <td width="15%"><p class="MsoNormal">NIP</p></td><td><p class="MsoNormal">${item.nip || '-'}</p></td>
                 </tr>
                 <tr>
-                    <td>Jabatan</td><td>${item.jabatan || '-'}</td>
-                    <td>Masa Kerja</td><td>${item.masaKerja || '-'}</td>
+                    <td><p class="MsoNormal">Jabatan</p></td><td><p class="MsoNormal">${item.jabatan || '-'}</p></td>
+                    <td><p class="MsoNormal">Masa Kerja</p></td><td><p class="MsoNormal">${item.masaKerja || '-'}</p></td>
                 </tr>
                 <tr>
-                    <td>Unit Kerja</td><td colspan="3">UPEP</td>
+                    <td><p class="MsoNormal">Unit Kerja</p></td><td colspan="3"><p class="MsoNormal">UPEP</p></td>
                 </tr>
             </table>
 
             <table>
-                <tr><td colspan="4" class="section-title">II. JENIS IZIN/CUTI YANG DIAMBIL **</td></tr>
+                <tr><td colspan="4" class="section-title"><p class="MsoNormal">II. JENIS IZIN/CUTI YANG DIAMBIL **</p></td></tr>
                 <tr>
-                    <td width="40%">1. Cuti Tahunan</td><td width="10%" class="center">${check(mappedType, 'annual')}</td>
-                    <td width="40%">2. Cuti Besar</td><td width="10%" class="center">${check(mappedType, 'large')}</td>
+                    <td width="40%"><p class="MsoNormal">1. Cuti Tahunan</p></td><td width="10%" class="center"><p class="MsoNormal">${check(mappedType, 'annual')}</p></td>
+                    <td width="40%"><p class="MsoNormal">2. Cuti Besar</p></td><td width="10%" class="center"><p class="MsoNormal">${check(mappedType, 'large')}</p></td>
                 </tr>
                 <tr>
-                    <td>3. Cuti Sakit</td><td class="center">${check(mappedType, 'sick')}</td>
-                    <td>4. Cuti Melahirkan</td><td class="center">${check(mappedType, 'maternity')}</td>
+                    <td><p class="MsoNormal">3. Cuti Sakit</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'sick')}</p></td>
+                    <td><p class="MsoNormal">4. Cuti Melahirkan</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'maternity')}</p></td>
                 </tr>
                 <tr>
-                    <td>5. Cuti Karena Alasan Penting</td><td class="center">${check(mappedType, 'important')}</td>
-                    <td>6. Cuti di Luar Tanggungan Negara</td><td class="center">${check(mappedType, 'other')}</td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td class="section-title">III. ALASAN IZIN/CUTI</td></tr>
-                <tr><td style="height: 40px;">${item.reason || ''}</td></tr>
-            </table>
-
-            <table>
-                <tr><td colspan="6" class="section-title">IV. LAMANYA IZIN/CUTI</td></tr>
-                <tr>
-                    <td width="10%">Selama</td><td width="15%" class="center">${item.duration} hari</td>
-                    <td width="15%">Mulai tanggal</td><td width="20%" class="center">${startStr}</td>
-                    <td width="10%">s/d</td><td width="30%" class="center">${endStr}</td>
+                    <td><p class="MsoNormal">5. Cuti Karena Alasan Penting</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'important')}</p></td>
+                    <td><p class="MsoNormal">6. Cuti di Luar Tanggungan Negara</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'other')}</p></td>
                 </tr>
             </table>
 
             <table>
-                <tr><td colspan="5" class="section-title">V. ALAMAT SELAMA MENJALANKAN IZIN/CUTI</td></tr>
+                <tr><td class="section-title"><p class="MsoNormal">III. ALASAN IZIN/CUTI</p></td></tr>
+                <tr><td style="height: 40px;"><p class="MsoNormal">${item.reason || ''}</p></td></tr>
+            </table>
+
+            <table>
+                <tr><td colspan="6" class="section-title"><p class="MsoNormal">IV. LAMANYA IZIN/CUTI</p></td></tr>
                 <tr>
-                    <td width="60%" style="height: 60px;">
-                        ${item.alamatIzin || ''}
-                    </td>
+                    <td width="10%"><p class="MsoNormal">Selama</p></td><td width="15%" class="center"><p class="MsoNormal">${item.duration} hari</p></td>
+                    <td width="15%"><p class="MsoNormal">Mulai tgl</p></td><td width="20%" class="center"><p class="MsoNormal">${startStr}</p></td>
+                    <td width="5%"><p class="MsoNormal">s/d</p></td><td width="35%" class="center"><p class="MsoNormal">${endStr}</p></td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td colspan="5" class="section-title"><p class="MsoNormal">V. ALAMAT SELAMA MENJALANKAN IZIN/CUTI</p></td></tr>
+                <tr>
+                    <td width="60%" style="height: 60px;"><p class="MsoNormal">${item.alamatIzin || ''}</p></td>
                     <td width="40%">
-                        TELP: ${item.telpIzin || ''}<br><br>
-                        Hormat saya,<br><br><br>
-                        <b>${item.employeeName || ''}</b>
+                        <p class="MsoNormal">TELP: ${item.telpIzin || ''}</p>
+                        <p class="MsoNormal">Hormat saya,</p>
+                        <p class="MsoNormal"><br><br></p>
+                        <p class="MsoNormal"><b>${item.employeeName || ''}</b></p>
                     </td>
                 </tr>
             </table>
 
             <table>
-                <tr><td class="section-title">VI. PERTIMBANGAN ATASAN LANGSUNG**</td></tr>
+                <tr><td class="section-title"><p class="MsoNormal">VI. PERTIMBANGAN ATASAN LANGSUNG**</p></td></tr>
                 <tr>
                     <td>
-                        <table class="no-border" style="width: 100%;">
-                            <tr>
-                                <td width="25%">[ &nbsp; ] DISETUJUI</td>
-                                <td width="25%">[ &nbsp; ] PERUBAHAN****</td>
-                                <td width="25%">[ &nbsp; ] DITANGGUHKAN****</td>
-                                <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
-                            </tr>
-                        </table>
-                        <div style="text-align: right; padding-right: 20px; margin-top: 30px;">
-                            Kasubag UPEP & Kepegawaian<br><br><br>
-                            <b><u>${config.signature_kasubag_name || '...'}</u></b><br>
-                            NIP. ${config.signature_kasubag_nip || '...'}
+                        <p class="MsoNormal">&nbsp;</p>
+                        <div style="text-align: right; padding-right: 20px;">
+                            <p class="MsoNormal">Kasubag UPEP & Kepegawaian</p>
+                            <p class="MsoNormal"><br><br></p>
+                            <p class="MsoNormal"><b><u>${config.signature_kasubag_name || '...'}</u></b></p>
+                            <p class="MsoNormal">NIP. ${config.signature_kasubag_nip || '...'}</p>
                         </div>
                     </td>
                 </tr>
             </table>
 
             <table>
-                <tr><td class="section-title">VII. KEPUTUSAN PEJABAT YANG BERWENANG MEMBERIKAN IZIN/CUTI**</td></tr>
+                <tr><td class="section-title"><p class="MsoNormal">VII. KEPUTUSAN PEJABAT YANG BERWENANG**</p></td></tr>
                 <tr>
                     <td>
-                        <table class="no-border" style="width: 100%;">
-                            <tr>
-                                <td width="25%">[ &nbsp; ] DISETUJUI</td>
-                                <td width="25%">[ &nbsp; ] PERUBAHAN****</td>
-                                <td width="25%">[ &nbsp; ] DITANGGUHKAN****</td>
-                                <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
-                            </tr>
-                        </table>
-                        <div style="text-align: right; padding-right: 20px; margin-top: 30px;">
-                            <b>CAMAT CINERE</b><br><br><br>
-                            <b><u>${config.signature_camat_name || '...'}</u></b><br>
-                            NIP. ${config.signature_camat_nip || '...'}
+                        <p class="MsoNormal">&nbsp;</p>
+                        <div style="text-align: right; padding-right: 20px;">
+                            <p class="MsoNormal"><b>CAMAT CINERE</b></p>
+                            <p class="MsoNormal"><br><br></p>
+                            <p class="MsoNormal"><b><u>${config.signature_camat_name || '...'}</u></b></p>
+                            <p class="MsoNormal">NIP. ${config.signature_camat_nip || '...'}</p>
                         </div>
                     </td>
                 </tr>
             </table>
 
-            <div style="font-size: 8pt; margin-top: 5px;">
+            <p class="MsoNormal" style="font-size: 8.5pt; margin-top: 10px;">
                 Catatan:<br>
-                * Coret yang tidak perlu<br>
-                ** Pilih salah satu dengan memberi tanda centang (v)<br>
-                *** diisi oleh pejabat yang menangani bidang kepegawaian sebelum PNS mengajukan izin/cuti<br>
-                **** diberi tanda centang dan alasannya.
+                * Coret yang tidak perlu | ** Beri tanda centang (v)<br>
+                *** Diisi pejabat kepegawaian | **** Diberi tanda centang dan alasannya.
+            </p>
             </div>
         </body>
         </html>`;
     }
 };
 
-// Global init function
 window.initIzin = () => {
     izin.init();
 };
 
-// Expose
 window.izin = izin;

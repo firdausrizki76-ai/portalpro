@@ -382,9 +382,9 @@ const cuti = {
     },
 
     // WORD EXPORT (Matching cuti.jpg)
-    async exportToWord(leaveId) {
-        const leave = this.leaves.find(l => String(l.id) === String(leaveId));
-        if (!leave) return;
+    async exportToWord(cutiId) {
+        const item = this.cutiData.find(c => String(c.id) === String(cutiId));
+        if (!item) return;
 
         if (typeof loader !== 'undefined') loader.show('Menyiapkan dokumen...');
 
@@ -392,16 +392,16 @@ const cuti = {
             const settingsResult = await api.getSettings();
             const config = settingsResult.data || {};
 
-            const template = this.generateWordTemplate(leave, config);
+            const template = this.generateWordTemplate(item, config);
             
-            // Standard Word XML trick to trigger download
-            const blob = new Blob(['\ufeff', template], {
+            // Standard Blob without BOM for better Word compatibility
+            const blob = new Blob([template], {
                 type: 'application/msword'
             });
             
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Form_Cuti_${leave.employeeName || 'Pegawai'}_${leave.id}.doc`;
+            link.download = `Form_Cuti_${item.employeeName || 'Pegawai'}.doc`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -415,184 +415,168 @@ const cuti = {
         }
     },
 
-    generateWordTemplate(leave, config) {
+    generateWordTemplate(item, config) {
         const today = new Date();
         const todayStr = dateTime.formatDate(today, 'long');
-        const startStr = dateTime.formatDate(new Date(leave.startDate), 'long');
-        const endStr = dateTime.formatDate(new Date(leave.endDate), 'long');
+        const startDate = new Date(item.startDate);
+        const startStr = dateTime.formatDate(startDate, 'long');
+        const endDate = new Date(item.endDate);
+        const endStr = dateTime.formatDate(endDate, 'long');
 
-        // Helper for checked state in tables
         const check = (val, target) => (val === target ? '&#10003;' : '');
 
-        return `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
             <meta charset="utf-8">
+            <!--[if gte mso 9]>
+            <xml>
+                <w:WordDocument>
+                    <w:View>Print</w:View>
+                    <w:Zoom>100</w:Zoom>
+                    <w:DoNotOptimizeForBrowser/>
+                </w:WordDocument>
+            </xml>
+            <![endif]-->
             <style>
-                @page { size: 8.5in 13in; margin: 15mm; }
-                body { font-family: 'Times New Roman', serif; font-size: 10pt; line-height: 1.1; margin: 0; padding: 0; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
-                th, td { border: 1px solid black; padding: 2px 4px; text-align: left; vertical-align: top; }
+                @page Section1 {
+                    size: 8.5in 13.0in;
+                    margin: 1.0in 0.75in 1.0in 0.75in;
+                    mso-header-margin: .5in;
+                    mso-footer-margin: .5in;
+                    mso-paper-source: 0;
+                }
+                div.Section1 { page: Section1; }
+                body { font-family: 'Times New Roman', serif; font-size: 10.5pt; color: black; background: white; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 5px; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+                td { border: 1px solid black; padding: 4px; vertical-align: top; mso-border-alt: solid windowtext .5pt; }
                 .no-border { border: none !important; }
-                .no-border td { border: none !important; padding: 1px; }
+                .no-border td { border: none !important; padding: 1px; mso-border-alt: none; }
                 .center { text-align: center; }
-                .header-table { border: none; margin-bottom: 5px; }
-                .header-table td { border: none; padding: 0; }
-                .title { font-weight: bold; text-decoration: underline; margin-bottom: 5px; text-align: center; display: block; font-size: 11pt; }
-                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 9pt; }
-                .signature-box { width: 100%; border: none; margin-top: 5px; }
-                .signature-box td { border: none; text-align: center; }
-                .checkbox-group { display: flex; justify-content: space-between; gap: 10px; }
+                .header-table { border: none; margin-bottom: 10px; }
+                .header-table td { border: none; }
+                .title { font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; margin-bottom: 10px; }
+                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 10pt; }
+                p.MsoNormal { margin: 0; padding: 0; line-height: normal; }
             </style>
         </head>
         <body>
+            <div class="Section1">
             <table class="header-table">
                 <tr>
                     <td width="55%"></td>
                     <td>
-                        Depok, ${todayStr}<br>
-                        Kepada<br>
-                        Yth. Kasubag UPEP & Kepegawaian<br>
-                        Di<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Depok
+                        <p class="MsoNormal">Depok, ${todayStr}</p>
+                        <p class="MsoNormal">Kepada</p>
+                        <p class="MsoNormal">Yth. Kasubag UPEP & Kepegawaian</p>
+                        <p class="MsoNormal">Di</p>
+                        <p class="MsoNormal">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Depok</p>
                     </td>
                 </tr>
             </table>
 
-            <div class="title">FORMULIR PERMINTAAN DAN PEMBERIAN CUTI</div>
+            <p class="title">FORMULIR PERMINTAAN DAN PEMBERIAN CUTI</p>
 
             <table>
-                <tr><td colspan="4" class="section-title">I. DATA PEGAWAI</td></tr>
+                <tr><td colspan="4" class="section-title"><p class="MsoNormal">I. DATA PEGAWAI</p></td></tr>
                 <tr>
-                    <td width="15%">Nama</td><td width="35%">${leave.employeeName || '-'}</td>
-                    <td width="15%">NIP</td><td>${leave.nip || '-'}</td>
+                    <td width="15%"><p class="MsoNormal">Nama</p></td><td width="35%"><p class="MsoNormal">${item.employeeName || '-'}</p></td>
+                    <td width="15%"><p class="MsoNormal">NIP</p></td><td><p class="MsoNormal">${item.nip || '-'}</p></td>
                 </tr>
                 <tr>
-                    <td>Jabatan</td><td>${leave.jabatan || '-'}</td>
-                    <td>Masa Kerja</td><td>${leave.masaKerja || '-'}</td>
+                    <td><p class="MsoNormal">Jabatan</p></td><td><p class="MsoNormal">${item.jabatan || '-'}</p></td>
+                    <td><p class="MsoNormal">Masa Kerja</p></td><td><p class="MsoNormal">${item.masaKerja || '-'}</p></td>
                 </tr>
                 <tr>
-                    <td>Unit Kerja</td><td colspan="3">UPEP</td>
+                    <td><p class="MsoNormal">Unit Kerja</p></td><td colspan="3"><p class="MsoNormal">UPEP</p></td>
                 </tr>
             </table>
 
             <table>
-                <tr><td colspan="4" class="section-title">II. JENIS CUTI YANG DIAMBIL **</td></tr>
+                <tr><td colspan="4" class="section-title"><p class="MsoNormal">II. JENIS CUTI YANG DIAMBIL **</p></td></tr>
                 <tr>
-                    <td width="40%">1. Cuti Tahunan</td><td width="10%" class="center">${check(leave.type, 'annual')}</td>
-                    <td width="40%">2. Cuti Besar</td><td width="10%" class="center">${check(leave.type, 'large')}</td>
+                    <td width="40%"><p class="MsoNormal">1. Cuti Tahunan</p></td><td width="10%" class="center"><p class="MsoNormal">${check(item.type, 'annual')}</p></td>
+                    <td width="40%"><p class="MsoNormal">2. Cuti Besar</p></td><td width="10%" class="center"><p class="MsoNormal">${check(item.type, 'large')}</p></td>
                 </tr>
                 <tr>
-                    <td>3. Cuti Sakit</td><td class="center">${check(leave.type, 'sick')}</td>
-                    <td>4. Cuti Melahirkan</td><td class="center">${check(leave.type, 'maternity')}</td>
+                    <td><p class="MsoNormal">3. Cuti Sakit</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'sick')}</p></td>
+                    <td><p class="MsoNormal">4. Cuti Melahirkan</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'maternity')}</p></td>
                 </tr>
                 <tr>
-                    <td>5. Cuti Karena Alasan Penting</td><td class="center">${check(leave.type, 'important')}</td>
-                    <td>6. Cuti di Luar Tanggungan Negara</td><td class="center">${check(leave.type, 'other')}</td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td class="section-title">III. ALASAN CUTI</td></tr>
-                <tr><td style="height: 40px;">${leave.reason || ''}</td></tr>
-            </table>
-
-            <table>
-                <tr><td colspan="6" class="section-title">IV. LAMANYA CUTI</td></tr>
-                <tr>
-                    <td width="10%">Selama</td><td width="15%" class="center">${leave.duration} hari</td>
-                    <td width="15%">Mulai tanggal</td><td width="20%" class="center">${startStr}</td>
-                    <td width="10%">s/d</td><td width="30%" class="center">${endStr}</td>
+                    <td><p class="MsoNormal">5. Cuti Karena Alasan Penting</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'important')}</p></td>
+                    <td><p class="MsoNormal">6. Cuti di Luar Tanggungan Negara</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'other')}</p></td>
                 </tr>
             </table>
 
             <table>
-                <tr><td colspan="5" class="section-title">V. CATATAN CUTI ***</td></tr>
-                <tr>
-                    <td width="40%" colspan="3">1. CUTI TAHUNAN</td>
-                    <td colspan="2">2. CUTI BESAR</td>
-                </tr>
-                <tr>
-                    <td width="10%">Tahun</td><td width="10%">Sisa</td><td width="20%">Keterangan</td>
-                    <td colspan="2" rowspan="4"></td>
-                </tr>
-                <tr><td>N-2</td><td>-</td><td></td></tr>
-                <tr><td>N-1</td><td>-</td><td></td></tr>
-                <tr><td>N</td><td>-</td><td></td></tr>
+                <tr><td class="section-title"><p class="MsoNormal">III. ALASAN CUTI</p></td></tr>
+                <tr><td style="height: 40px;"><p class="MsoNormal">${item.reason || ''}</p></td></tr>
             </table>
 
             <table>
-                <tr><td colspan="2" class="section-title">VI. ALAMAT SELAMA MENJALANKAN CUTI</td></tr>
+                <tr><td colspan="6" class="section-title"><p class="MsoNormal">IV. LAMANYA CUTI</p></td></tr>
                 <tr>
-                    <td width="60%" style="height: 60px;">
-                        ${leave.alamatCuti || ''}
-                    </td>
+                    <td width="10%"><p class="MsoNormal">Selama</p></td><td width="15%" class="center"><p class="MsoNormal">${item.duration} hari</p></td>
+                    <td width="15%"><p class="MsoNormal">Mulai tgl</p></td><td width="20%" class="center"><p class="MsoNormal">${startStr}</p></td>
+                    <td width="5%"><p class="MsoNormal">s/d</p></td><td width="35%" class="center"><p class="MsoNormal">${endStr}</p></td>
+                </tr>
+            </table>
+
+            <table>
+                <tr><td colspan="5" class="section-title"><p class="MsoNormal">V. ALAMAT SELAMA MENJALANKAN CUTI</p></td></tr>
+                <tr>
+                    <td width="60%" style="height: 60px;"><p class="MsoNormal">${item.address || ''}</p></td>
                     <td width="40%">
-                        TELP: ${leave.telpCuti || ''}<br><br>
-                        Hormat saya,<br><br><br>
-                        <b>${leave.employeeName || ''}</b>
+                        <p class="MsoNormal">TELP: ${item.phone || ''}</p>
+                        <p class="MsoNormal">Hormat saya,</p>
+                        <p class="MsoNormal"><br><br></p>
+                        <p class="MsoNormal"><b>${item.employeeName || ''}</b></p>
                     </td>
                 </tr>
             </table>
 
             <table>
-                <tr><td class="section-title">VII. PERTIMBANGAN ATASAN LANGSUNG**</td></tr>
+                <tr><td class="section-title"><p class="MsoNormal">VI. PERTIMBANGAN ATASAN LANGSUNG**</p></td></tr>
                 <tr>
                     <td>
-                        <table class="no-border" style="width: 100%;">
-                            <tr>
-                                <td width="25%">[ &nbsp; ] DISETUJUI</td>
-                                <td width="25%">[ &nbsp; ] PERUBAHAN****</td>
-                                <td width="25%">[ &nbsp; ] DITANGGUHKAN****</td>
-                                <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
-                            </tr>
-                        </table>
-                        <div style="text-align: right; padding-right: 20px; margin-top: 30px;">
-                            Kasubag UPEP & Kepegawaian<br><br><br>
-                            <b><u>${config.signature_kasubag_name || '...'}</u></b><br>
-                            NIP. ${config.signature_kasubag_nip || '...'}
+                        <p class="MsoNormal">&nbsp;</p>
+                        <div style="text-align: right; padding-right: 20px;">
+                            <p class="MsoNormal">Kasubag UPEP & Kepegawaian</p>
+                            <p class="MsoNormal"><br><br></p>
+                            <p class="MsoNormal"><b><u>${config.signature_kasubag_name || '...'}</u></b></p>
+                            <p class="MsoNormal">NIP. ${config.signature_kasubag_nip || '...'}</p>
                         </div>
                     </td>
                 </tr>
             </table>
 
             <table>
-                <tr><td class="section-title">VIII. KEPUTUSAN PEJABAT YANG BERWENANG MEMBERIKAN CUTI**</td></tr>
+                <tr><td class="section-title"><p class="MsoNormal">VII. KEPUTUSAN PEJABAT YANG BERWENANG**</p></td></tr>
                 <tr>
                     <td>
-                        <table class="no-border" style="width: 100%;">
-                            <tr>
-                                <td width="25%">[ &nbsp; ] DISETUJUI</td>
-                                <td width="25%">[ &nbsp; ] PERUBAHAN****</td>
-                                <td width="25%">[ &nbsp; ] DITANGGUHKAN****</td>
-                                <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
-                            </tr>
-                        </table>
-                        <div style="text-align: right; padding-right: 20px; margin-top: 30px;">
-                            <b>CAMAT CINERE</b><br><br><br>
-                            <b><u>${config.signature_camat_name || '...'}</u></b><br>
-                            NIP. ${config.signature_camat_nip || '...'}
+                        <p class="MsoNormal">&nbsp;</p>
+                        <div style="text-align: right; padding-right: 20px;">
+                            <p class="MsoNormal"><b>CAMAT CINERE</b></p>
+                            <p class="MsoNormal"><br><br></p>
+                            <p class="MsoNormal"><b><u>${config.signature_camat_name || '...'}</u></b></p>
+                            <p class="MsoNormal">NIP. ${config.signature_camat_nip || '...'}</p>
                         </div>
                     </td>
                 </tr>
             </table>
 
-            <div style="font-size: 8pt; margin-top: 5px;">
+            <p class="MsoNormal" style="font-size: 8.5pt; margin-top: 10px;">
                 Catatan:<br>
-                * Coret yang tidak perlu<br>
-                ** Pilih salah satu dengan memberi tanda centang (v)<br>
-                *** diisi oleh pejabat yang menangani bidang kepegawaian sebelum PNS mengajukan cuti<br>
-                **** diberi tanda centang dan alasannya.
+                * Coret yang tidak perlu | ** Beri tanda centang (v)<br>
+                *** Diisi pejabat kepegawaian | **** Diberi tanda centang dan alasannya.
+            </p>
             </div>
         </body>
         </html>`;
     }
 };
 
-// Global init function
 window.initCuti = () => {
     cuti.init();
 };
 
-// Expose cuti object
 window.cuti = cuti;
