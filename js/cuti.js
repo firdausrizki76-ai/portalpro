@@ -83,14 +83,24 @@ const cuti = {
             if (startDate.value && endDate.value) {
                 const start = new Date(startDate.value);
                 const end = new Date(endDate.value);
-                const diffTime = end - start;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                
+                // Clear time component for accurate day calculation
+                start.setHours(0, 0, 0, 0);
+                end.setHours(0, 0, 0, 0);
+                
+                const diffTime = end.getTime() - start.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
                 if (diffDays > 0) {
                     duration.value = `${diffDays} hari`;
                 } else {
                     duration.value = '0 hari';
+                    if (start > end && endDate.value) {
+                        toast.warning('Tanggal selesai harus setelah tanggal mulai!');
+                    }
                 }
+            } else {
+                duration.value = '0 hari';
             }
         };
 
