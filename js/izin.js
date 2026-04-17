@@ -242,6 +242,9 @@ const izin = {
             if (result.success) {
                 this.izinData.unshift(result.data);
                 toast.success('Pengajuan izin berhasil dikirim!');
+
+                // Notify Admin
+                notifications.add('admin', currentUser.name, `mengajukan Izin: ${izinEntry.typeLabel}`, 'warning');
                 
                 // Reset form
                 const form = document.getElementById('izin-form');

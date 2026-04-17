@@ -478,3 +478,26 @@ window.getAvatarUrl = function (emp) {
     const colorIdx = name.charCodeAt(0) % colors.length;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${colors[colorIdx]}&color=fff`;
 };
+
+// ========== NOTIFICATIONS ==========
+api.getNotifications = async function(userId) {
+    if (!API_BASE_URL) {
+        return { success: true, data: storage.get('notifications', []) };
+    }
+    return this.request('getNotifications', { userId });
+};
+
+api.addNotification = async function(recipientId, type, user, action) {
+    if (!API_BASE_URL) {
+        // Local fallback if needed
+        return { success: true };
+    }
+    return this.request('addNotification', { recipientId, type, user, action });
+};
+
+api.clearNotifications = async function(userId) {
+    if (!API_BASE_URL) {
+        return { success: true };
+    }
+    return this.request('clearNotifications', { userId });
+};

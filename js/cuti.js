@@ -200,6 +200,9 @@ const cuti = {
                 }
 
                 toast.success('Pengajuan cuti berhasil dikirim!');
+
+                // Notify Admin
+                notifications.add('admin', currentUser.name, `mengajukan ${leaveData.typeLabel}`, 'warning');
             } else {
                 toast.error(result.error || 'Gagal mengajukan cuti');
             }

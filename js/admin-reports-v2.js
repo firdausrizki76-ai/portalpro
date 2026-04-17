@@ -612,10 +612,18 @@ const adminReports = {
     async approveLeaveItem(id, source) {
         if (!confirm('Setujui pengajuan ini?')) return;
         try {
+            const item = this.leaveData.find(l => String(l.id) === String(id));
             const action = source === 'leave' ? 'approveLeave' : 'approveIzin';
             const res = await api.request(action, { id });
             if (res.success) {
                 toast.success('Pengajuan disetujui');
+                
+                // Notify Employee
+                if (item && item.userId) {
+                    const typeLabel = item.type || (source === 'leave' ? 'Cuti' : 'Izin');
+                    notifications.add(item.userId, 'Admin', `telah MENYETUJUI pengajuan ${typeLabel} Anda`, 'success');
+                }
+
                 await this.loadData(this.filters.leave.month, true);
                 this.renderLeaveReports();
             } else { toast.error(res.error || 'Gagal menyetujui'); }
@@ -626,10 +634,18 @@ const adminReports = {
         const reason = prompt('Masukkan alasan penolakan:');
         if (reason === null) return;
         try {
+            const item = this.leaveData.find(l => String(l.id) === String(id));
             const action = source === 'leave' ? 'rejectLeave' : 'rejectIzin';
             const res = await api.request(action, { id, reason });
             if (res.success) {
                 toast.success('Pengajuan ditolak');
+
+                // Notify Employee
+                if (item && item.userId) {
+                    const typeLabel = item.type || (source === 'leave' ? 'Cuti' : 'Izin');
+                    notifications.add(item.userId, 'Admin', `telah MENOLAK pengajuan ${typeLabel} Anda. Alasan: ${reason}`, 'error');
+                }
+
                 await this.loadData(this.filters.leave.month, true);
                 this.renderLeaveReports();
             } else { toast.error(res.error || 'Gagal menolak'); }

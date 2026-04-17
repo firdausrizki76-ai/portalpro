@@ -454,21 +454,13 @@ const absensi = {
         
         if (result && result.success) {
             // Only update UI and show success if save actually worked
-            switch (action) {
-                case 'clock-in':
-                    this.currentState = 'clocked-in';
-                    toast.success(`Clock In berhasil: ${timeStr}`);
-                    break;
-                case 'overtime':
-                    toast.info(`Mulai lembur: ${timeStr}`);
-                    break;
-                case 'clock-out':
-                    this.currentState = 'completed';
-                    toast.success(`Clock Out berhasil: ${timeStr}`);
-                    break;
-            }
             this.updateUI();
             this.renderTimeline();
+
+            // Notify Admin
+            const recipientId = 'admin';
+            const actionLabel = action === 'clock-in' ? 'Clock In' : (action === 'clock-out' ? 'Clock Out' : 'Lembur');
+            notifications.add(recipientId, currentUser.name, `melakukan ${actionLabel}`, 'info');
             
             // Success navigation
             setTimeout(() => {

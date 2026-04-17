@@ -195,21 +195,29 @@ var notifications = {
     badge: null,
     dropdown: null,
 
-    init() {
+    async init() {
         this.badge = document.getElementById('notification-badge');
         this.dropdown = document.getElementById('notification-dropdown');
-        this.list = storage.get('notifications', []);
+        
+        const currentUser = auth.getCurrentUser();
+        if (!currentUser) return;
+
+        const recipientId = auth.isAdmin() ? 'admin' : currentUser.id;
+        
+        try {
+            const result = await api.getNotifications(recipientId);
+            this.list = result.success ? result.data : [];
+        } catch (e) {
+            console.error('Error fetching notifications:', e);
+            this.list = storage.get('notifications_' + recipientId, []);
+        }
 
         this.render();
         this.setupEventListeners();
-        
-        // Background: Repair database to ensure new columns (faceData, etc) are present
-        api.request('repairDatabase').catch(console.error);
     },
 
     setList(newList) {
         this.list = newList.slice(0, 20);
-        storage.set('notifications', this.list);
         this.render();
     },
 
@@ -256,33 +264,51 @@ var notifications = {
         }
     },
 
-    add(user, action, time, avatar) {
+    async add(recipientId, user, action, type = 'info') {
+        const currentUser = auth.getCurrentUser();
+        const initiator = user || (currentUser ? currentUser.name : 'Sistem');
+        
         const newNotif = {
             id: Date.now(),
-            user,
-            action,
-            time: time || 'Baru saja',
-            avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user)}&background=003399&color=fff`
+            recipientId: recipientId,
+            user: initiator,
+            action: action,
+            time: new Date().toISOString(),
+            avatar: getAvatarUrl({name: initiator}),
+            type: type
         };
 
-        this.list.unshift(newNotif);
-        if (this.list.length > 20) this.list.pop(); // Keep only last 20
+        // UI Update (Optimistic)
+        const myRecipientId = auth.isAdmin() ? 'admin' : (currentUser ? currentUser.id : '');
+        if (String(recipientId) === String(myRecipientId)) {
+            this.list.unshift(newNotif);
+            if (this.list.length > 20) this.list.pop();
+            this.render();
+            toast.info(`${initiator} ${action}`, 'Notifikasi Baru');
+        }
 
-        storage.set('notifications', this.list);
-        this.render();
-
-        // Optional: show toast for new notifications if not just added during init
-        if (time === 'Baru saja') {
-            toast.info(`${user} ${action}`, 'Aktivitas Baru');
+        // Backend Save
+        try {
+            await api.addNotification(recipientId, type, initiator, action);
+        } catch (e) {
+            console.error('Error adding backend notification:', e);
         }
     },
 
-    clearAll() {
+    async clearAll() {
         if (confirm('Hapus semua notifikasi?')) {
+            const currentUser = auth.getCurrentUser();
+            const recipientId = auth.isAdmin() ? 'admin' : currentUser?.id;
+            
             this.list = [];
-            storage.set('notifications', []);
             this.render();
-            toast.success('Notifikasi dihapus');
+            
+            try {
+                await api.clearNotifications(recipientId);
+                toast.success('Notifikasi dihapus');
+            } catch (e) {
+                console.error('Error clearing notifications:', e);
+            }
         }
     },
 
@@ -296,15 +322,22 @@ var notifications = {
             container.innerHTML = '<div class="notification-empty">Tidak ada notifikasi baru</div>';
             if (badge) badge.textContent = '0';
         } else {
-            container.innerHTML = this.list.map(notif => `
-                <div class="notification-item">
-                    <img src="${notif.avatar}" alt="${notif.user}" class="notif-avatar">
-                    <div class="notif-content">
-                        <p class="notif-text"><strong>${notif.user}</strong> ${notif.action}</p>
-                        <span class="notif-time">${notif.time}</span>
+            container.innerHTML = this.list.map(notif => {
+                const avatarUrl = notif.avatar || getAvatarUrl({name: notif.user});
+                const timeStr = typeof notif.time === 'string' && notif.time.includes('T') 
+                    ? dateTime.formatTime(notif.time) 
+                    : (notif.time || 'Baru saja');
+                
+                return `
+                    <div class="notification-item">
+                        <img src="${avatarUrl}" alt="${notif.user}" class="notif-avatar">
+                        <div class="notif-content">
+                            <div class="notif-text"><strong>${notif.user}</strong> ${notif.action}</div>
+                            <div class="notif-time">${timeStr}</div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             if (badge) badge.textContent = this.list.length;
         }
     }

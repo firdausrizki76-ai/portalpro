@@ -22,7 +22,7 @@ const adminDashboard = {
             }
 
             await this.loadData();
-            this.syncNotifications(); // Pass real data to global notification system
+            // syncNotifications was removed in favor of backend notifications
             this.updateStats();
             this.renderRecentActivity();
             this.renderOnlineUsers();
@@ -267,7 +267,7 @@ const adminDashboard = {
         const container = document.getElementById('admin-recent-activity');
         if (!container) return;
 
-        // Sync with global notifications system
+        // Fetch from the global notifications list which is now backend-driven
         const list = window.notifications ? window.notifications.list.slice(0, 5) : []; 
 
         if (list.length === 0) {
@@ -275,17 +275,23 @@ const adminDashboard = {
             return;
         }
 
-        container.innerHTML = list.map(notif => `
-            <div class="activity-item">
-                <div class="activity-avatar">
-                    <img src="${notif.avatar}" alt="${notif.user}">
+        container.innerHTML = list.map(notif => {
+            const timeStr = typeof notif.time === 'string' && notif.time.includes('T') 
+                ? dateTime.formatTime(notif.time) 
+                : (notif.time || 'Baru saja');
+                
+            return `
+                <div class="activity-item">
+                    <div class="activity-avatar">
+                        <img src="${notif.avatar || getAvatarUrl({name: notif.user})}" alt="${notif.user}">
+                    </div>
+                    <div class="activity-content">
+                        <p class="activity-text"><strong>${notif.user}</strong> ${notif.action}</p>
+                        <span class="activity-time">${timeStr}</span>
+                    </div>
                 </div>
-                <div class="activity-content">
-                    <p class="activity-text"><strong>${notif.user}</strong> ${notif.action}</p>
-                    <span class="activity-time">${notif.time}</span>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     },
 
     renderOnlineUsers() {
