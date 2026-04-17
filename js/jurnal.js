@@ -19,6 +19,9 @@ const jurnal = {
             this.initPhotoUpload();
             this.renderJurnalList();
             this.updateUI();
+            
+            // Initial summary recalculation
+            setTimeout(() => this.updateSummary(), 1000);
         } catch (error) {
             console.error('Jurnal init error:', error);
         } finally {
@@ -336,12 +339,13 @@ const jurnal = {
         }
 
         list.innerHTML = recentJurnals.map(jurnal => {
-            const date = new Date(jurnal.date);
-            const isValidDate = !isNaN(date.getTime());
+            const date = this.parseDate(jurnal.date);
+            const isValidDate = date && !isNaN(date.getTime());
             
             const dayName = isValidDate ? dateTime.formatDate(date, 'day') : '-';
             const day = isValidDate ? date.getDate() : '-';
-            const month = isValidDate ? date.toLocaleDateString('id-ID', { month: 'short' }) : '-';
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const month = isValidDate ? monthNames[date.getMonth()] : '-';
             const preview = jurnal.tasks ? (jurnal.tasks.substring(0, 60) + (jurnal.tasks.length > 60 ? '...' : '')) : 'Tidak ada deskripsi';
             // Thumbnail logic: Show photo if exists, otherwise show date circle
             const thumbnailHtml = jurnal.photo ? `
@@ -384,8 +388,22 @@ const jurnal = {
     },
 
     async deleteJurnal(date) {
-        if (!confirm('Apakah Anda yakin ingin menghapus jurnal untuk tanggal ' + date + '?')) return;
-        
+        if (typeof modal === 'undefined') {
+            if (!confirm('Yakin ingin hapus jurnal tanggal ' + date + '?')) return;
+            this._executeDelete(date);
+            return;
+        }
+
+        modal.show('Konfirmasi Hapus', `<p>Apakah Anda yakin ingin menghapus jurnal untuk tanggal <strong>${date}</strong>?</p>`, [
+            { label: 'Batal', class: 'btn-secondary', onClick: () => modal.close() },
+            { label: 'Ya, Hapus', class: 'btn-danger', onClick: () => {
+                modal.close();
+                this._executeDelete(date);
+            }}
+        ]);
+    },
+
+    async _executeDelete(date) {
         if (typeof loader !== 'undefined') loader.show('Menghapus jurnal...');
         try {
             const currentUser = auth.getCurrentUser();
@@ -418,12 +436,19 @@ const jurnal = {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        // Count jurnals for current month with defensive date parsing
+        if (!this.jurnals || this.jurnals.length === 0) {
+            console.log('UpdateSummary: No jurnals found');
+            return;
+        }
+
+        // Count jurnals for current month with robust date parsing
         const monthJurnals = this.jurnals.filter(j => {
-            const date = new Date(j.date);
-            if (isNaN(date.getTime())) return false; // Skip bad data like "memancing"
+            const date = this.parseDate(j.date);
+            if (!date || isNaN(date.getTime())) return false;
             return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
         });
+
+        console.log(`UpdateSummary: Found ${monthJurnals.length} journals for month ${currentMonth+1}`);
 
         // Update UI
         const filledEl = document.getElementById('jurnal-filled-days');
@@ -431,9 +456,9 @@ const jurnal = {
         
         if (filledEl) filledEl.textContent = monthJurnals.length;
         
-        const today = now.getDate();
+        const todayCount = now.getDate();
         let workingDaysPassed = 0;
-        for (let i = 1; i <= today; i++) {
+        for (let i = 1; i <= todayCount; i++) {
             const d = new Date(currentYear, currentMonth, i);
             if (d.getDay() !== 0 && d.getDay() !== 6) workingDaysPassed++;
         }
@@ -444,8 +469,11 @@ const jurnal = {
         let streak = 0;
         let d = new Date();
         const journalDates = this.jurnals
-            .map(j => j.date)
-            .filter(d => !isNaN(new Date(d).getTime())); // Only valid dates
+            .map(j => {
+                const pd = this.parseDate(j.date);
+                return pd ? pd.toISOString().split('T')[0] : null;
+            })
+            .filter(d => d !== null);
         
         while (true) {
             const iso = d.toISOString().split('T')[0];
@@ -462,6 +490,31 @@ const jurnal = {
         }
         const streakEl = document.getElementById('jurnal-streak-days');
         if (streakEl) streakEl.textContent = streak;
+    },
+
+    parseDate(dateStr) {
+        if (!dateStr) return null;
+        if (dateStr instanceof Date) return dateStr;
+        
+        // Try ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss...)
+        let d = new Date(dateStr);
+        if (!isNaN(d.getTime())) return d;
+        
+        // Try DD/MM/YYYY
+        if (typeof dateStr === 'string' && dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                // Check if YYYY is first or last
+                if (parts[2].length === 4) { // D/M/Y
+                    d = new Date(parts[2], parts[1] - 1, parts[0]);
+                } else if (parts[0].length === 4) { // Y/M/D
+                    d = new Date(parts[0], parts[1] - 1, parts[2]);
+                }
+                if (!isNaN(d.getTime())) return d;
+            }
+        }
+        
+        return null;
     },
 
 
