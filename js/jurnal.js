@@ -179,8 +179,6 @@ const jurnal = {
         const dateStr = this.currentDate.toISOString().split('T')[0];
         const tasks = document.getElementById('jurnal-tasks').value;
         const achievements = document.getElementById('jurnal-achievements').value;
-        const obstacles = document.getElementById('jurnal-obstacles').value;
-        const plan = document.getElementById('jurnal-plan').value;
 
         const currentUser = auth.getCurrentUser();
 
@@ -189,8 +187,6 @@ const jurnal = {
             userId: currentUser?.id || 'demo-user',
             tasks,
             achievements,
-            obstacles,
-            plan,
             photo: this.currentPhoto,
             updatedAt: new Date().toISOString()
         };
@@ -233,14 +229,10 @@ const jurnal = {
 
         const tasksEl = document.getElementById('jurnal-tasks');
         const achievementsEl = document.getElementById('jurnal-achievements');
-        const obstaclesEl = document.getElementById('jurnal-obstacles');
-        const planEl = document.getElementById('jurnal-plan');
 
         if (jurnal) {
             if (tasksEl) tasksEl.value = jurnal.tasks || '';
             if (achievementsEl) achievementsEl.value = jurnal.achievements || '';
-            if (obstaclesEl) obstaclesEl.value = jurnal.obstacles || '';
-            if (planEl) planEl.value = jurnal.plan || '';
 
             // Load existing photo
             if (jurnal.photo) {
@@ -258,8 +250,6 @@ const jurnal = {
             this.hidePhotoPreview();
             if (tasksEl) tasksEl.value = '';
             if (achievementsEl) achievementsEl.value = '';
-            if (obstaclesEl) obstaclesEl.value = '';
-            if (planEl) planEl.value = '';
 
             // Check if date is today or future
             const today = new Date().toISOString().split('T')[0];
@@ -454,14 +444,6 @@ const jurnal = {
                 <div class="detail-section">
                     <label>Hasil Pekerjaan:</label>
                     <p>${jurnal.achievements?.replace(/\n/g, '<br>') || '-'}</p>
-                </div>
-                <div class="detail-section">
-                    <label>Kendala:</label>
-                    <p>${jurnal.obstacles?.replace(/\n/g, '<br>') || '-'}</p>
-                </div>
-                <div class="detail-section">
-                    <label>Rencana:</label>
-                    <p>${jurnal.plan?.replace(/\n/g, '<br>') || '-'}</p>
                 </div>
                 ${photoHtml}
             </div>
