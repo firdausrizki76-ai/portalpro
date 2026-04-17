@@ -70,11 +70,15 @@ const mobile = {
         const overlay = document.getElementById('sidebar-overlay');
         const sidebarToggle = document.getElementById('sidebar-toggle');
         
-        // Mobile menu toggle
-        if (menuToggle) {
-            menuToggle.addEventListener('click', () => this.toggleSidebar());
-        }
-        
+        // Use event delegation for more resilient toggle binding
+        document.addEventListener('click', (e) => {
+            const toggle = e.target.closest('#mobile-menu-toggle');
+            if (toggle) {
+                console.log('Mobile menu toggle clicked (delegated)');
+                this.toggleSidebar();
+            }
+        });
+
         // Sidebar toggle button (collapse/expand on desktop)
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', () => {
@@ -130,22 +134,31 @@ const mobile = {
 
     refreshRoleUI() {
         const bottomNav = document.getElementById('bottom-nav');
-        if (!bottomNav) return;
+        const employeeMenu = document.getElementById('employee-menu');
+        const adminMenu = document.getElementById('admin-menu-nav');
 
         const currentUser = auth.getCurrentUser();
         const userRole = (currentUser && currentUser.role === 'admin') ? 'admin' : 'employee';
-        const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
         
         console.log('Refreshing Mobile UI for role:', userRole);
 
-        navItems.forEach(item => {
-            const itemRole = item.dataset.role || 'employee';
-            if (itemRole !== userRole) {
-                item.style.display = 'none';
-            } else {
-                item.style.display = 'flex';
-            }
-        });
+        // Filter bottom nav items if they exist
+        if (bottomNav) {
+            const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
+            navItems.forEach(item => {
+                const itemRole = item.dataset.role || 'employee';
+                item.style.display = (itemRole === userRole) ? 'flex' : 'none';
+            });
+        }
+
+        // Toggle sidebar menus
+        if (userRole === 'admin') {
+            if (employeeMenu) employeeMenu.classList.add('hidden');
+            if (adminMenu) adminMenu.classList.remove('hidden');
+        } else {
+            if (employeeMenu) employeeMenu.classList.remove('hidden');
+            if (adminMenu) adminMenu.classList.add('hidden');
+        }
     },
     
     toggleSidebar() {
