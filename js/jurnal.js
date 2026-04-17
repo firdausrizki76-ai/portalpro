@@ -448,11 +448,11 @@ const jurnal = {
             <div class="jurnal-detail-modal">
                 <h3>Detail Jurnal - ${dateTime.formatDate(new Date(date), 'long')}</h3>
                 <div class="detail-section">
-                    <label>Tugas:</label>
+                    <label>Uraian Laporan Pekerjaan:</label>
                     <p>${jurnal.tasks?.replace(/\n/g, '<br>') || '-'}</p>
                 </div>
                 <div class="detail-section">
-                    <label>Pencapaian:</label>
+                    <label>Hasil Pekerjaan:</label>
                     <p>${jurnal.achievements?.replace(/\n/g, '<br>') || '-'}</p>
                 </div>
                 <div class="detail-section">

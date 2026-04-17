@@ -512,6 +512,7 @@ const adminReports = {
         });
         this._bind('btn-export-jurnal', 'click', () => this.exportToExcel('jurnal'));
         this._bind('btn-print-jurnal', 'click', () => window.print());
+        this._bind('btn-download-jurnal-pdf', 'click', () => this.downloadJournalPDF());
     },
 
     bindLeaveEvents() {
@@ -691,6 +692,59 @@ const adminReports = {
     viewPhoto(url) {
         if (typeof modal !== 'undefined') {
             modal.show('Foto Lampiran', `<img src="${url}" style="width:100%; border-radius:8px;">`);
+        }
+    },
+
+    async downloadJournalPDF() {
+        const employeeName = this.filters.jurnal.employee;
+        const month = this.filters.jurnal.month;
+
+        if (!employeeName) {
+            toast.error('Harap pilih salah satu pegawai terlebih dahulu!');
+            return;
+        }
+
+        const employee = this.rawEmployees.find(e => e.name === employeeName);
+        if (!employee) {
+            toast.error('Data pegawai tidak ditemukan');
+            return;
+        }
+
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan dokumen PDF...');
+
+        try {
+            const res = await api.request('downloadJournalPDF', {
+                userId: employee.id,
+                month: month
+            });
+
+            if (res.success && res.data) {
+                const byteCharacters = atob(res.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = res.filename || `Jurnal_${employee.name}_${month}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                toast.success('Pencetakan PDF Jurnal Berhasil!');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh PDF');
+            }
+        } catch (e) {
+            console.error('Error downloading PDF:', e);
+            toast.error('Terjadi kesalahan saat mengunduh PDF');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
         }
     }
 };

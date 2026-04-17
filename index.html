@@ -789,12 +789,11 @@
                                         Diisi</span>
                                 </div>
                                 <form id="jurnal-form" class="jurnal-form">
-                                    <div class="form-group"><label for="jurnal-tasks">Tugas yang
-                                            Dikerjakan</label><textarea id="jurnal-tasks" rows="4"
+                                    <div class="form-group"><label for="jurnal-tasks">Uraian Laporan Pekerjaan</label><textarea id="jurnal-tasks" rows="4"
                                             placeholder="Deskripsikan tugas-tugas yang Anda kerjakan hari ini..."
                                             required></textarea></div>
                                     <div class="form-group"><label
-                                            for="jurnal-achievements">Pencapaian/Hasil</label><textarea
+                                            for="jurnal-achievements">Hasil Pekerjaan</label><textarea
                                             id="jurnal-achievements" rows="3"
                                             placeholder="Apa saja yang berhasil Anda capai?"></textarea></div>
                                     <div class="form-group"><label
@@ -1194,10 +1193,11 @@
                                 <h2>Rekap Jurnal</h2>
                                 <p>Rekap jurnal kerja pegawai</p>
                             </div>
-                            <div class="reports-actions"><button class="btn-secondary" id="btn-export-jurnal"><i
-                                        class="fas fa-download"></i><span>Export Excel</span></button><button
-                                    class="btn-primary" id="btn-print-jurnal"><i
-                                        class="fas fa-print"></i><span>Cetak</span></button></div>
+                            <div class="reports-actions">
+                                <button class="btn-success" id="btn-download-jurnal-pdf"><i class="fas fa-file-pdf"></i><span>Unduh PDF</span></button>
+                                <button class="btn-secondary" id="btn-export-jurnal"><i class="fas fa-download"></i><span>Export Excel</span></button>
+                                <button class="btn-primary" id="btn-print-jurnal"><i class="fas fa-print"></i><span>Cetak</span></button>
+                            </div>
                         </div>
                         <div class="reports-filters-card">
                             <div class="reports-filters">
