@@ -162,12 +162,15 @@ const adminDashboard = {
         // Loop leaves
         this.leaves.forEach(l => {
              const name = this.getEmployeeName(l);
+             const leaveDate = l.startDate || l.date;
+             if (!leaveDate) return; // Skip if no date
+             
              events.push({
-                  id: `leave_${l.id}`,
+                  id: `leave_${l.id || Math.random()}`,
                   user: name,
                   action: `Mengajukan Cuti`,
-                  timestamp: new Date(l.appliedAt || l.startDate).getTime() || Date.now(),
-                  time: dateTime.formatDate(l.startDate, 'short'),
+                  timestamp: new Date(l.appliedAt || leaveDate).getTime() || Date.now(),
+                  time: dateTime.formatDate(leaveDate, 'short'),
                   avatar: getAvatarUrl({name})
              });
         });

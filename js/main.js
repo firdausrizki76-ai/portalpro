@@ -314,19 +314,22 @@ var notifications = {
 var dateTime = {
     formatDate(date, format = 'full') {
         const d = new Date(date);
+        if (isNaN(d.getTime())) return '-';
+
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-        const dayName = days[d.getDay()];
+        const monthName = months[d.getMonth()] || '';
+        const dayName = days[d.getDay()] || '';
         const day = d.getDate();
-        const month = months[d.getMonth()];
         const year = d.getFullYear();
 
         if (format === 'full') {
-            return `${dayName}, ${day} ${month} ${year}`;
+            return `${dayName}, ${day} ${monthName} ${year}`;
         } else if (format === 'short') {
-            return `${day} ${months[d.getMonth()].substring(0, 3)} ${year}`;
+            const shortMonth = monthName.substring(0, 3);
+            return `${day} ${shortMonth} ${year}`;
         } else if (format === 'day') {
             return dayName;
         }
