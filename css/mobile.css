@@ -327,17 +327,19 @@
     /* Hide sidebar on mobile */
     .sidebar {
         position: fixed;
-        left: 0;
+        left: -280px;
         top: 0;
         height: 100vh;
-        transform: translateX(-100%);
         z-index: 1000;
         width: 280px;
-        transition: transform 0.3s ease;
+        transition: left 0.3s ease;
+        background: var(--bg-sidebar) !important;
+        box-shadow: var(--shadow-xl);
+        transform: none !important; /* Force override any desktop transforms */
     }
     
     .sidebar.open {
-        transform: translateX(0);
+        left: 0 !important;
     }
     
     /* Overlay when sidebar is open */

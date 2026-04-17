@@ -122,9 +122,15 @@ const router = {
         
         // Trigger page-specific init functions
         this.triggerPageInit(page);
-        
+
+        // Close mobile sidebar if open
+        if (window.mobile && window.mobile.isMobile && window.mobile.sidebarOpen) {
+            window.mobile.closeSidebar();
+        }
+
         // Scroll to top
-        document.querySelector('.page-content').scrollTop = 0;
+        const pageContent = document.querySelector('.page-content');
+        if (pageContent) pageContent.scrollTop = 0;
     },
     
     triggerPageInit(page) {
