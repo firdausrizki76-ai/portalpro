@@ -451,8 +451,8 @@ const izin = {
         <head>
             <meta charset="utf-8">
             <style>
-                @page { size: 215.9mm 330.2mm; margin: 10mm; }
-                body { font-family: 'Times New Roman', serif; font-size: 9.5pt; line-height: 0.95; margin: 0; padding: 0; }
+                @page { size: 8.5in 13in; margin: 15mm; }
+                body { font-family: 'Times New Roman', serif; font-size: 10pt; line-height: 1.1; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
                 th, td { border: 1px solid black; padding: 2px 4px; text-align: left; vertical-align: top; }
                 .no-border { border: none !important; }
@@ -460,8 +460,8 @@ const izin = {
                 .center { text-align: center; }
                 .header-table { border: none; margin-bottom: 5px; }
                 .header-table td { border: none; padding: 0; }
-                .title { font-weight: bold; text-decoration: underline; margin-bottom: 5px; text-align: center; display: block; font-size: 10pt; }
-                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 9pt; height: 15px; }
+                .title { font-weight: bold; text-decoration: underline; margin-bottom: 5px; text-align: center; display: block; font-size: 11pt; }
+                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 9pt; }
                 .signature-box { width: 100%; border: none; margin-top: 5px; }
                 .signature-box td { border: none; text-align: center; }
             </style>
