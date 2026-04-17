@@ -660,25 +660,55 @@
                                     <h3>Form Pengajuan Izin</h3>
                                 </div>
                                 <form id="izin-form" class="izin-form">
-                                    <div class="form-group">
-                                        <label for="izin-type">Jenis Izin</label>
-                                        <select id="izin-type" required>
-                                            <option value="">Pilih Jenis Izin</option>
-                                            <option value="sick">Sakit</option>
-                                            <option value="permission">Izin Penting</option>
-                                            <option value="emergency">Keadaan Darurat</option>
-                                        </select>
-                                    </div>
                                     <div class="form-row two-col">
-                                        <div class="form-group"><label for="izin-date">Tanggal</label><input type="date"
-                                                id="izin-date" required></div>
-                                        <div class="form-group"><label for="izin-duration">Durasi (hari)</label><input
-                                                type="number" id="izin-duration" min="1" max="30" value="1" required>
+                                        <div class="form-group">
+                                            <label for="izin-type">Jenis Izin</label>
+                                            <select id="izin-type" required>
+                                                <option value="">Pilih Jenis Izin</option>
+                                                <option value="sick">Sakit</option>
+                                                <option value="permission">Izin Penting</option>
+                                                <option value="emergency">Keadaan Darurat</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="izin-nip">NIP</label>
+                                            <input type="text" id="izin-nip" readonly placeholder="-">
                                         </div>
                                     </div>
-                                    <div class="form-group"><label for="izin-reason">Alasan</label><textarea
-                                            id="izin-reason" rows="3" placeholder="Jelaskan alasan izin Anda..."
-                                            required></textarea></div>
+                                    <div class="form-row two-col">
+                                        <div class="form-group">
+                                            <label for="izin-jabatan">Jabatan</label>
+                                            <input type="text" id="izin-jabatan" readonly placeholder="-">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="izin-masa-kerja">Masa Kerja</label>
+                                            <input type="text" id="izin-masa-kerja" readonly placeholder="-">
+                                        </div>
+                                    </div>
+                                    <div class="form-row two-col">
+                                        <div class="form-group">
+                                            <label for="izin-date">Tanggal</label>
+                                            <input type="date" id="izin-date" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="izin-duration">Durasi (hari)</label>
+                                            <input type="number" id="izin-duration" min="1" max="30" value="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row two-col">
+                                        <div class="form-group">
+                                            <label for="izin-alamat">Alamat Selama Izin</label>
+                                            <textarea id="izin-alamat" rows="2" placeholder="Alamat lengkap..." required></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="izin-telp">No. Telepon</label>
+                                            <input type="text" id="izin-telp" placeholder="Contoh: 0812..." required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="izin-reason">Alasan</label>
+                                        <textarea id="izin-reason" rows="3" placeholder="Jelaskan alasan izin Anda..." required></textarea>
+                                    </div>
                                     <div class="form-group">
                                         <label>Surat Keterangan (Opsional)</label>
                                         <div class="file-upload" id="file-upload">

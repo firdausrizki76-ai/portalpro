@@ -589,9 +589,17 @@ const adminReports = {
 
         modal.show('Detail Pengajuan: ' + item.name, `
             <div class="leave-detail-view">
+                <p><strong>NIP:</strong> ${item.nip || '-'}</p>
                 <p><strong>Tipe:</strong> ${item.type}</p>
                 <p><strong>Periode:</strong> ${item.dates} (${item.duration} hari)</p>
                 <p><strong>Alasan:</strong> ${item.reason || '-'}</p>
+                ${item._source === 'izin' ? `
+                    <p><strong>Alamat Izin:</strong> ${item.alamatIzin || '-'}</p>
+                    <p><strong>Telepon:</strong> ${item.telpIzin || '-'}</p>
+                ` : `
+                    <p><strong>Alamat Cuti:</strong> ${item.alamatCuti || '-'}</p>
+                    <p><strong>Telepon:</strong> ${item.telpCuti || '-'}</p>
+                `}
                 <p><strong>Status:</strong> ${item.status.toUpperCase()}</p>
             </div>
         `);
@@ -600,7 +608,7 @@ const adminReports = {
     async approveLeaveItem(id, source) {
         if (!confirm('Setujui pengajuan ini?')) return;
         try {
-            const action = source === 'leave' ? 'approveLeave' : 'approvePermission';
+            const action = source === 'leave' ? 'approveLeave' : 'approveIzin';
             const res = await api.request(action, { id });
             if (res.success) {
                 toast.success('Pengajuan disetujui');
@@ -614,7 +622,7 @@ const adminReports = {
         const reason = prompt('Masukkan alasan penolakan:');
         if (reason === null) return;
         try {
-            const action = source === 'leave' ? 'rejectLeave' : 'rejectPermission';
+            const action = source === 'leave' ? 'rejectLeave' : 'rejectIzin';
             const res = await api.request(action, { id, reason });
             if (res.success) {
                 toast.success('Pengajuan ditolak');
