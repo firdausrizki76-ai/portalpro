@@ -560,7 +560,7 @@ const cuti = {
             </p>
             </div>
         </body>
-        </html>\`;
+        </html>`;
     }
 };
 
