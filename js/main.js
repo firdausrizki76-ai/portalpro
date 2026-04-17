@@ -199,6 +199,9 @@ var notifications = {
         this.badge = document.getElementById('notification-badge');
         this.dropdown = document.getElementById('notification-dropdown');
         
+        // Setup listeners even if no user yet, so the button is responsive
+        this.setupEventListeners();
+
         const currentUser = auth.getCurrentUser();
         if (!currentUser) return;
 
@@ -227,10 +230,17 @@ var notifications = {
         const btnClose = document.getElementById('btn-close-notifications');
 
         if (btnToggle) {
-            btnToggle.addEventListener('click', (e) => {
+            // Remove old listener if re-initializing
+            if (btnToggle._notifListener) {
+                btnToggle.removeEventListener('click', btnToggle._notifListener);
+            }
+            
+            btnToggle._notifListener = (e) => {
                 e.stopPropagation();
                 this.toggle();
-            });
+            };
+            
+            btnToggle.addEventListener('click', btnToggle._notifListener);
         }
 
         if (btnClear) {

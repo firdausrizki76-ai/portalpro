@@ -242,6 +242,11 @@ const auth = {
                     window.mobile.refreshRoleUI();
                 }
             }
+
+            // Always re-init notifications to ensure listeners are bound and data is correct
+            if (window.notifications) {
+                window.notifications.init();
+            }
         }
     },
 
