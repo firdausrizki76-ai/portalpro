@@ -327,15 +327,18 @@
     /* Hide sidebar on mobile */
     .sidebar {
         position: fixed;
-        left: -280px;
-        top: 0;
-        height: 100vh;
-        z-index: 1000;
-        width: 280px;
-        transition: left 0.3s ease;
-        background: var(--bg-sidebar) !important;
-        box-shadow: var(--shadow-xl);
-        transform: none !important; /* Force override any desktop transforms */
+        left: -280px !important;
+        top: 0 !important;
+        height: 100vh !important;
+        z-index: 10000 !important;
+        width: 280px !important;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        background: var(--bg-sidebar, #ffffff) !important;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.2) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: none !important;
+        visibility: visible !important;
     }
     
     .sidebar.open {
@@ -350,7 +353,7 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
+        z-index: 9999;
         display: none;
     }
     
@@ -853,3 +856,13 @@
         padding: 0;
     }
 }
+
+ / *   A g g r e s s i v e   L o a d e r   F i x   * / 
+ # g l o b a l - l o a d e r . h i d d e n   { 
+         d i s p l a y :   n o n e   ! i m p o r t a n t ; 
+         p o i n t e r - e v e n t s :   n o n e   ! i m p o r t a n t ; 
+         z - i n d e x :   - 1   ! i m p o r t a n t ; 
+         v i s i b i l i t y :   h i d d e n   ! i m p o r t a n t ; 
+ } 
+  
+ 

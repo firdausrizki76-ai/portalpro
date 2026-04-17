@@ -108,25 +108,27 @@ const mobile = {
         const bottomNav = document.getElementById('bottom-nav');
         if (!bottomNav) return;
         
+        // Remove old bottom-nav-item listeners by removing class markers if needed
+        // but cleaner to just bind once.
         const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
+        
         navItems.forEach(item => {
-            // Remove previous listeners to avoid duplicates if re-initialized
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
+            // Check if already bound
+            if (item.dataset.bound) return;
             
-            newItem.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = newItem.dataset.page;
+            item.addEventListener('click', (e) => {
+                const page = item.dataset.page;
                 if (page) {
-                    // Update active state
-                    const allItems = document.querySelectorAll('.bottom-nav-item');
-                    allItems.forEach(n => n.classList.remove('active'));
-                    newItem.classList.add('active');
-                    
-                    // Navigate
+                    e.preventDefault();
+                    console.log('Mobile routing to:', page);
                     router.navigate(page);
+                    
+                    // Force active state update visually
+                    navItems.forEach(n => n.classList.remove('active'));
+                    item.classList.add('active');
                 }
             });
+            item.dataset.bound = "true";
         });
 
         this.refreshRoleUI();
