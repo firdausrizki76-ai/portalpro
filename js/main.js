@@ -354,10 +354,16 @@ var dateTime = {
         return this.formatDate(new Date());
     },
 
-    getLocalDate() {
-        // Returns YYYY-MM-DD for the local timezone, not UTC
+    getLocalDate(offset = 0) {
         const today = new Date();
+        if (offset !== 0) today.setDate(today.getDate() + offset);
         return new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    },
+
+    formatLocalDate(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     },
 
     getGreeting: function() {
