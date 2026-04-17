@@ -18,12 +18,18 @@ const mobile = {
     },
     
     checkMobile() {
+        const wasMobile = this.isMobile;
         this.isMobile = window.innerWidth <= 768;
+        
+        // If transitioning to mobile, ensure UI is refreshed
+        if (this.isMobile && !wasMobile) {
+            this.refreshRoleUI();
+        }
+        
         return this.isMobile;
     },
     
     handleResize() {
-        const wasMobile = this.isMobile;
         this.checkMobile();
         
         // Toggle mobile menu button visibility
@@ -36,17 +42,22 @@ const mobile = {
         const sidebar = document.getElementById('sidebar');
         if (sidebar) {
             if (this.isMobile) {
-                sidebar.classList.remove('open');
-                this.sidebarOpen = false;
+                // Keep classes but ensure transform is handled by CSS
+                this.sidebarOpen = sidebar.classList.contains('open');
             } else {
+                sidebar.classList.remove('open');
                 sidebar.style.transform = '';
+                this.sidebarOpen = false;
             }
         }
         
-        // Toggle bottom nav
+        // Toggle bottom nav visibility
         const bottomNav = document.getElementById('bottom-nav');
         if (bottomNav) {
             bottomNav.style.display = this.isMobile ? 'flex' : 'none';
+            if (this.isMobile) {
+                this.refreshRoleUI();
+            }
         }
         
         // Update tables to cards on mobile
@@ -93,30 +104,47 @@ const mobile = {
         const bottomNav = document.getElementById('bottom-nav');
         if (!bottomNav) return;
         
-        const userRole = (auth.currentUser && auth.currentUser.role === 'admin') ? 'admin' : 'employee';
+        const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
+        navItems.forEach(item => {
+            // Remove previous listeners to avoid duplicates if re-initialized
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+            
+            newItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = newItem.dataset.page;
+                if (page) {
+                    // Update active state
+                    const allItems = document.querySelectorAll('.bottom-nav-item');
+                    allItems.forEach(n => n.classList.remove('active'));
+                    newItem.classList.add('active');
+                    
+                    // Navigate
+                    router.navigate(page);
+                }
+            });
+        });
+
+        this.refreshRoleUI();
+    },
+
+    refreshRoleUI() {
+        const bottomNav = document.getElementById('bottom-nav');
+        if (!bottomNav) return;
+
+        const currentUser = auth.getCurrentUser();
+        const userRole = (currentUser && currentUser.role === 'admin') ? 'admin' : 'employee';
         const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
         
+        console.log('Refreshing Mobile UI for role:', userRole);
+
         navItems.forEach(item => {
-            // Role-based filtering
             const itemRole = item.dataset.role || 'employee';
             if (itemRole !== userRole) {
                 item.style.display = 'none';
             } else {
                 item.style.display = 'flex';
             }
-
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = item.dataset.page;
-                if (page) {
-                    // Update active state
-                    navItems.forEach(n => n.classList.remove('active'));
-                    item.classList.add('active');
-                    
-                    // Navigate
-                    router.navigate(page);
-                }
-            });
         });
     },
     

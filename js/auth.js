@@ -223,7 +223,6 @@ const auth = {
                 // Show admin menu, hide employee menu
                 if (employeeMenu) employeeMenu.classList.add('hidden');
                 if (adminMenu) adminMenu.classList.remove('hidden');
-                if (bottomNav) bottomNav.style.display = 'none';
 
                 // Navigate to admin dashboard
                 router.navigate('admin-dashboard');
@@ -231,15 +230,17 @@ const auth = {
                 // Show employee menu, hide admin menu
                 if (employeeMenu) employeeMenu.classList.remove('hidden');
                 if (adminMenu) adminMenu.classList.add('hidden');
-                if (bottomNav) bottomNav.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
 
                 // Navigate to employee dashboard
                 router.navigate('dashboard');
             }
 
-            // Initialize mobile
+            // Initialize mobile UI
             if (window.mobile) {
                 window.mobile.handleResize();
+                if (typeof window.mobile.refreshRoleUI === 'function') {
+                    window.mobile.refreshRoleUI();
+                }
             }
         }
     },
