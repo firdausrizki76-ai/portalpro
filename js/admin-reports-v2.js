@@ -511,8 +511,7 @@ const adminReports = {
             this.renderJurnalReports();
         });
         this._bind('btn-export-jurnal', 'click', () => this.exportToExcel('jurnal'));
-        this._bind('btn-print-jurnal', 'click', () => window.print());
-        this._bind('btn-download-jurnal-pdf', 'click', () => this.downloadJournalPDF());
+        this._bind('btn-print-jurnal', 'click', () => this.downloadJournalPDF());
     },
 
     bindLeaveEvents() {

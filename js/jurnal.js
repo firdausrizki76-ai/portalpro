@@ -340,13 +340,22 @@ const jurnal = {
             const preview = jurnal.tasks?.substring(0, 60) + '...' || 'Tidak ada deskripsi';
             const hasPhoto = jurnal.photo ? '<span class="photo-badge"><i class="fas fa-image"></i></span>' : '';
 
+            // Thumbnail logic: Show photo if exists, otherwise show date circle
+            const thumbnailHtml = jurnal.photo ? `
+                <div class="jurnal-photo-thumb" onclick="jurnal.viewPhoto('${jurnal.photo}')">
+                    <img src="${jurnal.photo}" alt="Foto Jurnal">
+                </div>
+            ` : `
+                <div class="jurnal-date">
+                    <span class="date-day">${day}</span>
+                    <span class="date-month">${month}</span>
+                </div>
+            `;
+
             return `
                 <div class="jurnal-item">
                     <div class="jurnal-item-header">
-                        <div class="jurnal-date">
-                            <span class="date-day">${day}</span>
-                            <span class="date-month">${month}</span>
-                        </div>
+                        ${thumbnailHtml}
                         <div class="jurnal-meta">
                             <span class="jurnal-day">${dayName}</span>
                             <span class="jurnal-time">${dateTime.formatTime(jurnal.updatedAt)} ${hasPhoto}</span>
@@ -366,6 +375,12 @@ const jurnal = {
                 </div>
             `;
         }).join('');
+    },
+
+    viewPhoto(url) {
+        if (typeof modal !== 'undefined') {
+            modal.show('Foto Dokumentasi', `<img src="${url}" style="width:100%; border-radius:8px;">`);
+        }
     },
 
     updateSummary() {
@@ -458,6 +473,14 @@ const jurnal = {
     editJurnal(date) {
         this.currentDate = new Date(date);
         this.updateUI();
+        
+        // Scroll to form for better UX
+        const formRow = document.querySelector('.jurnal-grid');
+        if (formRow) {
+            formRow.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        toast.info('Silakan edit data pada formulir di atas');
     }
 };
 
