@@ -388,7 +388,11 @@ const jurnal = {
         
         if (typeof loader !== 'undefined') loader.show('Menghapus jurnal...');
         try {
-            const res = await api.request('deleteJournal', { date: date });
+            const currentUser = auth.getCurrentUser();
+            const res = await api.request('deleteJournal', { 
+                userId: currentUser?.id,
+                date: date 
+            });
             if (res.success) {
                 toast.success('Jurnal berhasil dihapus');
                 await this.init(); // Reload
@@ -414,9 +418,10 @@ const jurnal = {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        // Count jurnals for current month
+        // Count jurnals for current month with defensive date parsing
         const monthJurnals = this.jurnals.filter(j => {
             const date = new Date(j.date);
+            if (isNaN(date.getTime())) return false; // Skip bad data like "memancing"
             return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
         });
 
@@ -426,7 +431,6 @@ const jurnal = {
         
         if (filledEl) filledEl.textContent = monthJurnals.length;
         
-        // Simple logic for missed days: working days passed - journals filled
         const today = now.getDate();
         let workingDaysPassed = 0;
         for (let i = 1; i <= today; i++) {
@@ -437,10 +441,11 @@ const jurnal = {
         const missed = Math.max(0, workingDaysPassed - monthJurnals.length);
         if (missedEl) missedEl.textContent = missed;
 
-        // Streak calculation (consecutive days with journals, going backwards from today)
         let streak = 0;
         let d = new Date();
-        const journalDates = this.jurnals.map(j => j.date);
+        const journalDates = this.jurnals
+            .map(j => j.date)
+            .filter(d => !isNaN(new Date(d).getTime())); // Only valid dates
         
         while (true) {
             const iso = d.toISOString().split('T')[0];
@@ -448,7 +453,6 @@ const jurnal = {
                 streak++;
                 d.setDate(d.getDate() - 1);
             } else {
-                // Skip weekends for streak if desired, or just break
                 if (d.getDay() === 0 || d.getDay() === 6) {
                     d.setDate(d.getDate() - 1);
                     continue;
@@ -495,16 +499,50 @@ const jurnal = {
     },
 
     editJurnal(date) {
-        this.currentDate = new Date(date);
-        this.updateUI();
-        
-        // Scroll to form for better UX
-        const formRow = document.querySelector('.jurnal-grid');
-        if (formRow) {
-            formRow.scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        toast.info('Silakan edit data pada formulir di atas');
+        const jurnalData = this.jurnals.find(j => j.date === date);
+        if (!jurnalData) return;
+
+        const modalHtml = `
+            <div class="edit-jurnal-modal">
+                <div class="form-group">
+                    <label>Uraian Laporan Pekerjaan:</label>
+                    <textarea id="edit-jurnal-tasks" class="form-control" rows="4">${jurnalData.tasks || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Hasil Pekerjaan:</label>
+                    <textarea id="edit-jurnal-achievements" class="form-control" rows="4">${jurnalData.achievements || ''}</textarea>
+                </div>
+                <p class="edit-notice">Catatan: Untuk mengedit foto, gunakan formulir utama di halaman Jurnal.</p>
+            </div>
+        `;
+
+        modal.show('Edit Jurnal - ' + date, modalHtml, [
+            { label: 'Batal', class: 'btn-secondary', onClick: () => modal.close() },
+            { label: 'Simpan Perubahan', class: 'btn-primary', onClick: async () => {
+                const tasks = document.getElementById('edit-jurnal-tasks').value;
+                const achievements = document.getElementById('edit-jurnal-achievements').value;
+                
+                modal.close();
+                if (typeof loader !== 'undefined') loader.show('Menyimpan perubahan...');
+                
+                try {
+                    const currentUser = auth.getCurrentUser();
+                    await api.saveJournal({
+                        ...jurnalData,
+                        tasks,
+                        achievements,
+                        userId: currentUser?.id,
+                        updatedAt: new Date().toISOString()
+                    });
+                    toast.success('Jurnal diperbarui!');
+                    await this.init();
+                } catch (e) {
+                    toast.error('Gagal memperbarui jurnal');
+                } finally {
+                    if (typeof loader !== 'undefined') loader.hide();
+                }
+            }}
+        ]);
     }
 };
 
