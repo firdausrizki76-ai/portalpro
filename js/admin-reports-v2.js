@@ -247,18 +247,22 @@ const adminReports = {
         this.leaveData = [
             ...leaves.map(l => {
                 const emp = this.getEmployeeInfo(l.userId);
+                const startDateStr = window.dateTime ? window.dateTime.formatDate(l.startDate, 'short') : l.startDate;
+                const endDateStr = window.dateTime ? window.dateTime.formatDate(l.endDate, 'short') : l.endDate;
                 return {
                     ...l, _source: 'leave', name: emp.name, department: emp.department,
-                    type: l.type === 'annual' ? 'Cuti' : (l.typeLabel || l.type),
-                    dates: l.startDate === l.endDate ? l.startDate : `${l.startDate} - ${l.endDate}`,
-                    duration: l.duration, status: l.status, reason: l.reason
+                    type: l.type === 'annual' ? 'Cuti Tahunan' : (l.typeLabel || l.type || 'Cuti'),
+                    dates: l.startDate === l.endDate ? startDateStr : `${startDateStr} - ${endDateStr}`,
+                    duration: l.duration, status: (l.status || 'pending').toLowerCase(), reason: l.reason
                 };
             }),
             ...izinList.map(i => {
                 const emp = this.getEmployeeInfo(i.userId);
+                const dateStr = window.dateTime ? window.dateTime.formatDate(i.date, 'short') : i.date;
                 return {
                     ...i, _source: 'izin', name: emp.name, department: emp.department,
-                    type: 'Izin', dates: i.date, duration: i.duration, status: i.status, reason: i.reason
+                    type: 'Izin', dates: dateStr, duration: i.duration, 
+                    status: (i.status || 'pending').toLowerCase(), reason: i.reason
                 };
             })
         ];
