@@ -262,7 +262,7 @@ const cuti = {
             list.innerHTML = `
                 <div class="empty-state" style="text-align: center; padding: var(--spacing-xl); color: var(--text-muted);">
                     <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: var(--spacing);"></i>
-                    <p>\${this.filterStatus ? 'Tidak ada pengajuan yang sesuai' : 'Belum ada pengajuan cuti'}</p>
+                    <p>${this.filterStatus ? 'Tidak ada pengajuan yang sesuai' : 'Belum ada pengajuan cuti'}</p>
                 </div>
             `;
             return;
@@ -280,7 +280,7 @@ const cuti = {
 
             let dateDisplay = startFormatted;
             if (leave.startDate !== leave.endDate) {
-                dateDisplay = `\${startFormatted} - \${endFormatted}`;
+                dateDisplay = `${startFormatted} - ${endFormatted}`;
             }
 
             const icons = {
@@ -294,23 +294,23 @@ const cuti = {
             return `
                 <div class="leave-item">
                     <div class="leave-icon">
-                        <i class="fas \${icons[leave.type] || 'fa-calendar'}"></i>
+                        <i class="fas ${icons[leave.type] || 'fa-calendar'}"></i>
                     </div>
                     <div class="leave-content">
                         <div class="leave-header">
-                            <h4 class="leave-type">\${leave.typeLabel}</h4>
+                            <h4 class="leave-type">${leave.typeLabel}</h4>
                             <div class="leave-actions-row">
-                                <span class="leave-status \${leave.status}">\${this.getStatusLabel(leave.status)}</span>
+                                <span class="leave-status ${leave.status}">${this.getStatusLabel(leave.status)}</span>
                             </div>
                         </div>
                         <div class="leave-details">
                             <span class="leave-date">
                                 <i class="fas fa-calendar"></i>
-                                \${dateDisplay} (\${leave.duration} hari)
+                                ${dateDisplay} (${leave.duration} hari)
                             </span>
                         </div>
-                        <p class="leave-reason">\${leave.reason}</p>
-                        <button class="btn-export-word-large" onclick="cuti.exportToWord(\${leave.id})">
+                        <p class="leave-reason">${leave.reason}</p>
+                        <button class="btn-export-word-large" onclick="cuti.exportToWord(${leave.id})">
                             <i class="fas fa-file-word"></i>
                             <span>Unduh Dokumen Word</span>
                         </button>
@@ -390,7 +390,7 @@ const cuti = {
             
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Form_Cuti_\${item.employeeName || 'Pegawai'}.doc`;
+            link.download = `Form_Cuti_${item.employeeName || 'Pegawai'}.doc`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -454,7 +454,7 @@ const cuti = {
                 <tr>
                     <td width="55%"></td>
                     <td>
-                        <p class="MsoNormal">Depok, \${todayStr}</p>
+                        <p class="MsoNormal">Depok, ${todayStr}</p>
                         <p class="MsoNormal">Kepada</p>
                         <p class="MsoNormal">Yth. Kasubag UPEP & Kepegawaian</p>
                         <p class="MsoNormal">Di</p>
@@ -468,12 +468,12 @@ const cuti = {
             <table>
                 <tr><td colspan="4" class="section-title"><p class="MsoNormal">I. DATA PEGAWAI</p></td></tr>
                 <tr>
-                    <td width="15%"><p class="MsoNormal">Nama</p></td><td width="35%"><p class="MsoNormal">\${item.employeeName || '-'}</p></td>
-                    <td width="15%"><p class="MsoNormal">NIP</p></td><td><p class="MsoNormal">\${item.nip || '-'}</p></td>
+                    <td width="15%"><p class="MsoNormal">Nama</p></td><td width="35%"><p class="MsoNormal">${item.employeeName || '-'}</p></td>
+                    <td width="15%"><p class="MsoNormal">NIP</p></td><td><p class="MsoNormal">${item.nip || '-'}</p></td>
                 </tr>
                 <tr>
-                    <td><p class="MsoNormal">Jabatan</p></td><td><p class="MsoNormal">\${item.jabatan || '-'}</p></td>
-                    <td><p class="MsoNormal">Masa Kerja</p></td><td><p class="MsoNormal">\${item.masaKerja || '-'}</p></td>
+                    <td><p class="MsoNormal">Jabatan</p></td><td><p class="MsoNormal">${item.jabatan || '-'}</p></td>
+                    <td><p class="MsoNormal">Masa Kerja</p></td><td><p class="MsoNormal">${item.masaKerja || '-'}</p></td>
                 </tr>
                 <tr>
                     <td><p class="MsoNormal">Unit Kerja</p></td><td colspan="3"><p class="MsoNormal">UPEP</p></td>
@@ -483,42 +483,42 @@ const cuti = {
             <table>
                 <tr><td colspan="4" class="section-title"><p class="MsoNormal">II. JENIS CUTI YANG DIAMBIL **</p></td></tr>
                 <tr>
-                    <td width="40%"><p class="MsoNormal">1. Cuti Tahunan</p></td><td width="10%" class="center"><p class="MsoNormal">\${check(item.type, 'annual')}</p></td>
-                    <td width="40%"><p class="MsoNormal">2. Cuti Besar</p></td><td width="10%" class="center"><p class="MsoNormal">\${check(item.type, 'large')}</p></td>
+                    <td width="40%"><p class="MsoNormal">1. Cuti Tahunan</p></td><td width="10%" class="center"><p class="MsoNormal">${check(item.type, 'annual')}</p></td>
+                    <td width="40%"><p class="MsoNormal">2. Cuti Besar</p></td><td width="10%" class="center"><p class="MsoNormal">${check(item.type, 'large')}</p></td>
                 </tr>
                 <tr>
-                    <td><p class="MsoNormal">3. Cuti Sakit</p></td><td class="center"><p class="MsoNormal">\${check(item.type, 'sick')}</p></td>
-                    <td><p class="MsoNormal">4. Cuti Melahirkan</p></td><td class="center"><p class="MsoNormal">\${check(item.type, 'maternity')}</p></td>
+                    <td><p class="MsoNormal">3. Cuti Sakit</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'sick')}</p></td>
+                    <td><p class="MsoNormal">4. Cuti Melahirkan</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'maternity')}</p></td>
                 </tr>
                 <tr>
-                    <td><p class="MsoNormal">5. Cuti Karena Alasan Penting</p></td><td class="center"><p class="MsoNormal">\${check(item.type, 'important')}</p></td>
-                    <td><p class="MsoNormal">6. Cuti di Luar Tanggungan Negara</p></td><td class="center"><p class="MsoNormal">\${check(item.type, 'other')}</p></td>
+                    <td><p class="MsoNormal">5. Cuti Karena Alasan Penting</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'important')}</p></td>
+                    <td><p class="MsoNormal">6. Cuti di Luar Tanggungan Negara</p></td><td class="center"><p class="MsoNormal">${check(item.type, 'other')}</p></td>
                 </tr>
             </table>
 
             <table>
                 <tr><td class="section-title"><p class="MsoNormal">III. ALASAN CUTI</p></td></tr>
-                <tr><td style="height: 40px;"><p class="MsoNormal">\${item.reason || ''}</p></td></tr>
+                <tr><td style="height: 40px;"><p class="MsoNormal">${item.reason || ''}</p></td></tr>
             </table>
 
             <table>
                 <tr><td colspan="6" class="section-title"><p class="MsoNormal">IV. LAMANYA CUTI</p></td></tr>
                 <tr>
-                    <td width="10%"><p class="MsoNormal">Selama</p></td><td width="15%" class="center"><p class="MsoNormal">\${item.duration} hari</p></td>
-                    <td width="15%"><p class="MsoNormal">Mulai tgl</p></td><td width="20%" class="center"><p class="MsoNormal">\${startStr}</p></td>
-                    <td width="5%"><p class="MsoNormal">s/d</p></td><td width="35%" class="center"><p class="MsoNormal">\${endStr}</p></td>
+                    <td width="10%"><p class="MsoNormal">Selama</p></td><td width="15%" class="center"><p class="MsoNormal">${item.duration} hari</p></td>
+                    <td width="15%"><p class="MsoNormal">Mulai tgl</p></td><td width="20%" class="center"><p class="MsoNormal">${startStr}</p></td>
+                    <td width="5%"><p class="MsoNormal">s/d</p></td><td width="35%" class="center"><p class="MsoNormal">${endStr}</p></td>
                 </tr>
             </table>
 
             <table>
                 <tr><td colspan="5" class="section-title"><p class="MsoNormal">V. ALAMAT SELAMA MENJALANKAN CUTI</p></td></tr>
                 <tr>
-                    <td width="60%" style="height: 60px;"><p class="MsoNormal">\${item.address || ''}</p></td>
+                    <td width="60%" style="height: 60px;"><p class="MsoNormal">${item.address || ''}</p></td>
                     <td width="40%">
-                        <p class="MsoNormal">TELP: \${item.phone || ''}</p>
+                        <p class="MsoNormal">TELP: ${item.phone || ''}</p>
                         <p class="MsoNormal">Hormat saya,</p>
                         <p class="MsoNormal"><br><br></p>
-                        <p class="MsoNormal"><b>\${item.employeeName || ''}</b></p>
+                        <p class="MsoNormal"><b>${item.employeeName || ''}</b></p>
                     </td>
                 </tr>
             </table>
@@ -531,8 +531,8 @@ const cuti = {
                         <div style="text-align: right; padding-right: 20px;">
                             <p class="MsoNormal">Kasubag UPEP & Kepegawaian</p>
                             <p class="MsoNormal"><br><br></p>
-                            <p class="MsoNormal"><b><u>\${config.signature_kasubag_name || '...'}</u></b></p>
-                            <p class="MsoNormal">NIP. \${config.signature_kasubag_nip || '...'}</p>
+                            <p class="MsoNormal"><b><u>${config.signature_kasubag_name || '...'}</u></b></p>
+                            <p class="MsoNormal">NIP. ${config.signature_kasubag_nip || '...'}</p>
                         </div>
                     </td>
                 </tr>
@@ -546,8 +546,8 @@ const cuti = {
                         <div style="text-align: right; padding-right: 20px;">
                             <p class="MsoNormal"><b>CAMAT CINERE</b></p>
                             <p class="MsoNormal"><br><br></p>
-                            <p class="MsoNormal"><b><u>\${config.signature_camat_name || '...'}</u></b></p>
-                            <p class="MsoNormal">NIP. \${config.signature_camat_nip || '...'}</p>
+                            <p class="MsoNormal"><b><u>${config.signature_camat_name || '...'}</u></b></p>
+                            <p class="MsoNormal">NIP. ${config.signature_camat_nip || '...'}</p>
                         </div>
                     </td>
                 </tr>
