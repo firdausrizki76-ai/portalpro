@@ -454,44 +454,7 @@ const jurnal = {
         const streakEl = document.getElementById('jurnal-streak-days');
         if (streakEl) streakEl.textContent = streak;
     },
-        const workingDaysPassed = Math.min(today, 26); // Assume ~26 working days per month
 
-        // Calculate streak
-        let streak = 0;
-        const sortedDates = [...this.jurnals]
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .map(j => j.date);
-
-        if (sortedDates.length > 0) {
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-            if (sortedDates[0] === today || sortedDates[0] === yesterdayStr) {
-                streak = 1;
-                for (let i = 1; i < sortedDates.length; i++) {
-                    const curr = new Date(sortedDates[i - 1]);
-                    const prev = new Date(sortedDates[i]);
-                    const diff = (curr - prev) / (1000 * 60 * 60 * 24);
-
-                    if (diff === 1) {
-                        streak++;
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Update UI
-        const summaryItems = document.querySelectorAll('.summary-value');
-        if (summaryItems.length >= 3) {
-            summaryItems[0].textContent = filledCount;
-            summaryItems[1].textContent = Math.max(0, workingDaysPassed - filledCount);
-            summaryItems[2].textContent = streak;
-        }
-    },
 
     viewDetail(date) {
         const jurnal = this.jurnals.find(j => j.date === date);
