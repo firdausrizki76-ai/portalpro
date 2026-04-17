@@ -210,8 +210,9 @@ const jurnal = {
 
         // Reset photo after save
         this.currentPhoto = null;
-        this.hidePhotoPreview();
+        this.removePhoto();
 
+        await this.loadJurnals(); // Reload data
         this.renderJurnalList();
         this.updateSummary();
         this.updateStatusBadge('filled');
@@ -219,12 +220,14 @@ const jurnal = {
 
     updateUI() {
         const dateDisplay = document.getElementById('jurnal-current-date');
+        const today = new Date().toISOString().split('T')[0];
+        const dateStr = this.currentDate.toISOString().split('T')[0];
+
         if (dateDisplay) {
             dateDisplay.textContent = dateTime.formatDate(this.currentDate, 'short');
         }
 
         // Load jurnal for current date if exists
-        const dateStr = this.currentDate.toISOString().split('T')[0];
         const jurnal = this.jurnals.find(j => j.date === dateStr);
 
         const tasksEl = document.getElementById('jurnal-tasks');
@@ -237,22 +240,22 @@ const jurnal = {
             // Load existing photo
             if (jurnal.photo) {
                 this.currentPhoto = jurnal.photo;
-                this.updatePhotoPreview(jurnal.photo);
+                this.showPhotoPreview();
             } else {
                 this.currentPhoto = null;
-                this.hidePhotoPreview();
+                this.removePhoto();
             }
 
             this.updateStatusBadge('filled');
         } else {
-            // Reset photo
-            this.currentPhoto = null;
-            this.hidePhotoPreview();
+            // Reset fields
             if (tasksEl) tasksEl.value = '';
             if (achievementsEl) achievementsEl.value = '';
+            
+            // Reset photo
+            this.currentPhoto = null;
+            this.removePhoto();
 
-            // Check if date is today or future
-            const today = new Date().toISOString().split('T')[0];
             if (dateStr === today) {
                 this.updateStatusBadge('empty');
             } else if (dateStr > today) {
@@ -334,10 +337,12 @@ const jurnal = {
 
         list.innerHTML = recentJurnals.map(jurnal => {
             const date = new Date(jurnal.date);
-            const dayName = dateTime.formatDate(date, 'day');
-            const day = date.getDate();
-            const month = date.toLocaleDateString('id-ID', { month: 'short' });
-            const preview = jurnal.tasks?.substring(0, 60) + '...' || 'Tidak ada deskripsi';
+            const isValidDate = !isNaN(date.getTime());
+            
+            const dayName = isValidDate ? dateTime.formatDate(date, 'day') : '-';
+            const day = isValidDate ? date.getDate() : '-';
+            const month = isValidDate ? date.toLocaleDateString('id-ID', { month: 'short' }) : '-';
+            const preview = jurnal.tasks ? (jurnal.tasks.substring(0, 60) + (jurnal.tasks.length > 60 ? '...' : '')) : 'Tidak ada deskripsi';
             // Thumbnail logic: Show photo if exists, otherwise show date circle
             const thumbnailHtml = jurnal.photo ? `
                 <div class="jurnal-photo-thumb" onclick="jurnal.viewPhoto('${jurnal.photo}')" style="width: 45px; height: 45px; border-radius: 8px; overflow: hidden; margin-right: 12px; cursor: pointer;">
@@ -383,7 +388,7 @@ const jurnal = {
         
         if (typeof loader !== 'undefined') loader.show('Menghapus jurnal...');
         try {
-            const res = await api.call('deleteJournal', { date: date });
+            const res = await api.request('deleteJournal', { date: date });
             if (res.success) {
                 toast.success('Jurnal berhasil dihapus');
                 await this.init(); // Reload
