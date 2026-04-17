@@ -356,7 +356,7 @@ const jurnal = {
                         ${thumbnailHtml}
                         <div class="jurnal-meta">
                             <span class="jurnal-day">${dayName}</span>
-                            <span class="jurnal-time">${dateTime.formatTime(jurnal.updatedAt)} ${hasPhoto}</span>
+                            <span class="jurnal-time">${dateTime.formatTime(jurnal.updatedAt)}</span>
                         </div>
                     </div>
                     <div class="jurnal-content">
