@@ -306,7 +306,6 @@ const cuti = {
                         <div class="leave-header">
                             <h4 class="leave-type">${leave.typeLabel}</h4>
                             <div class="leave-actions-row">
-                                <button class="btn-export-doc" title="Unduh Word" onclick="cuti.exportToWord(${leave.id})"><i class="fas fa-file-word"></i></button>
                                 <span class="leave-status ${leave.status}">${this.getStatusLabel(leave.status)}</span>
                             </div>
                         </div>
@@ -317,6 +316,10 @@ const cuti = {
                             </span>
                         </div>
                         <p class="leave-reason">${leave.reason}</p>
+                        <button class="btn-export-word-large" onclick="cuti.exportToWord(${leave.id})">
+                            <i class="fas fa-file-word"></i>
+                            <span>Unduh Dokumen Word</span>
+                        </button>
                     </div>
                 </div>
             `;
@@ -426,17 +429,19 @@ const cuti = {
         <head>
             <meta charset="utf-8">
             <style>
-                body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.2; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-                th, td { border: 1px solid black; padding: 4px; text-align: left; vertical-align: top; }
-                .no-border td { border: none; padding: 1px; }
+                body { font-family: 'Times New Roman', serif; font-size: 10.5pt; line-height: 1.0; margin: 0; padding: 0; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+                th, td { border: 1px solid black; padding: 3px; text-align: left; vertical-align: top; }
+                .no-border { border: none !important; }
+                .no-border td { border: none !important; padding: 1px; }
                 .center { text-align: center; }
-                .header-table { border: none; margin-bottom: 20px; }
+                .header-table { border: none; margin-bottom: 10px; }
                 .header-table td { border: none; padding: 0; }
-                .title { font-weight: bold; text-decoration: underline; margin-bottom: 10px; text-align: center; display: block; }
-                .section-title { font-weight: bold; background-color: #f2f2f2; }
-                .signature-box { width: 100%; border: none; margin-top: 15px; }
+                .title { font-weight: bold; text-decoration: underline; margin-bottom: 8px; text-align: center; display: block; }
+                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 10pt; }
+                .signature-box { width: 100%; border: none; margin-top: 10px; }
                 .signature-box td { border: none; text-align: center; }
+                .checkbox-group { display: flex; justify-content: space-between; gap: 10px; }
             </style>
         </head>
         <body>
@@ -532,14 +537,17 @@ const cuti = {
             <table>
                 <tr><td class="section-title">VII. PERTIMBANGAN ATASAN LANGSUNG**</td></tr>
                 <tr>
-                    <td style="border: none;">
-                        <table class="no-border">
-                            <tr><td>DISETUJUI</td><td>PERUBAHAN****</td><td>DITANGGUHKAN****</td><td>TIDAK DISETUJUI****</td></tr>
-                            <tr><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td></tr>
+                    <td>
+                        <table class="no-border" style="width: 100%;">
+                            <tr>
+                                <td width="25%">[ &nbsp; ] DISETUJUI</td>
+                                <td width="25%">[ &nbsp; ] PERUBAHAN****</td>
+                                <td width="25%">[ &nbsp; ] DITANGGUHKAN****</td>
+                                <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
+                            </tr>
                         </table>
-                        <br>
-                        <div style="text-align: right; padding-right: 20px;">
-                            Kasubag UPEP & Kepegawaian<br><br><br><br>
+                        <div style="text-align: right; padding-right: 20px; margin-top: 50px;">
+                            Kasubag UPEP & Kepegawaian<br><br><br>
                             <b><u>${config.signature_kasubag_name || '...'}</u></b><br>
                             NIP. ${config.signature_kasubag_nip || '...'}
                         </div>
@@ -550,14 +558,17 @@ const cuti = {
             <table>
                 <tr><td class="section-title">VIII. KEPUTUSAN PEJABAT YANG BERWENANG MEMBERIKAN CUTI**</td></tr>
                 <tr>
-                    <td style="border: none;">
-                        <table class="no-border">
-                            <tr><td>DISETUJUI</td><td>PERUBAHAN****</td><td>DITANGGUHKAN****</td><td>TIDAK DISETUJUI****</td></tr>
-                            <tr><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td><td>[ &nbsp; ]</td></tr>
+                    <td>
+                        <table class="no-border" style="width: 100%;">
+                            <tr>
+                                <td width="25%">[ &nbsp; ] DISETUJUI</td>
+                                <td width="25%">[ &nbsp; ] PERUBAHAN****</td>
+                                <td width="25%">[ &nbsp; ] DITANGGUHKAN****</td>
+                                <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
+                            </tr>
                         </table>
-                        <br>
-                        <div style="text-align: right; padding-right: 20px;">
-                            <b>CAMAT CINERE</b><br><br><br><br>
+                        <div style="text-align: right; padding-right: 20px; margin-top: 50px;">
+                            <b>CAMAT CINERE</b><br><br><br>
                             <b><u>${config.signature_camat_name || '...'}</u></b><br>
                             NIP. ${config.signature_camat_nip || '...'}
                         </div>
