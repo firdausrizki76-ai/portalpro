@@ -302,8 +302,9 @@ const izin = {
         );
 
         list.innerHTML = sortedData.map(izin => {
-            const date = new Date(izin.date);
-            const dateFormatted = dateTime.formatDate(date, 'short');
+            const dateObj = new Date(izin.date);
+            const isValid = !isNaN(dateObj.getTime());
+            const dateFormatted = isValid ? dateTime.formatDate(dateObj, 'short') : '-';
 
             const icons = {
                 'sick': 'fa-heartbeat',

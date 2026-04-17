@@ -273,13 +273,18 @@ const cuti = {
         );
 
         list.innerHTML = sortedLeaves.map(leave => {
-            const start = new Date(leave.startDate);
-            const end = new Date(leave.endDate);
-            const startFormatted = dateTime.formatDate(start, 'short');
-            const endFormatted = dateTime.formatDate(end, 'short');
+            const startStr = leave.startDate || leave.date;
+            const endStr = leave.endDate || leave.startDate || leave.date;
+            
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            
+            const isValid = !isNaN(start.getTime()) && !isNaN(end.getTime());
+            const startFormatted = isValid ? dateTime.formatDate(start, 'short') : '-';
+            const endFormatted = isValid ? dateTime.formatDate(end, 'short') : '-';
 
             let dateDisplay = startFormatted;
-            if (leave.startDate !== leave.endDate) {
+            if (isValid && leave.startDate !== leave.endDate) {
                 dateDisplay = `${startFormatted} - ${endFormatted}`;
             }
 
