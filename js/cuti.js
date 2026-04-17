@@ -429,17 +429,18 @@ const cuti = {
         <head>
             <meta charset="utf-8">
             <style>
-                body { font-family: 'Times New Roman', serif; font-size: 10.5pt; line-height: 1.0; margin: 0; padding: 0; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
-                th, td { border: 1px solid black; padding: 3px; text-align: left; vertical-align: top; }
+                @page { size: 215.9mm 330.2mm; margin: 10mm; }
+                body { font-family: 'Times New Roman', serif; font-size: 9.5pt; line-height: 0.95; margin: 0; padding: 0; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+                th, td { border: 1px solid black; padding: 2px 4px; text-align: left; vertical-align: top; }
                 .no-border { border: none !important; }
                 .no-border td { border: none !important; padding: 1px; }
                 .center { text-align: center; }
-                .header-table { border: none; margin-bottom: 10px; }
+                .header-table { border: none; margin-bottom: 5px; }
                 .header-table td { border: none; padding: 0; }
-                .title { font-weight: bold; text-decoration: underline; margin-bottom: 8px; text-align: center; display: block; }
-                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 10pt; }
-                .signature-box { width: 100%; border: none; margin-top: 10px; }
+                .title { font-weight: bold; text-decoration: underline; margin-bottom: 5px; text-align: center; display: block; font-size: 10pt; }
+                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 9pt; height: 15px; }
+                .signature-box { width: 100%; border: none; margin-top: 5px; }
                 .signature-box td { border: none; text-align: center; }
                 .checkbox-group { display: flex; justify-content: space-between; gap: 10px; }
             </style>
@@ -546,7 +547,7 @@ const cuti = {
                                 <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
                             </tr>
                         </table>
-                        <div style="text-align: right; padding-right: 20px; margin-top: 50px;">
+                        <div style="text-align: right; padding-right: 20px; margin-top: 30px;">
                             Kasubag UPEP & Kepegawaian<br><br><br>
                             <b><u>${config.signature_kasubag_name || '...'}</u></b><br>
                             NIP. ${config.signature_kasubag_nip || '...'}
@@ -567,7 +568,7 @@ const cuti = {
                                 <td width="25%">[ &nbsp; ] TIDAK DISETUJUI****</td>
                             </tr>
                         </table>
-                        <div style="text-align: right; padding-right: 20px; margin-top: 50px;">
+                        <div style="text-align: right; padding-right: 20px; margin-top: 30px;">
                             <b>CAMAT CINERE</b><br><br><br>
                             <b><u>${config.signature_camat_name || '...'}</u></b><br>
                             NIP. ${config.signature_camat_nip || '...'}
