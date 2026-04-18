@@ -24,7 +24,12 @@ const adminReports = {
      */
     _bind(id, event, fn) {
         const el = document.getElementById(id);
-        if (el) el.addEventListener(event, fn);
+        if (el) {
+            // Remove existing to prevent multiple registrations (spam)
+            const new_el = el.cloneNode(true);
+            el.parentNode.replaceChild(new_el, el);
+            new_el.addEventListener(event, fn);
+        }
     },
 
     /**
@@ -540,7 +545,7 @@ const adminReports = {
             this.renderLeaveReports();
         });
         this._bind('btn-export-leave', 'click', () => this.exportToExcel('leave'));
-        this._bind('btn-print-leave', 'click', () => window.print());
+        this._bind('btn-print-leave', 'click', () => this.downloadLeavePDF());
     },
 
     /**
@@ -850,6 +855,42 @@ const adminReports = {
         toast.success(`Data ${type} berhasil diekspor ke Excel (Tidy Cells)`);
     },
 
+    getFilteredAttendance() {
+        const dept = this.filters.attendance.dept.toLowerCase();
+        const status = this.filters.attendance.status.toLowerCase();
+        
+        return this.attendanceData.filter(d => {
+            const matchDept = !dept || (d.department || '').toLowerCase() === dept;
+            const matchStatus = !status || 
+                (status === 'hadir' && d.present > 0) ||
+                (status === 'telat' && d.late > 0) ||
+                (status === 'tidak hadir' && d.absent > 0);
+            return matchDept && matchStatus;
+        });
+    },
+
+    getFilteredJurnal() {
+        const emp = this.filters.jurnal.employee.toLowerCase();
+        const status = this.filters.jurnal.status.toLowerCase();
+        
+        return this.jurnalData.filter(d => {
+            const matchEmp = !emp || (d.employeeName || '').toLowerCase() === emp;
+            const matchStatus = !status || (d.status || '').toLowerCase() === status;
+            return matchEmp && matchStatus;
+        });
+    },
+
+    getFilteredLeave() {
+        const typeFilter = this.filters.leave.type.toLowerCase();
+        const status = this.filters.leave.status.toLowerCase();
+        
+        return this.leaveData.filter(d => {
+            const matchType = !typeFilter || (d.type || '').toLowerCase() === typeFilter;
+            const matchStatus = !status || (d.status || '').toLowerCase() === status;
+            return matchType && matchStatus;
+        });
+    },
+
     async downloadAttendancePDF() {
         const month = this.filters.attendance.month;
         if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Absensi PDF...');
@@ -860,33 +901,59 @@ const adminReports = {
             });
 
             if (res.success && res.data) {
-                const byteCharacters = atob(res.data);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'application/pdf' });
-                
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = res.filename || `Rekap_Absensi_${month}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-                
-                toast.success('Pencetakan Rekap Absensi Berhasil!');
+                this._downloadBase64PDF(res.data, res.filename || `Rekap_Absensi_${month}.pdf`);
+                toast.success('Rekap Absensi Berhasil Diunduh!');
             } else {
                 toast.error(res.error || 'Gagal mengunduh PDF Recap');
             }
         } catch (e) {
             console.error('Error downloading Attendance PDF:', e);
-            toast.error('Terjadi kesalahan saat mengunduh PDF');
+            toast.error('Terjadi kesalahan sistem');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
+    },
+
+    async downloadLeavePDF() {
+        const month = this.filters.leave.month;
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Cuti/Izin PDF...');
+
+        try {
+            const res = await api.request('downloadLeavePDF', {
+                month: month
+            });
+
+            if (res.success && res.data) {
+                this._downloadBase64PDF(res.data, res.filename || `Rekap_Cuti_Izin_${month}.pdf`);
+                toast.success('Rekap Cuti & Izin Berhasil Diunduh!');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh PDF');
+            }
+        } catch (e) {
+            console.error('Error downloading Leave PDF:', e);
+            toast.error('Terjadi kesalahan sistem');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    _downloadBase64PDF(base64Data, filename) {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     },
 
     viewPhoto(url) {
