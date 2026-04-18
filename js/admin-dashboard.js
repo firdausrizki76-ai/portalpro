@@ -370,16 +370,43 @@ const adminDashboard = {
 
         const presentData = new Array(daysToCover).fill(0);
         const lateData = new Array(daysToCover).fill(0);
+        const noClockInData = new Array(daysToCover).fill(0);
+        const noClockOutData = new Array(daysToCover).fill(0);
 
-        this.attendance.forEach(att => {
-            const idx = datesIso.indexOf(att.date);
-            if (idx !== -1) {
-                if (att.status && (att.status.toLowerCase() === 'terlambat' || att.status.toLowerCase() === 'late')) {
-                    lateData[idx]++;
-                } else if (att.clockIn) {
-                    presentData[idx]++;
+        const totalEmployees = this.employees.length;
+
+        datesIso.forEach((isoDate, idx) => {
+            const dayAttendance = this.attendance.filter(a => a.date === isoDate);
+            let dayLate = 0;
+            let dayPresent = 0;
+            let dayNoClockOut = 0;
+
+            dayAttendance.forEach(att => {
+                if (att.clockIn) {
+                    if (att.status && (att.status.toLowerCase() === 'terlambat' || att.status.toLowerCase() === 'late')) {
+                        dayLate++;
+                    } else {
+                        dayPresent++;
+                    }
+                    
+                    if (!att.clockOut) {
+                        dayNoClockOut++;
+                    }
                 }
-            }
+            });
+
+            presentData[idx] = dayPresent;
+            lateData[idx] = dayLate;
+            noClockOutData[idx] = dayNoClockOut;
+
+            // Calculate No Clock In (Absent)
+            // Need to account for those on leave on this physical date
+            const dayLeaves = this.leaves.filter(l => l.status === 'approved' && l.startDate <= isoDate && l.endDate >= isoDate).length;
+            const dayIzin = this.izin.filter(i => i.status === 'approved' && i.date === isoDate).length;
+            const totalOnLeave = dayLeaves + dayIzin;
+            const totalPresent = dayLate + dayPresent;
+            
+            noClockInData[idx] = Math.max(0, totalEmployees - totalPresent - totalOnLeave);
         });
 
         this._attendanceChart = new Chart(ctx, {
@@ -391,11 +418,25 @@ const adminDashboard = {
                         label: 'Tepat Waktu',
                         data: presentData, 
                         backgroundColor: '#10B981',
+                        stack: 'attendance'
                     },
                     {
                         label: 'Terlambat',
                         data: lateData,
                         backgroundColor: '#EF4444',
+                        stack: 'attendance'
+                    },
+                    {
+                        label: 'Tidak Absen Masuk',
+                        data: noClockInData,
+                        backgroundColor: '#F59E0B',
+                        stack: 'attendance'
+                    },
+                    {
+                        label: 'Tidak Absen Pulang',
+                        data: noClockOutData,
+                        backgroundColor: '#ea580c',
+                        stack: 'secondary'
                     }
                 ]
             },
@@ -405,6 +446,12 @@ const adminDashboard = {
                 scales: {
                     x: { stacked: true },
                     y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
                 }
             }
         });
