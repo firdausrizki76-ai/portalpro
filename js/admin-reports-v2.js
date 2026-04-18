@@ -504,7 +504,7 @@ const adminReports = {
             this.renderAttendanceReports();
         });
         this._bind('btn-export-attendance', 'click', () => this.exportToExcel('attendance'));
-        this._bind('btn-print-attendance', 'click', () => window.print());
+        this._bind('btn-print-attendance', 'click', () => this.downloadAttendancePDF());
     },
 
     bindJurnalEvents() {
@@ -774,31 +774,107 @@ const adminReports = {
         if (type === 'attendance') {
             const raw = this.getFilteredAttendance();
             data = raw.map(r => ({
-                Nama: r.name,
-                Bidang: r.department,
+                'Nama Karyawan': r.name,
+                'Bidang': r.department,
                 'Hadir (On-Time)': r.present,
                 'Terlambat': r.late,
-                'Tanpa Absen Masuk': r.noClockIn,
-                'Tanpa Absen Pulang': r.noClockOut,
-                'Cuti/Izin': r.absent,
+                'Tanpa Absen Masuk (TAM)': r.noClockIn,
+                'Tanpa Absen Pulang (TAP)': r.noClockOut,
+                'Cuti/Izin/Sakit': r.absent,
                 'Total Hari Kerja': r.total
             }));
         }
-        else if (type === 'jurnal') data = this.getFilteredJurnal();
-        else if (type === 'leave') data = this.getFilteredLeave();
+        else if (type === 'jurnal') {
+            const raw = this.getFilteredJurnal();
+            data = raw.map(r => ({
+                'Tanggal': r.date,
+                'Nama Pegawai': r.employeeName,
+                'Bidang': r.department,
+                'Laporan Pekerjaan (Tugas)': r.tasks,
+                'Status': r.status.toUpperCase()
+            }));
+        }
+        else if (type === 'leave') {
+            const raw = this.getFilteredLeave();
+            data = raw.map(r => ({
+                'Nama Pegawai': r.name,
+                'Bidang': r.department,
+                'Jenis': r.type,
+                'Tanggal': r.dates,
+                'Durasi (Hari)': r.duration,
+                'Alasan': r.reason,
+                'Status': r.status.toUpperCase()
+            }));
+        }
 
-        const headers = data.length > 0 ? Object.keys(data[0]).join(',') : '';
-        const rows = data.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-        const csv = headers + '\n' + rows;
+        if (data.length === 0) {
+            toast.warning('Tidak ada data untuk diexport');
+            return;
+        }
 
-        const blob = new Blob([csv], { type: 'text/csv' });
+        // To ensure Excel opens the CSV correctly with columns (tidy cells),
+        // we use a UTF-8 BOM and a semicolon or comma. 
+        // Comma is standard, but we'll use a BOM to help Excel recognize UTF-8.
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map(r => Object.values(r).map(v => {
+            // Escape quotes and wrap in quotes
+            const val = String(v).replace(/"/g, '""');
+            return `"${val}"`;
+        }).join(',')).join('\n');
+        
+        const csvContent = "\uFEFF" + headers + '\n' + rows;
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
+        a.setAttribute('href', url);
+        a.setAttribute('download', filename);
+        a.style.visibility = 'hidden';
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        toast.success('Data berhasil diekspor');
+        
+        toast.success(`Data ${type} berhasil diekspor ke Excel`);
+    },
+
+    async downloadAttendancePDF() {
+        const month = this.filters.attendance.month;
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Absensi PDF...');
+
+        try {
+            const res = await api.request('downloadAttendancePDF', {
+                month: month
+            });
+
+            if (res.success && res.data) {
+                const byteCharacters = atob(res.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = res.filename || `Rekap_Absensi_${month}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                toast.success('Pencetakan Rekap Absensi Berhasil!');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh PDF Recap');
+            }
+        } catch (e) {
+            console.error('Error downloading Attendance PDF:', e);
+            toast.error('Terjadi kesalahan saat mengunduh PDF');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
     },
 
     viewPhoto(url) {
