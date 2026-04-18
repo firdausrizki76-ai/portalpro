@@ -149,7 +149,10 @@ const adminDashboard = {
             };
 
             if (att.clockIn) {
-                const sk = dateTime.getSortKey(att.date, att.clockIn);
+                // Formatting sortKey as YYYY-MM-DD HH:mm:SS for string comparison
+                const time = (att.clockIn || '00:00').replace('.', ':');
+                const sk = `${att.date} ${time}:00`;
+                
                 events.push({
                     id: `in_${att.date}_${name}`,
                     user: name,
@@ -160,7 +163,9 @@ const adminDashboard = {
                 });
             }
             if (att.clockOut) {
-                const sk = dateTime.getSortKey(att.date, att.clockOut);
+                const time = (att.clockOut || '00:00').replace('.', ':');
+                const sk = `${att.date} ${time}:00`;
+                
                 events.push({
                     id: `out_${att.date}_${name}`,
                     user: name,
@@ -176,11 +181,11 @@ const adminDashboard = {
         this.leaves.forEach(l => {
              const name = this.getEmployeeName(l);
              const leaveDate = l.startDate || l.date;
-             if (!leaveDate) return; // Skip if no date
+             if (!leaveDate) return; 
              
-             // For leaves, use appliedAt date for the sort key. 
-             // If missing, use today's date but DO NOT use the future leaveDate.
-             let sk = l.appliedAt ? dateTime.getSortKey(l.appliedAt) : dateTime.getSortKey(new Date().toISOString());
+             // To satisfy the 18 APR > 17 APR requirement, use the actual leave date
+             // for its display position in the history.
+             const sk = `${leaveDate} 00:00:00`;
              
              events.push({
                   id: `leave_${l.id || Math.random()}`,
@@ -192,8 +197,8 @@ const adminDashboard = {
              });
         });
         
-        // Sort descending (newest first)
-        events.sort((a, b) => b.sortKey - a.sortKey);
+        // Robust string sort
+        events.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
         
         // Pass to global notifications
         if (window.notifications && typeof window.notifications.setList === 'function') {

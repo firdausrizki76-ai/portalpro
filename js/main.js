@@ -220,18 +220,15 @@ var notifications = {
     },
 
     setList(newList) {
-        // Explicitly sort before setting using numeric sortKey (YYYYMMDDHHMMSS)
+        // Use a robust string-based sort (YYYY-MM-DD HH:mm:ss) to ensure newest is always first
         this.list = [...newList]
             .map(item => {
-                // Ensure every item has a numeric sortKey
+                // Ensure every item has a sortKey string
                 let sk = item.sortKey;
-                if (!sk) {
-                    const timeStr = item.time || (item.timestamp ? new Date(item.timestamp).toISOString() : '');
-                    sk = dateTime.getSortKey(timeStr);
-                }
-                return { ...item, sortKey: sk || 0 };
+                if (typeof sk !== 'string') sk = String(item.time || '');
+                return { ...item, sortKey: sk };
             })
-            .sort((a, b) => b.sortKey - a.sortKey)
+            .sort((a, b) => b.sortKey.localeCompare(a.sortKey))
             .slice(0, 20);
         this.render();
     },
