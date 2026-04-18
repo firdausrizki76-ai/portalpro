@@ -162,7 +162,7 @@ const jurnal = {
 
         if (uploadArea) uploadArea.style.display = 'none';
         if (filePreview) filePreview.style.display = 'block';
-        if (imagePreview) imagePreview.src = this.currentPhoto;
+        if (imagePreview) imagePreview.src = normalizeImageUrl(this.currentPhoto);
     },
 
     removePhoto() {
