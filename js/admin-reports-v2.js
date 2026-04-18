@@ -769,7 +769,7 @@ const adminReports = {
 
     exportToExcel(type) {
         let data = [];
-        let filename = `Rekap_${type}_${this.filters[type].month}.csv`;
+        let filename = `Rekap_${type}_${this.filters[type].month}.xls`;
         
         if (type === 'attendance') {
             const raw = this.getFilteredAttendance();
@@ -812,19 +812,31 @@ const adminReports = {
             return;
         }
 
-        // To ensure Excel opens the CSV correctly with columns (tidy cells),
-        // we use a UTF-8 BOM and a semicolon or comma. 
-        // Comma is standard, but we'll use a BOM to help Excel recognize UTF-8.
-        const headers = Object.keys(data[0]).join(',');
-        const rows = data.map(r => Object.values(r).map(v => {
-            // Escape quotes and wrap in quotes
-            const val = String(v).replace(/"/g, '""');
-            return `"${val}"`;
-        }).join(',')).join('\n');
-        
-        const csvContent = "\uFEFF" + headers + '\n' + rows;
+        // Use HTML table format to force Excel to show tidy cells/columns
+        const headers = Object.keys(data[0]);
+        let tableHtml = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${type}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
+            <body>
+                <table border="1">
+                    <thead>
+                        <tr style="background-color: #f3f4f6;">
+                            ${headers.map(h => `<th style="font-weight: bold; padding: 5px; border: 1px solid #ccc;">${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(r => `
+                            <tr>
+                                ${Object.values(r).map(v => `<td style="padding: 5px; border: 1px solid #ccc;">${v}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob(['\ufeff', tableHtml], { type: 'application/vnd.ms-excel' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.setAttribute('href', url);
@@ -835,7 +847,7 @@ const adminReports = {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        toast.success(`Data ${type} berhasil diekspor ke Excel`);
+        toast.success(`Data ${type} berhasil diekspor ke Excel (Tidy Cells)`);
     },
 
     async downloadAttendancePDF() {
