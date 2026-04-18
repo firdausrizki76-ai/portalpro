@@ -761,11 +761,14 @@
         margin-top: 12px;
     }
     
-    /* Fix squished modal table (Rincian Absensi) on mobile */
     .report-table th, 
     .report-table td {
         padding: 10px 6px;
         font-size: 13px;
+    }
+
+    .jurnal-detail-view {
+        padding: 16px;
     }
 }
 

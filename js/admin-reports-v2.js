@@ -631,14 +631,29 @@ const adminReports = {
         const item = this.jurnalData.find(j => String(j.userId) === String(userId) && j.date === date);
         if (!item) return;
 
+        const photoUrl = item.photo || item.Photo || item.foto || item.Foto;
+
         modal.show('Detail Jurnal: ' + item.employeeName, `
             <div class="jurnal-detail-view">
-                <p><strong>Tanggal:</strong> ${item.date}</p>
-                <div class="detail-section" style="margin-top:12px;">
-                    <label style="font-weight:600; color:var(--text-muted)">Aktivitas:</label>
-                    <div style="background:#f3f4f6; padding:12px; border-radius:8px; margin-top:8px;">${item.tasks}</div>
+                <p style="margin-bottom:8px;"><strong>Tanggal:</strong> ${item.date}</p>
+                <div class="detail-section" style="margin-top:16px;">
+                    <label style="font-weight:600; color:var(--text-muted); display:block; margin-bottom:8px;">Aktivitas:</label>
+                    <div style="background:#f3f4f6; padding:12px; border-radius:8px; line-height:1.5; color:var(--text-primary);">${item.tasks}</div>
                 </div>
-                ${item.photo ? `<div style="margin-top:12px;"><img src="${item.photo}" style="width:100%; border-radius:8px;"></div>` : ''}
+                ${photoUrl ? `
+                <div class="detail-section" style="margin-top:20px;">
+                    <label style="font-weight:600; color:var(--text-muted); display:block; margin-bottom:10px;">Foto Dokumentasi:</label>
+                    <div style="cursor:pointer; position:relative;" onclick="adminReports.viewPhoto('${photoUrl}')" title="Klik untuk memperbesar">
+                        <img src="${photoUrl}" style="width:100%; border-radius:12px; box-shadow:var(--shadow); display:block;">
+                        <span style="position:absolute; bottom:12px; right:12px; background:rgba(0,0,0,0.6); color:white; padding:4px 10px; border-radius:30px; font-size:11px;">
+                            <i class="fas fa-search-plus"></i> Perbesar
+                        </span>
+                    </div>
+                </div>` : `
+                <div class="detail-section" style="margin-top:20px; text-align:center; padding:20px; background:#f9fafb; border-radius:12px; border:2px dashed #e5e7eb;">
+                    <i class="fas fa-image" style="font-size:24px; color:#d1d5db; margin-bottom:8px; display:block;"></i>
+                    <p style="font-size:13px; color:var(--text-muted);">Tidak ada lampiran foto</p>
+                </div>`}
             </div>
         `);
     },
