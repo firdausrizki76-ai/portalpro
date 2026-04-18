@@ -548,17 +548,73 @@ const adminReports = {
             const month = this.filters.attendance.month;
             const filtered = data.filter(a => a.date && a.date.startsWith(month));
 
-            const rows = filtered.map(a => `
+            const rows = filtered.map(a => {
+                let statusText = a.status || '';
+                let statusBadge = statusText.toLowerCase().includes('telat') ? 'warning' : 'success';
+                
+                const cIn = a.clockIn || '';
+                const cOut = a.clockOut || '';
+                
+                // Rule 1: Lupa absen masuk dan absen pulang
+                if (!cIn && !cOut) {
+                    statusText = 'Tidak Hadir';
+                    statusBadge = 'danger';
+                }
+                // Rule 3: Lupa absen pulang namun sebelumnya telah absen masuk
+                else if (cIn && !cOut) {
+                    statusText = 'Tidak Absen Pulang';
+                    statusBadge = 'warning';
+                }
+                // Rule 2: Lupa absen masuk namun absen pulang
+                else if (!cIn && cOut) {
+                    statusBadge = 'warning';
+                    // Calculate relative late minutes from standard Pagi shift (07:30)
+                    let startH = 7, startM = 30; 
+                    if(a.shift && a.shift.toLowerCase() === 'siang') { startH = 13; startM = 0; }
+                    
+                    const outParts = cOut.replace('.',':').split(':');
+                    const outH = parseInt(outParts[0]||0);
+                    const outM = parseInt(outParts[1]||0);
+                    
+                    const outTotal = (outH * 60) + outM;
+                    const startTotal = (startH * 60) + startM;
+                    const minutesLate = outTotal - startTotal;
+                    
+                    if (minutesLate > 0) {
+                        statusText = `Terlambat (${minutesLate} Menit)`;
+                    } else {
+                        statusText = `Terlambat (Tanpa Absen Masuk)`;
+                    }
+                }
+
+                // Attach calculated fields for export
+                a._exportStatus = statusText;
+                
+                return `
                 <tr>
                     <td>${a.date}</td>
                     <td>${a.shift || '-'}</td>
-                    <td>${a.clockIn || '-'}</td>
-                    <td>${a.clockOut || '-'}</td>
-                    <td><span class="status-badge ${a.status.toLowerCase().includes('telat') ? 'warning' : 'success'}">${a.status}</span></td>
+                    <td>${cIn || '-'}</td>
+                    <td>${cOut || '-'}</td>
+                    <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
                 </tr>
-            `).join('') || '<tr><td colspan="5" class="text-center">Tidak ada data untuk bulan ini</td></tr>';
+                `;
+            }).join('') || '<tr><td colspan="5" class="text-center">Tidak ada data untuk bulan ini</td></tr>';
+
+            // Base64 encode data for custom export
+            const exportData = btoa(encodeURIComponent(JSON.stringify(filtered.map(a => ({
+                Tanggal: a.date,
+                Shift: a.shift || '-',
+                'Absen Masuk': a.clockIn || '-',
+                'Absen Pulang': a.clockOut || '-',
+                Status: a._exportStatus || a.status
+            })))));
 
             modal.show('Rincian Absensi: ' + emp.name, `
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:16px;">
+                    <button type="button" class="btn-secondary btn-sm" onclick="adminReports.printDetail()"><i class="fas fa-print"></i> Cetak</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="adminReports.exportDetail('${emp.name}', '${exportData}')"><i class="fas fa-file-excel"></i> Export Rincian</button>
+                </div>
                 <div class="table-responsive">
                     <table class="report-table">
                         <thead><tr><th>Tanggal</th><th>Shift</th><th>Masuk</th><th>Pulang</th><th>Status</th></tr></thead>
@@ -764,6 +820,39 @@ const adminReports = {
             toast.error('Terjadi kesalahan saat mengunduh PDF');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    /**
+     * Modal-Specific Actions
+     */
+    printDetail() {
+        window.print();
+    },
+
+    exportDetail(employeeName, base64Data) {
+        try {
+            const decodedData = JSON.parse(decodeURIComponent(atob(base64Data)));
+            if (decodedData.length === 0) {
+                toast.warning('Tidak ada data rincian untuk diexport');
+                return;
+            }
+            
+            const headers = Object.keys(decodedData[0]).join(',');
+            const rows = decodedData.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const csv = headers + '\n' + rows;
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Rincian_Absensi_${employeeName.replace(/\\s+/g, '_')}_${this.filters.attendance.month}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            toast.success('Rincian berhasil diekspor');
+        } catch(e) {
+            console.error("Export detail failed:", e);
+            toast.error("Gagal mengekspor rincian");
         }
     }
 };
