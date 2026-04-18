@@ -367,6 +367,33 @@ var notifications = {
 
 // Date & Time Utilities
 var dateTime = {
+    getSortKey(dateStr, timeStr) {
+        if (!dateStr) return 0;
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return 0;
+            
+            // If timeStr is provided (like "14:31" or "14.31"), override the time part
+            if (timeStr) {
+                const parts = timeStr.replace('.', ':').split(':');
+                if (parts.length >= 2) {
+                    d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+                }
+            }
+            
+            const Y = d.getFullYear();
+            const M = String(d.getMonth() + 1).padStart(2, '0');
+            const D = String(d.getDate()).padStart(2, '0');
+            const h = String(d.getHours()).padStart(2, '0');
+            const m = String(d.getMinutes()).padStart(2, '0');
+            const s = String(d.getSeconds()).padStart(2, '0');
+            
+            const sk = parseInt(`${Y}${M}${D}${h}${m}${s}`, 10);
+            return isNaN(sk) ? 0 : sk;
+        } catch (e) {
+            return 0;
+        }
+    },
     formatDate(date, format = 'full') {
         const d = new Date(date);
         if (isNaN(d.getTime())) return '-';
