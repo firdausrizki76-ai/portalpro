@@ -159,7 +159,11 @@
 
 .profile-view-content,
 .report-detail-view,
-.jurnal-detail-content {
+.jurnal-detail-content,
+.jurnal-detail-view,
+.leave-detail-view,
+.attendance-detail-view,
+.photo-detail-view {
     padding: var(--spacing-lg);
 }
 

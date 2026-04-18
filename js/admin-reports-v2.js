@@ -618,15 +618,17 @@ const adminReports = {
             })))));
 
             modal.show('Rincian Absensi: ' + emp.name, `
-                <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:16px;">
-                    <button type="button" class="btn-secondary btn-sm" onclick="adminReports.printDetail()"><i class="fas fa-print"></i> Cetak</button>
-                    <button type="button" class="btn-primary btn-sm" onclick="adminReports.exportDetail('${emp.name}', '${exportData}')"><i class="fas fa-file-excel"></i> Export Rincian</button>
-                </div>
-                <div class="table-responsive">
-                    <table class="report-table">
-                        <thead><tr><th>Tanggal</th><th>Shift</th><th>Masuk</th><th>Pulang</th><th>Status</th></tr></thead>
-                        <tbody>${rows}</tbody>
-                    </table>
+                <div class="attendance-detail-view">
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:16px;">
+                        <button type="button" class="btn-secondary btn-sm" onclick="adminReports.printDetail()"><i class="fas fa-print"></i> Cetak</button>
+                        <button type="button" class="btn-primary btn-sm" onclick="adminReports.exportDetail('${emp.name}', '${exportData}')"><i class="fas fa-file-excel"></i> Export Rincian</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="report-table">
+                            <thead><tr><th>Tanggal</th><th>Shift</th><th>Masuk</th><th>Pulang</th><th>Status</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
                 </div>
             `);
         } finally {
@@ -801,7 +803,7 @@ const adminReports = {
 
     viewPhoto(url) {
         if (typeof modal !== 'undefined') {
-            modal.show('Foto Lampiran', `<img src="${url}" style="width:100%; border-radius:8px;">`);
+            modal.show('Foto Lampiran', `<div class="photo-detail-view"><img src="${url}" style="width:100%; border-radius:8px;"></div>`);
         }
     },
 
