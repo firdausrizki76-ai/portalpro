@@ -281,6 +281,7 @@
     gap: var(--spacing-xs);
     flex: 1;
     min-width: 200px;
+    position: relative; /* Fixed: Ensure icon is positioned relative to the group */
 }
 
 .filter-group label {
@@ -302,7 +303,15 @@
 .filter-group i {
     position: absolute;
     left: var(--spacing);
+    top: 50%; /* Center vertically if no label */
+    transform: translateY(-50%);
     color: var(--text-muted);
+    pointer-events: none;
+}
+
+/* Adjust input padding when icon is present */
+.filter-group:has(i) input {
+    padding-left: calc(var(--spacing) * 2.5);
 }
 
 /* Tables */
