@@ -83,6 +83,20 @@ const settings = {
             if (offLng) {
                 offLng.value = allSettings.office_lng || '';
             }
+
+            // Load additional points
+            for (let i = 2; i <= 4; i++) {
+                const latEl = document.getElementById(`setting-office-lat-${i}`);
+                const lngEl = document.getElementById(`setting-office-lng-${i}`);
+                if (latEl) latEl.value = allSettings[`office_lat_${i}`] || '';
+                if (lngEl) lngEl.value = allSettings[`office_lng_${i}`] || '';
+            }
+
+            // Sync legacy point 1 to ID 'setting-office-lat-1' if it exists
+            const offLat1 = document.getElementById('setting-office-lat-1');
+            const offLng1 = document.getElementById('setting-office-lng-1');
+            if (offLat1) offLat1.value = allSettings.office_lat || '';
+            if (offLng1) offLng1.value = allSettings.office_lng || '';
             if (faceToggle) {
                 faceToggle.checked = allSettings.require_face_recognition !== 'false';
             }
@@ -169,20 +183,32 @@ const settings = {
             saveSignaturesBtn.addEventListener('click', () => this.saveSignatureSettings());
         }
 
-        // Get current location button
+        // Get current location buttons (multiple)
+        const getLocBtns = document.querySelectorAll('.btn-get-loc');
+        getLocBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const point = e.currentTarget.dataset.point;
+                this.getCurrentLocation(point);
+            });
+        });
+
+        // Legacy support if ID exists
         const getLocBtn = document.getElementById('btn-get-current-loc');
         if (getLocBtn) {
             getLocBtn.addEventListener('click', () => this.getCurrentLocation());
         }
     },
 
-    async getCurrentLocation() {
+    async getCurrentLocation(point = '1') {
         if (!navigator.geolocation) {
             toast.error('Geolocation tidak didukung oleh browser Anda');
             return;
         }
 
-        const btn = document.getElementById('btn-get-current-loc');
+        const btn = point === '1' 
+            ? (document.getElementById('btn-get-current-loc') || document.querySelector(`.btn-get-loc[data-point="1"]`))
+            : document.querySelector(`.btn-get-loc[data-point="${point}"]`);
+
         const originalText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mencari...';
@@ -192,8 +218,11 @@ const settings = {
                 const lat = position.coords.latitude.toFixed(8);
                 const lng = position.coords.longitude.toFixed(8);
                 
-                document.getElementById('setting-office-lat').value = lat;
-                document.getElementById('setting-office-lng').value = lng;
+                const latInput = document.getElementById(`setting-office-lat-${point}`) || document.getElementById('setting-office-lat');
+                const lngInput = document.getElementById(`setting-office-lng-${point}`) || document.getElementById('setting-office-lng');
+                
+                if (latInput) latInput.value = lat;
+                if (lngInput) lngInput.value = lng;
                 
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -222,8 +251,8 @@ const settings = {
             ]);
             // Also update localStorage for immediate UI update
             storage.set('company', { name, logo });
-            updateCompanyUI();
-            toast.success('Informasi perusahaan berhasil disimpan!');
+            if (typeof updateCompanyUI === 'function') updateCompanyUI();
+            toast.success('Informasi kecamatan berhasil disimpan!');
         } catch (error) {
             console.error('Error saving company:', error);
             toast.error('Gagal menyimpan');
@@ -251,18 +280,28 @@ const settings = {
         const lateTolerance = document.getElementById('setting-late-tolerance');
         const faceMatch = document.getElementById('setting-face-match');
         const maxDist = document.getElementById('setting-max-distance');
-        const offLat = document.getElementById('setting-office-lat');
-        const offLng = document.getElementById('setting-office-lng');
-        const faceToggle = document.getElementById('setting-face-recognition');
-        const locToggle = document.getElementById('setting-location-tracking');
+        const offLat1 = document.getElementById('setting-office-lat-1') || document.getElementById('setting-office-lat');
+        const offLng1 = document.getElementById('setting-office-lng-1') || document.getElementById('setting-office-lng');
+        const offLat2 = document.getElementById('setting-office-lat-2');
+        const offLng2 = document.getElementById('setting-office-lng-2');
+        const offLat3 = document.getElementById('setting-office-lat-3');
+        const offLng3 = document.getElementById('setting-office-lng-3');
+        const offLat4 = document.getElementById('setting-office-lat-4');
+        const offLng4 = document.getElementById('setting-office-lng-4');
 
         try {
             await Promise.all([
                 api.saveSetting('late_tolerance', lateTolerance ? lateTolerance.value : '15'),
                 api.saveSetting('face_match_threshold', faceMatch ? faceMatch.value : '80'),
                 api.saveSetting('max_attendance_distance', maxDist ? maxDist.value : '100'),
-                api.saveSetting('office_lat', offLat ? offLat.value : ''),
-                api.saveSetting('office_lng', offLng ? offLng.value : ''),
+                api.saveSetting('office_lat', offLat1 ? offLat1.value : ''),
+                api.saveSetting('office_lng', offLng1 ? offLng1.value : ''),
+                api.saveSetting('office_lat_2', offLat2 ? offLat2.value : ''),
+                api.saveSetting('office_lng_2', offLng2 ? offLng2.value : ''),
+                api.saveSetting('office_lat_3', offLat3 ? offLat3.value : ''),
+                api.saveSetting('office_lng_3', offLng3 ? offLng3.value : ''),
+                api.saveSetting('office_lat_4', offLat4 ? offLat4.value : ''),
+                api.saveSetting('office_lng_4', offLng4 ? offLng4.value : ''),
                 api.saveSetting('require_face_recognition', faceToggle ? String(faceToggle.checked) : 'true'),
                 api.saveSetting('require_location_tracking', locToggle ? String(locToggle.checked) : 'true')
             ]);

@@ -243,38 +243,57 @@ const faceRecognition = {
                 const requireLoc = allSettings.require_location_tracking !== 'false';
                 if (requireLoc) {
                     const maxDistance = parseFloat(allSettings.max_attendance_distance || 100);
-                    const offLat = parseFloat(allSettings.office_lat);
-                    const offLng = parseFloat(allSettings.office_lng);
+                    
+                    // Define all 4 points
+                    const points = [
+                        { name: 'Kecamatan Cinere', lat: parseFloat(allSettings.office_lat), lng: parseFloat(allSettings.office_lng) },
+                        { name: 'Kelurahan Cinere', lat: parseFloat(allSettings.office_lat_2), lng: parseFloat(allSettings.office_lng_2) },
+                        { name: 'Kelurahan Pangkalan Jati', lat: parseFloat(allSettings.office_lat_3), lng: parseFloat(allSettings.office_lng_3) },
+                        { name: 'Kelurahan Pangkalan Jati Baru', lat: parseFloat(allSettings.office_lat_4), lng: parseFloat(allSettings.office_lng_4) }
+                    ].filter(p => !isNaN(p.lat) && !isNaN(p.lng));
 
-                    if (!isNaN(offLat) && !isNaN(offLng)) {
+                    if (points.length > 0) {
                         if (!this.position) {
                             toast.error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.');
                             return;
                         }
 
-                        const dist = this.calculateDistance(
-                            this.position.coords.latitude, 
-                            this.position.coords.longitude,
-                            offLat,
-                            offLng
-                        );
+                        const userLat = this.position.coords.latitude;
+                        const userLng = this.position.coords.longitude;
+                        
+                        let withinRange = false;
+                        let minDistance = Infinity;
+                        let closestPoint = null;
 
-                        console.log('Distance from Office:', dist, 'm | Max Allowed:', maxDistance, 'm');
+                        points.forEach(p => {
+                            const d = this.calculateDistance(userLat, userLng, p.lat, p.lng);
+                            console.log(`Distance to ${p.name}: ${d.toFixed(1)}m`);
+                            if (d <= maxDistance) {
+                                withinRange = true;
+                            }
+                            if (d < minDistance) {
+                                minDistance = d;
+                                closestPoint = p;
+                            }
+                        });
 
-                        if (dist > maxDistance) {
+                        if (!withinRange) {
                             modal.show(
                                 'Di Luar Jangkauan',
                                 `<div style="text-align:center; padding: 20px;">
                                     <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
                                     <p>Anda berada di luar radius absen yang diizinkan.</p>
-                                    <p style="font-size: 14px; color: #666; margin-top: 10px;">Jarak Anda: <b>${dist.toFixed(0)}m</b><br>Maksimal: <b>${maxDistance}m</b></p>
+                                    <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                                        Radius maksimal: <b>${maxDistance}m</b><br>
+                                        Paling dekat ke: <b>${closestPoint.name}</b> (${minDistance.toFixed(0)}m)
+                                    </p>
                                 </div>`,
                                 [{ label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }]
                             );
                             return;
                         }
                     } else {
-                        console.warn('Location tracking enabled but office coordinates not set.');
+                        console.warn('Location tracking enabled but no office coordinates set.');
                     }
                 } else {
                     console.log('Location tracking skipped (disabled in settings)');
