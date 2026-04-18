@@ -184,27 +184,34 @@ const adminReports = {
         // 1. Process Attendance Summary
         this.attendanceData = this.rawEmployees.map(emp => {
             const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
-            let present = 0, late = 0;
+            let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
 
             empAtt.forEach(a => {
-                if (a.clockIn) {
+                const cIn = a.clockIn;
+                const cOut = a.clockOut;
+                const status = (a.status || '').toLowerCase();
+                
+                if (cIn && cOut) {
                     present++;
-                    const status = (a.status || '').toLowerCase();
                     if (status.includes('telat') || status.includes('terlambat')) late++;
+                } else if (cIn && !cOut) {
+                    noClockOut++;
+                } else if (!cIn && cOut) {
+                    noClockIn++;
                 }
             });
 
             const empLeaves = leaves.filter(l => String(l.userId) === String(emp.id) && l.status === 'approved');
             const empIzin = izinList.filter(i => String(i.userId) === String(emp.id) && i.status === 'approved');
 
-            let absent = 0;
-            empLeaves.forEach(l => absent += parseInt(l.duration) || 1);
-            empIzin.forEach(i => absent += parseInt(i.duration) || 1);
+            let absentCount = 0;
+            empLeaves.forEach(l => absentCount += parseInt(l.duration) || 1);
+            empIzin.forEach(i => absentCount += parseInt(i.duration) || 1);
 
             return {
                 id: emp.id, name: emp.name, department: emp.department || '-',
-                avatar: emp.avatar, present, late, absent,
-                total: present + absent
+                avatar: emp.avatar, present, late, noClockOut, noClockIn, absent: absentCount,
+                total: present + late + noClockOut + noClockIn + absentCount
             };
         });
 
@@ -761,7 +768,20 @@ const adminReports = {
     exportToExcel(type) {
         let data = [];
         let filename = `Rekap_${type}_${this.filters[type].month}.csv`;
-        if (type === 'attendance') data = this.getFilteredAttendance();
+        
+        if (type === 'attendance') {
+            const raw = this.getFilteredAttendance();
+            data = raw.map(r => ({
+                Nama: r.name,
+                Departemen: r.department,
+                'Hadir (On-Time)': r.present,
+                'Terlambat': r.late,
+                'Tanpa Absen Masuk': r.noClockIn,
+                'Tanpa Absen Pulang': r.noClockOut,
+                'Cuti/Izin': r.absent,
+                'Total Hari Kerja': r.total
+            }));
+        }
         else if (type === 'jurnal') data = this.getFilteredJurnal();
         else if (type === 'leave') data = this.getFilteredLeave();
 
