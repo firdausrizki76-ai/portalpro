@@ -394,7 +394,7 @@ const adminReports = {
                 <td>${row.employeeName}</td>
                 <td>${row.department}</td>
                 <td><div class="line-clamp-2">${row.tasks}</div></td>
-                <td>${row.photo ? `<img src="${row.photo}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="adminReports.viewPhoto('${row.photo}')">` : '-'}</td>
+                <td>${row.photo ? `<img src="${normalizeImageUrl(row.photo)}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="adminReports.viewPhoto('${row.photo}')">` : '-'}</td>
                 <td><span class="status-badge ${row.status === 'filled' ? 'success' : 'warning'}">${row.status.toUpperCase()}</span></td>
                 <td><button class="btn-action view" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i></button></td>
             `;
@@ -578,7 +578,7 @@ const adminReports = {
                     <label style="font-weight:600; color:var(--text-muted)">Aktivitas:</label>
                     <div style="background:#f3f4f6; padding:12px; border-radius:8px; margin-top:8px;">${item.tasks}</div>
                 </div>
-                ${item.photo ? `<div style="margin-top:12px;"><img src="${item.photo}" style="width:100%; border-radius:8px;"></div>` : ''}
+                ${item.photo ? `<div style="margin-top:12px;"><img src="${normalizeImageUrl(item.photo)}" style="width:100%; border-radius:8px;"></div>` : ''}
             </div>
         `);
     },
@@ -721,7 +721,7 @@ const adminReports = {
 
     viewPhoto(url) {
         if (typeof modal !== 'undefined') {
-            modal.show('Foto Lampiran', `<img src="${url}" style="width:100%; border-radius:8px;">`);
+            modal.show('Foto Lampiran', `<img src="${normalizeImageUrl(url)}" style="width:100%; border-radius:8px;">`);
         }
     }
 };

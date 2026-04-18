@@ -410,7 +410,7 @@ const adminReports = {
                 <td>${row.employeeName}</td>
                 <td>${row.department}</td>
                 <td><div class="line-clamp-2">${row.tasks}</div></td>
-                <td>${row.photo ? `<img src="${row.photo}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="adminReports.viewPhoto('${row.photo}')">` : '-'}</td>
+                <td>${row.photo ? `<img src="${normalizeImageUrl(row.photo)}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="adminReports.viewPhoto('${row.photo}')">` : '-'}</td>
                 <td><span class="status-badge ${row.status === 'filled' ? 'success' : 'warning'}">${row.status.toUpperCase()}</span></td>
                 <td><button class="btn-action view" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i></button></td>
             `;
@@ -658,7 +658,7 @@ const adminReports = {
                 <div class="detail-section" style="margin-top:20px;">
                     <label style="font-weight:600; color:var(--text-muted); display:block; margin-bottom:10px;">Foto Dokumentasi:</label>
                     <div style="cursor:pointer; position:relative;" onclick="adminReports.viewPhoto('${photoUrl}')" title="Klik untuk memperbesar">
-                        <img src="${photoUrl}" style="width:100%; border-radius:12px; box-shadow:var(--shadow); display:block;">
+                        <img src="${normalizeImageUrl(photoUrl)}" style="width:100%; border-radius:12px; box-shadow:var(--shadow); display:block;">
                         <span style="position:absolute; bottom:12px; right:12px; background:rgba(0,0,0,0.6); color:white; padding:4px 10px; border-radius:30px; font-size:11px;">
                             <i class="fas fa-search-plus"></i> Perbesar
                         </span>
@@ -958,7 +958,7 @@ const adminReports = {
 
     viewPhoto(url) {
         if (typeof modal !== 'undefined') {
-            modal.show('Foto Lampiran', `<div class="photo-detail-view"><img src="${url}" style="width:100%; border-radius:8px;"></div>`);
+            modal.show('Foto Lampiran', `<div class="photo-detail-view"><img src="${normalizeImageUrl(url)}" style="width:100%; border-radius:8px;"></div>`);
         }
     },
 

@@ -479,6 +479,23 @@ window.getAvatarUrl = function (emp) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${colors[colorIdx]}&color=fff`;
 };
 
+// Helper: normalize image URLs (especially Google Drive links)
+window.normalizeImageUrl = function (url) {
+    if (!url || typeof url !== 'string') return url;
+    if (url.startsWith('data:image')) return url;
+    
+    // Detect Google Drive URLs and convert to direct link format
+    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=)|docs\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=))([a-zA-Z0-9_-]+)/;
+    const match = url.match(driveRegex);
+    
+    if (match && match[1]) {
+        // Returns the most reliable direct view format for Google Drive
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+    
+    return url;
+};
+
 // ========== NOTIFICATIONS ==========
 api.getNotifications = async function(userId) {
     if (!API_BASE_URL) {

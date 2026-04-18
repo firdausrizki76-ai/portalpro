@@ -350,7 +350,7 @@ const jurnal = {
             // Thumbnail logic: Show photo if exists, otherwise show date circle
             const thumbnailHtml = jurnal.photo ? `
                 <div class="jurnal-photo-thumb" onclick="jurnal.viewPhoto('${jurnal.photo}')" style="width: 45px; height: 45px; border-radius: 8px; overflow: hidden; margin-right: 12px; cursor: pointer;">
-                    <img src="${jurnal.photo}" alt="Foto Jurnal" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img src="${normalizeImageUrl(jurnal.photo)}" alt="Foto Jurnal" style="width: 100%; height: 100%; object-fit: cover;">
                 </div>
             ` : `
                 <div class="jurnal-date">
@@ -427,7 +427,7 @@ const jurnal = {
 
     viewPhoto(url) {
         if (typeof modal !== 'undefined') {
-            modal.show('Foto Dokumentasi', `<img src="${url}" style="width:100%; border-radius:8px;">`);
+            modal.show('Foto Dokumentasi', `<img src="${normalizeImageUrl(url)}" style="width:100%; border-radius:8px;">`);
         }
     },
 
@@ -526,7 +526,7 @@ const jurnal = {
         const photoHtml = jurnal.photo ? `
             <div class="detail-photo">
                 <label>Foto Lampiran:</label>
-                <img src="${jurnal.photo}" alt="Foto jurnal" onclick="window.open('${jurnal.photo}', '_blank')">
+                <img src="${normalizeImageUrl(jurnal.photo)}" alt="Foto jurnal" onclick="window.open('${normalizeImageUrl(jurnal.photo)}', '_blank')">
             </div>
         ` : '';
 
