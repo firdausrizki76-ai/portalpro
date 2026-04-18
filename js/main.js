@@ -221,11 +221,17 @@ var notifications = {
 
     setList(newList) {
         // Explicitly sort before setting to ensure newest first regardless of source
-        this.list = [...newList].sort((a, b) => {
-            const timeA = a.timestamp || (a.time ? new Date(a.time).getTime() : 0);
-            const timeB = b.timestamp || (b.time ? new Date(b.time).getTime() : 0);
-            return timeB - timeA;
-        }).slice(0, 20);
+        this.list = [...newList]
+            .map(item => {
+                // Ensure every item has a numeric timestamp
+                let ts = item.timestamp;
+                if (!ts && item.time) {
+                    ts = new Date(item.time).getTime();
+                }
+                return { ...item, timestamp: ts || 0 };
+            })
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 20);
         this.render();
     },
 

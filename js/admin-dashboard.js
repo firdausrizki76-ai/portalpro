@@ -178,8 +178,9 @@ const adminDashboard = {
              const leaveDate = l.startDate || l.date;
              if (!leaveDate) return; // Skip if no date
              
-             // For leaves, if there's no specific apply time, we use the start of the day
-             const ts = l.appliedAt ? new Date(l.appliedAt).getTime() : new Date(leaveDate).getTime();
+             // For leaves, if there's no specific apply time (appliedAt), we use its current presence in the list as the 'activity' timestamp
+             // DO NOT use leaveDate (which can be in the future) for sorting the 'Recent Activity' list.
+             let ts = l.appliedAt ? new Date(l.appliedAt).getTime() : Date.now();
              
              events.push({
                   id: `leave_${l.id || Math.random()}`,
