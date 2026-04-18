@@ -148,10 +148,16 @@ const adminDashboard = {
                 return isNaN(combined.getTime()) ? new Date(d).getTime() : combined.getTime();
             };
 
+            const toIso = (dStr) => {
+                const d = new Date(dStr);
+                if (isNaN(d.getTime())) return '0000-00-00';
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            };
+
             if (att.clockIn) {
-                // Formatting sortKey as YYYY-MM-DD HH:mm:SS for string comparison
+                const isoDate = toIso(att.date);
                 const time = (att.clockIn || '00:00').replace('.', ':');
-                const sk = `${att.date} ${time}:00`;
+                const sk = `${isoDate} ${time}:00`;
                 
                 events.push({
                     id: `in_${att.date}_${name}`,
@@ -163,8 +169,9 @@ const adminDashboard = {
                 });
             }
             if (att.clockOut) {
+                const isoDate = toIso(att.date);
                 const time = (att.clockOut || '00:00').replace('.', ':');
-                const sk = `${att.date} ${time}:00`;
+                const sk = `${isoDate} ${time}:00`;
                 
                 events.push({
                     id: `out_${att.date}_${name}`,
@@ -183,9 +190,14 @@ const adminDashboard = {
              const leaveDate = l.startDate || l.date;
              if (!leaveDate) return; 
              
-             // To satisfy the 18 APR > 17 APR requirement, use the actual leave date
-             // for its display position in the history.
-             const sk = `${leaveDate} 00:00:00`;
+             const toIso = (dStr) => {
+                const d = new Date(dStr);
+                if (isNaN(d.getTime())) return '0000-00-00';
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+             };
+
+             // Ensure sortKey uses YYYY-MM-DD format
+             const sk = `${toIso(leaveDate)} 00:00:00`;
              
              events.push({
                   id: `leave_${l.id || Math.random()}`,
