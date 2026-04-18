@@ -716,3 +716,48 @@
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
 }
+
+/* ========================================================= */
+/* Mobile Overrides for Admin Portal (Reports & Shift)         */
+/* ========================================================= */
+
+@media (max-width: 768px) {
+    /* Mobile Report Cards Styling (Rekap Absensi, Cuti, Jurnal) */
+    .report-card {
+        background: var(--bg-secondary, #ffffff);
+        border: 1px solid var(--border-color, #e5e7eb);
+        border-radius: var(--border-radius, 12px);
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1));
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .report-card .btn-full {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    /* Fix Shift Schedule touching the screen edge on mobile */
+    .shift-schedule-table-wrapper {
+        margin: 0 -8px; /* Offset the parent padding if needed */
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        width: calc(100% + 16px);
+    }
+    
+    .shift-schedule-container {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    
+    /* Extra breathing room for admin cards list wrappers */
+    #attendance-mobile-cards,
+    #jurnal-mobile-cards,
+    #leave-mobile-cards {
+        padding: 0 4px;
+        margin-top: 12px;
+    }
+}
