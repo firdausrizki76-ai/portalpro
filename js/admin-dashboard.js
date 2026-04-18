@@ -149,23 +149,23 @@ const adminDashboard = {
             };
 
             if (att.clockIn) {
-                const ts = parseDateTime(att.date, att.clockIn);
+                const sk = dateTime.getSortKey(att.date, att.clockIn);
                 events.push({
                     id: `in_${att.date}_${name}`,
                     user: name,
                     action: 'Clock In',
-                    timestamp: ts,
+                    sortKey: sk,
                     time: dateTime.formatDate(att.date, 'short') + ' ' + att.clockIn,
                     avatar: getAvatarUrl({name})
                 });
             }
             if (att.clockOut) {
-                const ts = parseDateTime(att.date, att.clockOut);
+                const sk = dateTime.getSortKey(att.date, att.clockOut);
                 events.push({
                     id: `out_${att.date}_${name}`,
                     user: name,
                     action: 'Clock Out',
-                    timestamp: ts,
+                    sortKey: sk,
                     time: dateTime.formatDate(att.date, 'short') + ' ' + att.clockOut,
                     avatar: getAvatarUrl({name})
                 });
@@ -178,22 +178,22 @@ const adminDashboard = {
              const leaveDate = l.startDate || l.date;
              if (!leaveDate) return; // Skip if no date
              
-             // For leaves, if there's no specific apply time (appliedAt), we use its current presence in the list as the 'activity' timestamp
-             // DO NOT use leaveDate (which can be in the future) for sorting the 'Recent Activity' list.
-             let ts = l.appliedAt ? new Date(l.appliedAt).getTime() : Date.now();
+             // For leaves, use appliedAt date for the sort key. 
+             // If missing, use today's date but DO NOT use the future leaveDate.
+             let sk = l.appliedAt ? dateTime.getSortKey(l.appliedAt) : dateTime.getSortKey(new Date().toISOString());
              
              events.push({
                   id: `leave_${l.id || Math.random()}`,
                   user: name,
                   action: `Mengajukan Cuti`,
-                  timestamp: isNaN(ts) ? Date.now() : ts,
+                  sortKey: sk,
                   time: dateTime.formatDate(leaveDate, 'short'),
                   avatar: getAvatarUrl({name})
              });
         });
         
         // Sort descending (newest first)
-        events.sort((a, b) => b.timestamp - a.timestamp);
+        events.sort((a, b) => b.sortKey - a.sortKey);
         
         // Pass to global notifications
         if (window.notifications && typeof window.notifications.setList === 'function') {

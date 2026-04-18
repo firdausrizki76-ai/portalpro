@@ -220,17 +220,18 @@ var notifications = {
     },
 
     setList(newList) {
-        // Explicitly sort before setting to ensure newest first regardless of source
+        // Explicitly sort before setting using numeric sortKey (YYYYMMDDHHMMSS)
         this.list = [...newList]
             .map(item => {
-                // Ensure every item has a numeric timestamp
-                let ts = item.timestamp;
-                if (!ts && item.time) {
-                    ts = new Date(item.time).getTime();
+                // Ensure every item has a numeric sortKey
+                let sk = item.sortKey;
+                if (!sk) {
+                    const timeStr = item.time || (item.timestamp ? new Date(item.timestamp).toISOString() : '');
+                    sk = dateTime.getSortKey(timeStr);
                 }
-                return { ...item, timestamp: ts || 0 };
+                return { ...item, sortKey: sk || 0 };
             })
-            .sort((a, b) => b.timestamp - a.timestamp)
+            .sort((a, b) => b.sortKey - a.sortKey)
             .slice(0, 20);
         this.render();
     },
