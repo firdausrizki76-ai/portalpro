@@ -435,7 +435,7 @@ const adminDashboard = {
                     {
                         label: 'Tidak Absen Pulang',
                         data: noClockOutData,
-                        backgroundColor: '#ea580c',
+                        backgroundColor: '#8B5CF6',
                         stack: 'secondary'
                     }
                 ]
