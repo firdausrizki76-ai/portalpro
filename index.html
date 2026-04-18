@@ -68,7 +68,7 @@
                         <div class="input-wrapper">
                             <i class="fas fa-lock left-icon"></i>
                             <input type="password" id="login-password" placeholder="Masukkan password" required>
-                            <button type="button" class="toggle-password" id="toggle-password" onclick="auth.togglePasswordVisibility()">
+                            <button type="button" class="toggle-password" id="toggle-password">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -1013,6 +1013,16 @@
                                 <div class="stat-icon pending"><i class="fas fa-hourglass-half"></i></div>
                                 <div class="stat-details"><span class="stat-number" id="pending-requests">0</span><span
                                         class="stat-label">Menunggu Approval</span></div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="stat-icon no-clock-in"><i class="fas fa-user-slash"></i></div>
+                                <div class="stat-details"><span class="stat-number" id="no-clock-in">0</span><span
+                                        class="stat-label">Tidak Absen Masuk</span></div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="stat-icon no-clock-out"><i class="fas fa-sign-out-alt"></i></div>
+                                <div class="stat-details"><span class="stat-number" id="no-clock-out">0</span><span
+                                        class="stat-label">Tidak Absen Pulang</span></div>
                             </div>
                         </div>
                         <div class="admin-charts-grid">

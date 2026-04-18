@@ -175,8 +175,8 @@ const adminDashboard = {
              });
         });
         
-        // Sort descending
-        events.sort((a,b) => b.timestamp - a.timestamp);
+        // Sort descending (newest first)
+        events.sort((a, b) => b.timestamp - a.timestamp);
         
         // Pass to global notifications
         if (window.notifications && typeof window.notifications.setList === 'function') {
@@ -209,8 +209,16 @@ const adminDashboard = {
         const onLeave = this.leaves.filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr).length +
             this.izin.filter(i => i.status === 'approved' && i.date === todayStr).length;
 
-        // Everyone not present and not on leave is absent
+        // Everyone not present and not on leave is absent (No Clock In)
         const absentToday = Math.max(0, totalEmployees - presentToday - onLeave);
+        const noClockIn = absentToday;
+
+        let noClockOut = 0;
+        todayAttendance.forEach(att => {
+            if (att.clockIn && !att.clockOut) {
+                noClockOut++;
+            }
+        });
 
         // Count pending requests
         const pendingLeaves = this.leaves.filter(l => l.status === 'pending').length;
@@ -224,7 +232,9 @@ const adminDashboard = {
             'absent-today': absentToday,
             'late-today': lateToday,
             'on-leave': onLeave,
-            'pending-requests': totalPending
+            'pending-requests': totalPending,
+            'no-clock-in': noClockIn,
+            'no-clock-out': noClockOut
         };
 
         Object.entries(els).forEach(([id, value]) => {

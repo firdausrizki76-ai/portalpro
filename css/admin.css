@@ -66,6 +66,8 @@
 .stat-icon.late { background: linear-gradient(135deg, #003399 0%, #3366CC 100%); }
 .stat-icon.on-leave { background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); }
 .stat-icon.pending { background: linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%); }
+.stat-icon.no-clock-in { background: linear-gradient(135deg, #F59E0B 0%, #fbbf24 100%); }
+.stat-icon.no-clock-out { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); }
 
 .stat-details {
     display: flex;
