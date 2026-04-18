@@ -136,23 +136,36 @@ const adminDashboard = {
         
         // Loop attendance
         this.attendance.forEach(att => {
+            if (!att.date) return;
             const name = this.getEmployeeName(att);
+            
+            // Robust timestamp: Try both YYYY-MM-DD and Locale formatted strings
+            const parseDateTime = (d, t) => {
+                if (!t) return new Date(d).getTime();
+                // Replace dot with colon for 14.31 -> 14:31
+                const cleanTime = t.replace('.', ':');
+                const combined = new Date(`${d} ${cleanTime}`);
+                return isNaN(combined.getTime()) ? new Date(d).getTime() : combined.getTime();
+            };
+
             if (att.clockIn) {
+                const ts = parseDateTime(att.date, att.clockIn);
                 events.push({
                     id: `in_${att.date}_${name}`,
                     user: name,
                     action: 'Clock In',
-                    timestamp: new Date(`${att.date} ${att.clockIn}`).getTime() || Date.now(),
+                    timestamp: ts,
                     time: dateTime.formatDate(att.date, 'short') + ' ' + att.clockIn,
                     avatar: getAvatarUrl({name})
                 });
             }
             if (att.clockOut) {
+                const ts = parseDateTime(att.date, att.clockOut);
                 events.push({
                     id: `out_${att.date}_${name}`,
                     user: name,
                     action: 'Clock Out',
-                    timestamp: new Date(`${att.date} ${att.clockOut}`).getTime() || Date.now(),
+                    timestamp: ts,
                     time: dateTime.formatDate(att.date, 'short') + ' ' + att.clockOut,
                     avatar: getAvatarUrl({name})
                 });
@@ -165,11 +178,14 @@ const adminDashboard = {
              const leaveDate = l.startDate || l.date;
              if (!leaveDate) return; // Skip if no date
              
+             // For leaves, if there's no specific apply time, we use the start of the day
+             const ts = l.appliedAt ? new Date(l.appliedAt).getTime() : new Date(leaveDate).getTime();
+             
              events.push({
                   id: `leave_${l.id || Math.random()}`,
                   user: name,
                   action: `Mengajukan Cuti`,
-                  timestamp: new Date(l.appliedAt || leaveDate).getTime() || Date.now(),
+                  timestamp: isNaN(ts) ? Date.now() : ts,
                   time: dateTime.formatDate(leaveDate, 'short'),
                   avatar: getAvatarUrl({name})
              });

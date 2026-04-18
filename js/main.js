@@ -220,7 +220,12 @@ var notifications = {
     },
 
     setList(newList) {
-        this.list = newList.slice(0, 20);
+        // Explicitly sort before setting to ensure newest first regardless of source
+        this.list = [...newList].sort((a, b) => {
+            const timeA = a.timestamp || (a.time ? new Date(a.time).getTime() : 0);
+            const timeB = b.timestamp || (b.time ? new Date(b.time).getTime() : 0);
+            return timeB - timeA;
+        }).slice(0, 20);
         this.render();
     },
 
