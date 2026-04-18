@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/login.css?v=13">
     <link rel="stylesheet" href="css/dashboard.css?v=12">
     <link rel="stylesheet" href="css/absensi.css?v=12">
-    <link rel="stylesheet" href="css/jurnal.css?v=12">
+    <link rel="stylesheet" href="css/laporan-kinerja.css?v=12">
     <link rel="stylesheet" href="css/cuti.css?v=12">
     <link rel="stylesheet" href="css/settings.css?v=12">
     <link rel="stylesheet" href="css/shift-schedule.css?v=12">
@@ -151,7 +151,7 @@
                         <li class="nav-item" data-page="jurnal">
                             <a href="#" class="nav-link">
                                 <i class="fas fa-book"></i>
-                                <span>Jurnal Kerja</span>
+                                <span>Laporan Kinerja</span>
                             </a>
                         </li>
                         <li class="nav-item" data-page="cuti">
@@ -190,7 +190,7 @@
                         <li class="nav-item" data-page="jurnal-reports">
                             <a href="#" class="nav-link">
                                 <i class="fas fa-book-open"></i>
-                                <span>Rekap Jurnal</span>
+                                <span>Rekap Laporan Kinerja</span>
                             </a>
                         </li>
                         <li class="nav-item" data-page="leave-reports">
@@ -381,7 +381,7 @@
                                     <div class="quick-icon journal">
                                         <i class="fas fa-edit"></i>
                                     </div>
-                                    <span>Jurnal</span>
+                                    <span>Laporan Kinerja</span>
                                 </button>
                                 <button class="quick-btn" onclick="router.navigate('cuti')">
                                     <div class="quick-icon leave">
@@ -1088,7 +1088,7 @@
                                         id="employee-search" placeholder="Cari nama pegawai..."></div>
                                 <div class="filter-group">
                                     <select id="dept-filter">
-                                        <option value="">Semua Departemen</option>
+                                        <option value="">Semua Bidang</option>
                                     </select>
                                 </div>
                                 <div class="filter-group">
@@ -1113,7 +1113,7 @@
                                         <tr>
                                             <th>Pegawai</th>
                                             <th>ID</th>
-                                            <th>Departemen</th>
+                                            <th>Bidang</th>
                                             <th>Jabatan</th>
                                             <th>Shift</th>
                                             <th>Status</th>
@@ -1153,8 +1153,8 @@
                             <div class="reports-filters">
                                 <div class="filter-group"><label>Periode</label><input type="month"
                                         id="attendance-month"></div>
-                                <div class="filter-group"><label>Departemen</label><select id="report-dept-filter">
-                                        <option value="">Semua Departemen</option>
+                                <div class="filter-group"><label>Bidang</label><select id="report-dept-filter">
+                                        <option value="">Semua Bidang</option>
                                     </select></div>
                                 <div class="filter-group"><label>Status</label><select id="report-status-filter">
                                         <option value="">Semua</option>
@@ -1170,7 +1170,7 @@
                                     <thead>
                                         <tr>
                                             <th rowspan="2">Nama</th>
-                                            <th rowspan="2">Departemen</th>
+                                            <th rowspan="2">Bidang</th>
                                             <th colspan="4" class="text-center">Ringkasan</th>
                                             <th rowspan="2">Aksi</th>
                                         </tr>
@@ -1193,8 +1193,8 @@
                     <div class="reports-container">
                         <div class="reports-header">
                             <div class="reports-title">
-                                <h2>Rekap Jurnal</h2>
-                                <p>Rekap jurnal kerja pegawai</p>
+                                <h2>Rekap Laporan Kinerja</h2>
+                                <p>Rekap laporan kinerja pegawai</p>
                             </div>
                             <div class="reports-actions">
                                 <button class="btn-secondary" id="btn-export-jurnal"><i class="fas fa-download"></i><span>Export Excel</span></button>
@@ -1221,7 +1221,7 @@
                                         <tr>
                                             <th>Tanggal</th>
                                             <th>Nama</th>
-                                            <th>Departemen</th>
+                                            <th>Bidang</th>
                                             <th>Tugas</th>
                                             <th>Foto</th>
                                             <th>Status</th>
@@ -1271,7 +1271,7 @@
                                     <thead>
                                         <tr>
                                             <th>Nama</th>
-                                            <th>Departemen</th>
+                                            <th>Bidang</th>
                                             <th>Jenis</th>
                                             <th>Tanggal</th>
                                             <th>Durasi</th>
@@ -1294,7 +1294,7 @@
                         <div class="shift-schedule-header">
                             <div class="shift-schedule-title">
                                 <h2>Jadwal Shift Pegawai</h2>
-                                <p>Atur jadwal shift kerja pegawai per bulan</p>
+                                <p>Atur jadwal shift kerja pegawai per bidang</p>
                             </div>
                             <div class="shift-schedule-actions">
                                 <button class="btn-secondary" id="btn-copy-schedule">
@@ -1336,9 +1336,9 @@
                                     </select>
                                 </div>
                                 <div class="filter-group">
-                                    <label>Departemen</label>
+                                    <label>Bidang</label>
                                     <select id="schedule-dept-filter">
-                                        <option value="">Semua Departemen</option>
+                                        <option value="">Semua Bidang</option>
                                         <option value="IT">IT</option>
                                         <option value="HR">HR</option>
                                         <option value="Finance">Finance</option>
@@ -1585,7 +1585,7 @@
                 <i class="fas fa-user-clock"></i><span>Izin</span>
             </a>
             <a href="#" class="bottom-nav-item" data-page="jurnal" data-role="employee">
-                <i class="fas fa-book"></i><span>Jurnal</span>
+                <i class="fas fa-book"></i><span>Laporan Kinerja</span>
             </a>
             <a href="#" class="bottom-nav-item" data-page="cuti" data-role="employee">
                 <i class="fas fa-calendar"></i><span>Cuti</span>
@@ -1633,9 +1633,9 @@
                 </div>
                 <div class="form-row two-col">
                     <div class="form-group">
-                        <label for="emp-department">Departemen</label>
+                        <label for="emp-department">Bidang</label>
                         <input type="text" id="emp-department" list="dept-list"
-                            placeholder="Pilih atau ketik departemen" required>
+                            placeholder="Pilih atau ketik bidang" required>
                         <datalist id="dept-list">
                             <option value="IT">
                             <option value="HR">
@@ -1716,7 +1716,7 @@
                 <div id="profile-employee-fields" class="profile-fields">
                     <div class="profile-field-row">
                         <div class="profile-field">
-                            <span class="field-label"><i class="fas fa-building"></i> Departemen</span>
+                            <span class="field-label"><i class="fas fa-building"></i> Bidang</span>
                             <span class="field-value" id="profile-department">-</span>
                         </div>
                         <div class="profile-field">
@@ -1803,7 +1803,7 @@
     <script src="js/absensi.js?v=55"></script>
     <script src="js/face-api-logic.js?v=55"></script>
     <script src="js/izin.js?v=55"></script>
-    <script src="js/jurnal.js?v=55"></script>
+    <script src="js/laporan-kinerja.js?v=55"></script>
     <script src="js/cuti.js?v=55"></script>
     <script src="js/admin-dashboard.js?v=55"></script>
     <script src="js/admin-employees.js?v=55"></script>
@@ -1812,7 +1812,7 @@
     <script src="js/settings.js?v=13"></script>
     <script src="js/mobile.js?v=13"></script>
     <style>
-        .jurnal-photo-thumb {
+        .performance-photo-thumb {
             width: 45px;
             height: 45px;
             border-radius: 8px;
@@ -1822,7 +1822,7 @@
             transition: transform 0.2s;
             border: 2px solid var(--border-color);
         }
-        .jurnal-photo-thumb:hover {
+        .performance-photo-thumb:hover {
             transform: scale(1.05);
             border-color: var(--color-primary);
         }

@@ -640,7 +640,7 @@ const adminReports = {
 
         const photoUrl = item.photo || item.Photo || item.foto || item.Foto;
 
-        modal.show('Detail Jurnal: ' + item.employeeName, `
+        modal.show('Detail Laporan Kinerja: ' + item.employeeName, `
             <div class="jurnal-detail-view">
                 <p style="margin-bottom:8px;"><strong>Tanggal:</strong> ${item.date}</p>
                 <div class="detail-section" style="margin-top:16px;">
@@ -749,7 +749,7 @@ const adminReports = {
         const select = document.getElementById('report-dept-filter');
         if (select) {
             const currentVal = select.value;
-            select.innerHTML = '<option value="">Semua Departemen</option>' +
+            select.innerHTML = '<option value="">Semua Bidang</option>' +
                 depts.map(d => `<option value="${d}">${d}</option>`).join('');
             select.value = currentVal;
         }
@@ -773,7 +773,7 @@ const adminReports = {
             const raw = this.getFilteredAttendance();
             data = raw.map(r => ({
                 Nama: r.name,
-                Departemen: r.department,
+                Bidang: r.department,
                 'Hadir (On-Time)': r.present,
                 'Terlambat': r.late,
                 'Tanpa Absen Masuk': r.noClockIn,

@@ -1,6 +1,6 @@
 /**
- * Portal Karyawan - Jurnal Kerja
- * Daily work journal functionality
+ * Portal Karyawan - Laporan Kinerja
+ * Daily work performance report functionality
  */
 
 const jurnal = {

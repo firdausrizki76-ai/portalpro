@@ -154,7 +154,7 @@ const dashboard = {
         (this.journalData || []).forEach(row => {
             activities.push({
                 type: 'journal',
-                title: 'Mengisi Jurnal',
+                title: 'Mengisi Laporan Kinerja',
                 time: row.time || '17:00',
                 date: row.date,
                 timestamp: new Date(`${row.date}T${(row.time || '17:00').replace('.', ':')}`).getTime()
