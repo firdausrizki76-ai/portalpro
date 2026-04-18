@@ -773,24 +773,31 @@
 /* Print overrides for Modals (Cetak Rincian Absensi)        */
 /* ========================================================= */
 @media print {
-    body * {
-        visibility: hidden;
+    #app-container {
+        display: none !important;
     }
-    .modal-container, .modal-container * {
-        visibility: visible;
+    #global-modal {
+        position: relative !important;
+        background: none !important;
+    }
+    .modal-overlay {
+        background: none !important;
+        position: static !important;
+        padding: 0 !important;
+        align-items: flex-start !important;
     }
     .modal-container {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        box-shadow: none;
+        box-shadow: none !important;
+        max-height: none !important;
+        width: 100% !important;
+        max-width: none !important;
+        border: none !important;
+        border-radius: 0 !important;
     }
     /* Hide the print/download buttons when printing */
     .modal-container .btn-action,
-    .modal-container button {
+    .modal-container button,
+    .btn-close-modal {
         display: none !important;
     }
 }
