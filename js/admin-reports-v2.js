@@ -404,6 +404,13 @@ const adminReports = {
         }
 
         data.forEach(row => {
+            const statusLabels = { 'pending': 'Menunggu', 'approved': 'Disetujui', 'rejected': 'Ditolak', 'filled': 'Sudah Diisi' };
+            const lowerStatus = (row.status || '').toLowerCase();
+            const approvalButtons = (lowerStatus === 'pending' || lowerStatus === 'filled') ? `
+                <button type="button" class="btn-action" style="background:#10B981; border:none; color:#fff; cursor:pointer;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i></button>
+                <button type="button" class="btn-action" style="background:#EF4444; border:none; color:#fff; cursor:pointer;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i></button>
+            ` : '';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${row.date || '-'}</td>
@@ -411,8 +418,13 @@ const adminReports = {
                 <td>${row.department}</td>
                 <td><div class="line-clamp-2">${row.tasks}</div></td>
                 <td>${row.photo ? `<img src="${normalizeImageUrl(row.photo)}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="adminReports.viewPhoto('${row.photo}')">` : '-'}</td>
-                <td><span class="status-badge ${row.status === 'filled' ? 'success' : 'warning'}">${row.status.toUpperCase()}</span></td>
-                <td><button class="btn-action view" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i></button></td>
+                <td><span class="status-badge ${row.status}">${statusLabels[row.status] || row.status.toUpperCase()}</span></td>
+                <td>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn-action view" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i></button>
+                        ${approvalButtons}
+                    </div>
+                </td>
             `;
             tbody.appendChild(tr);
 
@@ -422,11 +434,17 @@ const adminReports = {
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                         <span style="font-size:12px; font-weight:600">${row.date}</span>
-                        <span class="status-badge ${row.status === 'filled' ? 'success' : 'warning'}" style="font-size:10px;">${row.status.toUpperCase()}</span>
+                        <span class="status-badge ${row.status}" style="font-size:10px;">${statusLabels[row.status] || row.status.toUpperCase()}</span>
                     </div>
                     <div style="font-weight:600; margin-bottom:4px;">${row.employeeName}</div>
                     <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${row.tasks}</div>
-                    <button class="btn-full btn-sm" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')">Lihat Detail</button>
+                    <div class="card-actions" style="display:grid; grid-template-columns: ${approvalButtons ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
+                        <button class="btn-full btn-sm" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i> Detail</button>
+                        ${approvalButtons ? `
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i> Approve</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i> Reject</button>
+                        ` : ''}
+                    </div>
                 `;
                 mobileContainer.appendChild(card);
             }
@@ -484,7 +502,13 @@ const adminReports = {
                     <div style="font-weight:600">${row.name}</div>
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${row.dates} (${row.duration} hari)</div>
                     <div style="font-size:13px; margin-bottom:12px;">${row.reason || '-'}</div>
-                    <button class="btn-full btn-sm" onclick="adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')">Lihat Detail</button>
+                    <div class="card-actions" style="display:grid; grid-template-columns: ${row.status === 'pending' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
+                        <button class="btn-full btn-sm" onclick="adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i> Detail</button>
+                        ${row.status === 'pending' ? `
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i> Setujui</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i> Tolak</button>
+                        ` : ''}
+                    </div>
                 `;
                 mobileContainer.appendChild(card);
             }
@@ -733,6 +757,30 @@ const adminReports = {
 
                 await this.loadData(this.filters.leave.month, true);
                 this.renderLeaveReports();
+            } else { toast.error(res.error || 'Gagal menolak'); }
+        } catch (e) { toast.error('Kesalahan sistem'); }
+    },
+
+    async approveJurnalItem(id) {
+        if (!confirm('Setujui jurnal ini?')) return;
+        try {
+            const res = await api.request('approveJournal', { id });
+            if (res.success) {
+                toast.success('Jurnal disetujui');
+                await this.loadData(this.filters.jurnal.month, true);
+                this.renderJurnalReports();
+            } else { toast.error(res.error || 'Gagal menyetujui'); }
+        } catch (e) { toast.error('Kesalahan sistem'); }
+    },
+
+    async rejectJurnalItem(id) {
+        if (!confirm('Tolak jurnal ini?')) return;
+        try {
+            const res = await api.request('rejectJournal', { id });
+            if (res.success) {
+                toast.success('Jurnal ditolak');
+                await this.loadData(this.filters.jurnal.month, true);
+                this.renderJurnalReports();
             } else { toast.error(res.error || 'Gagal menolak'); }
         } catch (e) { toast.error('Kesalahan sistem'); }
     },

@@ -378,7 +378,7 @@ const jurnal = {
                         <button class="btn-icon-sm" title="Edit" onclick="jurnal.editJurnal('${jurnal.date}')">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-icon-sm btn-delete" title="Hapus" onclick="jurnal.deleteJurnal('${jurnal.date}')" style="color: #EF4444;">
+                        <button class="btn-icon-sm btn-delete" title="Hapus" onclick="jurnal.deleteJurnal('${jurnal.date}', '${jurnal.id}')" style="color: #EF4444;">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -387,10 +387,10 @@ const jurnal = {
         }).join('');
     },
 
-    async deleteJurnal(date) {
+    async deleteJurnal(date, id) {
         if (typeof modal === 'undefined') {
             if (!confirm('Yakin ingin hapus jurnal tanggal ' + date + '?')) return;
-            this._executeDelete(date);
+            this._executeDelete(date, id);
             return;
         }
 
@@ -398,18 +398,19 @@ const jurnal = {
             { label: 'Batal', class: 'btn-secondary', onClick: () => modal.close() },
             { label: 'Ya, Hapus', class: 'btn-danger', onClick: () => {
                 modal.close();
-                this._executeDelete(date);
+                this._executeDelete(date, id);
             }}
         ]);
     },
 
-    async _executeDelete(date) {
+    async _executeDelete(date, id) {
         if (typeof loader !== 'undefined') loader.show('Menghapus jurnal...');
         try {
             const currentUser = auth.getCurrentUser();
             const res = await api.request('deleteJournal', { 
                 userId: currentUser?.id,
-                date: date 
+                date: date,
+                id: id
             });
             if (res.success) {
                 toast.success('Jurnal berhasil dihapus');
