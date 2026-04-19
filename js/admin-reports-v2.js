@@ -456,11 +456,13 @@ const adminReports = {
                     </div>
                     <div style="font-weight:600; margin-bottom:4px;">${row.employeeName}</div>
                     <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${row.tasks}</div>
-                    <div class="card-actions" style="display:grid; grid-template-columns: ${approvalButtons ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
+                    <div class="card-actions" style="display:grid; grid-template-columns: ${approvalButtons ? '1fr 1fr' : '1fr'}; gap:8px;">
                         <button class="btn-full btn-sm" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i> Detail</button>
                         ${approvalButtons ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i> Approve</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i> Reject</button>
+                            <div style="display:flex; gap:8px;">
+                                <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff; flex:1;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i></button>
+                                <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff; flex:1;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i></button>
+                            </div>
                         ` : ''}
                     </div>
                 `;
@@ -520,11 +522,13 @@ const adminReports = {
                     <div style="font-weight:600">${row.name}</div>
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${row.dates} (${row.duration} hari)</div>
                     <div style="font-size:13px; margin-bottom:12px;">${row.reason || '-'}</div>
-                    <div class="card-actions" style="display:grid; grid-template-columns: ${row.status === 'pending' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
+                    <div class="card-actions" style="display:grid; grid-template-columns: ${row.status === 'pending' ? '1fr 1fr' : '1fr'}; gap:8px;">
                         <button class="btn-full btn-sm" onclick="adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i> Detail</button>
                         ${row.status === 'pending' ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i> Setujui</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i> Tolak</button>
+                            <div style="display:flex; gap:8px;">
+                                <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff; flex:1;" onclick="adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i></button>
+                                <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff; flex:1;" onclick="adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i></button>
+                            </div>
                         ` : ''}
                     </div>
                 `;
