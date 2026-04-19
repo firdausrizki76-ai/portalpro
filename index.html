@@ -484,13 +484,27 @@
                                     <p class="status-subtext" id="status-subtext">Tekan tombol di bawah untuk memulai</p>
                                 </div>
 
-                                <div class="attendance-buttons">
-                                    <button class="attendance-btn clock-in-btn" id="btn-clock-in">
-                                        <div class="btn-icon"><i class="fas fa-sign-in-alt"></i></div>
-                                        <div class="btn-text"><span class="btn-label">Clock In</span><span
-                                                class="btn-time" id="clock-in-time">--:--</span></div>
-                                    </button>
+                                <div class="attendance-controls">
+                    <div class="location-preference" style="margin-bottom:20px;">
+                        <label style="display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Lokasi Kantor Absensi</label>
+                        <select id="absensi-select-location" class="form-select" style="width:100%; padding:12px; border-radius:12px; border:1.5px solid #e2e8f0; font-family:inherit; font-size:15px; cursor:pointer; background-color:#fff; transition:all 0.2s;">
+                            <option value="">-- Pilih Lokasi Kantor --</option>
+                            <option value="1">Kecamatan Cinere</option>
+                            <option value="2">Kelurahan Cinere</option>
+                            <option value="3">Kelurahan Pangkalan Jati</option>
+                            <option value="4">Kelurahan Pangkalan Jati Baru</option>
+                            <option value="5">Kelurahan Gandul</option>
+                        </select>
+                        <div id="location-hint" style="font-size:11px; color:#EF4444; margin-top:6px; display:none;">
+                            <i class="fas fa-exclamation-circle"></i> Pilih lokasi terlebih dahulu agar tombol aktif
+                        </div>
+                    </div>
+                    <button class="btn-clock btn-clock-in" id="btn-clock-in" disabled>
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>CLOCK IN</span>
+                    </button>               </div>
 
+                                <div class="attendance-buttons">
                                     <button class="attendance-btn overtime-btn" id="btn-overtime" disabled>
                                         <div class="btn-icon"><i class="fas fa-business-time"></i></div>
                                         <div class="btn-text"><span class="btn-label">Lembur</span><span
@@ -1111,12 +1125,13 @@
                                 <table class="employees-table" id="employees-table">
                                     <thead>
                                         <tr>
-                                            <th>Pegawai</th>
-                                            <th>ID</th>
+                                            <th>Nama Pegawai</th>
                                             <th>Bidang</th>
-                                            <th>Jabatan</th>
-                                            <th>Shift</th>
-                                            <th>Status</th>
+                                            <th>Lokasi Terakhir</th>
+                                            <th class="text-center">Hadir</th>
+                                            <th class="text-center">Telat</th>
+                                            <th class="text-center">Cuti/Izin</th>
+                                            <th class="text-center">Total</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -1156,6 +1171,17 @@
                                 <div class="filter-group"><label>Bidang</label><select id="report-dept-filter">
                                         <option value="">Semua Bidang</option>
                                     </select></div>
+                                <div class="filter-group">
+                                    <label>Lokasi Kantor</label>
+                                    <select id="report-location-filter">
+                                        <option value="">Semua Lokasi</option>
+                                        <option value="Kecamatan Cinere">Kecamatan Cinere</option>
+                                        <option value="Kelurahan Cinere">Kelurahan Cinere</option>
+                                        <option value="Kelurahan Pangkalan Jati">Kelurahan Pangkalan Jati</option>
+                                        <option value="Kelurahan Pangkalan Jati Baru">Kelurahan Pangkalan Jati Baru</option>
+                                        <option value="Kelurahan Gandul">Kelurahan Gandul</option>
+                                    </select>
+                                </div>
                                 <div class="filter-group"><label>Status</label><select id="report-status-filter">
                                         <option value="">Semua</option>
                                         <option value="present">Hadir</option>

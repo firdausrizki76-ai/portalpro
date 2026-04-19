@@ -271,6 +271,24 @@ const absensi = {
     initButtons() {
         // Clock In - Add both click and touch events for mobile
         const btnClockIn = document.getElementById('btn-clock-in');
+        const selectLocation = document.getElementById('absensi-select-location');
+        const locationHint = document.getElementById('location-hint');
+
+        if (selectLocation) {
+            selectLocation.addEventListener('change', () => {
+                const isLocationSelected = selectLocation.value !== '';
+                const isClockedIn = !!this.attendanceData.clockIn;
+                const isAlfa = this.currentState === 'alfa';
+                const isLibur = this.currentState === 'libur';
+
+                btnClockIn.disabled = !isLocationSelected || isClockedIn || isLibur || isAlfa;
+                
+                if (locationHint) {
+                    locationHint.style.display = isLocationSelected ? 'none' : 'block';
+                }
+            });
+        }
+
         if (btnClockIn) {
             btnClockIn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -707,6 +725,20 @@ const absensi = {
             }
 
         }
+    },
+    
+    getSelectedLocation: function() {
+        const selectEl = document.getElementById('absensi-select-location');
+        if (!selectEl) return null;
+        
+        const val = selectEl.value;
+        if (!val) return null;
+        
+        const label = selectEl.options[selectEl.selectedIndex].text;
+        return {
+            id: val,
+            name: label
+        };
     }
 };
 

@@ -244,14 +244,40 @@ const faceRecognition = {
                 if (requireLoc) {
                     const maxDistance = parseFloat(allSettings.max_attendance_distance || 100);
                     
-                    // Define all 4 points
+                    // Get selected point from absensi controller
+                    const selectedPoint = window.absensi ? window.absensi.getSelectedLocation() : null;
+                    if (!selectedPoint) {
+                        toast.error('Pilih lokasi absen terlebih dahulu.');
+                        return;
+                    }
+
+                    // Define point key based on selection (Point 1 is legacy 'office_lat', 2-5 are 'office_lat_N')
+                    const pointId = selectedPoint.id;
+                    const latKey = pointId === '1' ? 'office_lat' : `office_lat_${pointId}`;
+                    const lngKey = pointId === '1' ? 'office_lng' : `office_lng_${pointId}`;
+
+                    const targetLat = parseFloat(allSettings[latKey]);
+                    const targetLng = parseFloat(allSettings[lngKey]);
+
+                    // Check if admin has set the coordinates
+                    if (isNaN(targetLat) || isNaN(targetLng) || targetLat === 0) {
+                        modal.show(
+                            'Lokasi Belum Diset',
+                            `<div style="text-align:center; padding: 20px;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
+                                <p style="font-weight:600; font-size:18px; color:#333;">Tolong kontak admin untuk set lokasi absen</p>
+                                <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                                    Titik koordinat untuk <b>${selectedPoint.name}</b> belum dikonfigurasi.
+                                </p>
+                            </div>`,
+                            [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
+                        );
+                        return;
+                    }
+
                     const points = [
-                        { name: 'Kecamatan Cinere', lat: parseFloat(allSettings.office_lat), lng: parseFloat(allSettings.office_lng) },
-                        { name: 'Kelurahan Cinere', lat: parseFloat(allSettings.office_lat_2), lng: parseFloat(allSettings.office_lng_2) },
-                        { name: 'Kelurahan Pangkalan Jati', lat: parseFloat(allSettings.office_lat_3), lng: parseFloat(allSettings.office_lng_3) },
-                        { name: 'Kelurahan Pangkalan Jati Baru', lat: parseFloat(allSettings.office_lat_4), lng: parseFloat(allSettings.office_lng_4) },
-                        { name: 'Kelurahan Gandul', lat: parseFloat(allSettings.office_lat_5), lng: parseFloat(allSettings.office_lng_5) }
-                    ].filter(p => !isNaN(p.lat) && !isNaN(p.lng));
+                        { name: selectedPoint.name, lat: targetLat, lng: targetLng }
+                    ];
 
                     if (points.length > 0) {
                         if (!this.position) {
@@ -418,9 +444,12 @@ const faceRecognition = {
             return;
         }
 
+        const selectedPoint = window.absensi ? window.absensi.getSelectedLocation() : null;
+
         const attendanceData = {
             action: this.currentAction,
             timestamp: new Date().toISOString(),
+            locationName: selectedPoint ? selectedPoint.name : '',
             location: this.position ? {
                 latitude: this.position.coords.latitude,
                 longitude: this.position.coords.longitude

@@ -6,7 +6,7 @@
 
 const adminReports = {
     filters: {
-        attendance: { month: new Date().toISOString().substring(0, 7), dept: '', status: '' },
+        attendance: { month: new Date().toISOString().substring(0, 7), dept: '', status: '', location: '' },
         jurnal: { month: new Date().toISOString().substring(0, 7), employee: '', status: '' },
         leave: { month: new Date().toISOString().substring(0, 7), type: '', status: '' }
     },
@@ -190,12 +190,15 @@ const adminReports = {
         this.attendanceData = this.rawEmployees.map(emp => {
             const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
             let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
+            let lastLocation = '-';
 
             empAtt.forEach(a => {
                 const cIn = a.clockIn;
                 const cOut = a.clockOut;
                 const status = (a.status || '').toLowerCase();
                 
+                if (a.locationName) lastLocation = a.locationName;
+
                 if (cIn && cOut) {
                     present++;
                     if (status.includes('telat') || status.includes('terlambat')) late++;
@@ -216,6 +219,7 @@ const adminReports = {
             return {
                 id: emp.id, name: emp.name, department: emp.department || '-',
                 avatar: emp.avatar, present, late, noClockOut, noClockIn, absent: absentCount,
+                location: lastLocation,
                 total: present + late + noClockOut + noClockIn + absentCount
             };
         });
@@ -294,14 +298,15 @@ const adminReports = {
      */
     getFilteredAttendance() {
         if (!this.attendanceData) return [];
-        const { dept, status } = this.filters.attendance;
+        const { dept, status, location } = this.filters.attendance;
         return this.attendanceData.filter(row => {
             const matchesDept = !dept || row.department === dept;
+            const matchesLocation = !location || row.location === location;
             const matchesStatus = !status || 
                 (status === 'present' && row.present > 0) ||
                 (status === 'absent' && row.absent > 0) ||
                 (status === 'late' && row.late > 0);
-            return matchesDept && matchesStatus;
+            return matchesDept && matchesStatus && matchesLocation;
         });
     },
 
@@ -355,7 +360,9 @@ const adminReports = {
                         </div>
                     </div>
                 </td>
+                </td>
                 <td class="text-center" style="font-weight:600">${row.department}</td>
+                <td class="text-center" style="font-size:12px">${row.location}</td>
                 <td class="text-center success" style="color:#10B981; font-weight:700">${row.present}</td>
                 <td class="text-center warning" style="color:#F59E0B; font-weight:700">${row.late}</td>
                 <td class="text-center danger" style="color:#EF4444; font-weight:700">${row.absent}</td>
@@ -375,11 +382,14 @@ const adminReports = {
                             <div style="font-size:12px; color:var(--text-muted)">${row.department}</div>
                         </div>
                     </div>
-                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:12px;">
+                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:8px;">
                         <div style="text-align:center"><div style="font-size:10px; color:var(--text-muted)">Hadir</div><div style="color:#10B981; font-weight:700">${row.present}</div></div>
                         <div style="text-align:center"><div style="font-size:10px; color:var(--text-muted)">Telat</div><div style="color:#F59E0B; font-weight:700">${row.late}</div></div>
                         <div style="text-align:center"><div style="font-size:10px; color:var(--text-muted)">Cuti</div><div style="color:#EF4444; font-weight:700">${row.absent}</div></div>
                         <div style="text-align:center"><div style="font-size:10px; color:var(--text-muted)">Total</div><div style="font-weight:700">${row.total}</div></div>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px; text-align:center;">
+                        📍 Lokasi Terakhir: <b>${row.location}</b>
                     </div>
                     <button class="btn-full btn-sm" onclick="adminReports.viewAttendanceDetail('${row.id}')">Lihat Detail</button>
                 `;
@@ -530,6 +540,10 @@ const adminReports = {
         });
         this._bind('report-status-filter', 'change', (e) => {
             this.filters.attendance.status = e.target.value;
+            this.renderAttendanceReports();
+        });
+        this._bind('report-location-filter', 'change', (e) => {
+            this.filters.attendance.location = e.target.value;
             this.renderAttendanceReports();
         });
         this._bind('btn-export-attendance', 'click', () => this.exportToExcel('attendance'));
