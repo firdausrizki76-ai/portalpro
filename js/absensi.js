@@ -618,7 +618,7 @@ const absensi = {
             const isAlfa = this.currentState === 'alfa';
             const isLibur = this.currentState === 'libur';
 
-            btnClockIn.disabled = isClockedIn || isLibur || isAlfa;
+            btnClockIn.disabled = isClockedIn || isLibur;
 
             if (isClockedIn) {
                 btnClockIn.classList.add('completed');
