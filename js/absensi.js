@@ -333,11 +333,11 @@ const absensi = {
         // Double check shift range status right before proceeding
         if (!this.checkShiftRangeStatus('clock-in')) {
             modal.show(
-                'Peringatan Absensi Terlambat',
+                'Akses Terbatas',
                 '<div style="text-align: center; padding: 20px;">' +
                 '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
                 '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
-                'Anda sudah tidak diizinkan untuk melakukan absen, silahkan hubungi admin secara langsung untuk meminta izin' +
+                'anda sudah berada di luar range jam kerja' +
                 '</p>' +
                 '</div>',
                 [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
@@ -387,6 +387,21 @@ const absensi = {
 
     handleClockOut() {
         if (!this.attendanceData.clockIn || this.attendanceData.clockOut) return;
+
+        // Restriction Check: Check if within allowed shift time range (+/- 1 hour)
+        if (!this.checkShiftRangeStatus('clock-out')) {
+            modal.show(
+                'Akses Terbatas',
+                '<div style="text-align: center; padding: 20px;">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
+                'anda sudah berada di luar range jam kerja' +
+                '</p>' +
+                '</div>',
+                [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
+            );
+            return;
+        }
 
         // Navigate to face recognition
         router.navigate('face-recognition');
