@@ -356,13 +356,12 @@ const adminReports = {
                         <img src="${getAvatarUrl(row)}" style="width:32px; height:32px; border-radius:50%;">
                         <div>
                             <div style="font-weight:600; color:var(--text-dark)">${row.name}</div>
-                            <div style="font-size:11px; color:var(--text-muted)">${row.department}</div>
+                            <div style="font-size:11px; color:var(--text-muted)">ID: ${row.id}</div>
                         </div>
                     </div>
                 </td>
-                </td>
-                <td class="text-center" style="font-weight:600">${row.department}</td>
-                <td class="text-center" style="font-size:12px">${row.location}</td>
+                <td style="font-weight:500">${row.department}</td>
+                <td class="text-center" style="font-size:12px; font-weight:600; color:var(--primary-color)">${row.location}</td>
                 <td class="text-center success" style="color:#10B981; font-weight:700">${row.present}</td>
                 <td class="text-center warning" style="color:#F59E0B; font-weight:700">${row.late}</td>
                 <td class="text-center danger" style="color:#EF4444; font-weight:700">${row.absent}</td>
