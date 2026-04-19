@@ -191,6 +191,7 @@ const adminReports = {
             const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
             let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
             let lastLocation = '-';
+            let lastStatus = '-';
 
             empAtt.forEach(a => {
                 const cIn = a.clockIn;
@@ -198,13 +199,15 @@ const adminReports = {
                 const status = (a.status || '').toLowerCase();
                 
                 if (a.locationName) lastLocation = a.locationName;
+                if (a.status) lastStatus = a.status;
 
-                if (cIn && cOut) {
+                // Only count as present if it meets criteria
+                if (cIn && cOut && status !== 'alfa') {
                     present++;
                     if (status.includes('telat') || status.includes('terlambat')) late++;
-                } else if (cIn && !cOut) {
+                } else if (cIn && !cOut && status !== 'alfa') {
                     noClockOut++;
-                } else if (!cIn && cOut) {
+                } else if (!cIn && cOut && status !== 'alfa') {
                     noClockIn++;
                 }
             });
@@ -220,6 +223,7 @@ const adminReports = {
                 id: emp.id, name: emp.name, department: emp.department || '-',
                 avatar: emp.avatar, present, late, noClockOut, noClockIn, absent: absentCount,
                 location: lastLocation,
+                status: lastStatus,
                 total: present + late + noClockOut + noClockIn + absentCount
             };
         });
@@ -362,6 +366,7 @@ const adminReports = {
                 </td>
                 <td style="font-weight:500">${row.department}</td>
                 <td class="text-center" style="font-size:12px; font-weight:600; color:var(--primary-color)">${row.location}</td>
+                <td class="text-center"><span class="status-badge ${String(row.status).toLowerCase()}">${row.status}</span></td>
                 <td class="text-center success" style="color:#10B981; font-weight:700">${row.present}</td>
                 <td class="text-center warning" style="color:#F59E0B; font-weight:700">${row.late}</td>
                 <td class="text-center danger" style="color:#EF4444; font-weight:700">${row.absent}</td>
