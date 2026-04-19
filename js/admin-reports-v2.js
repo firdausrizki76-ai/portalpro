@@ -613,44 +613,13 @@ const adminReports = {
             const filtered = data.filter(a => a.date && a.date.startsWith(month));
 
             const rows = filtered.map(a => {
-                let statusText = a.status || '';
-                let statusBadge = statusText.toLowerCase().includes('telat') ? 'warning' : 'success';
+                const statusInfo = dateTime.calculateAttendanceStatus(a);
+                const statusText = statusInfo.label;
+                const statusBadge = statusInfo.class;
                 
                 const cIn = a.clockIn || '';
                 const cOut = a.clockOut || '';
                 
-                // Rule 1: Lupa absen masuk dan absen pulang
-                if (!cIn && !cOut) {
-                    statusText = 'Tidak Hadir';
-                    statusBadge = 'danger';
-                }
-                // Rule 3: Lupa absen pulang namun sebelumnya telah absen masuk
-                else if (cIn && !cOut) {
-                    statusText = 'Tidak Absen Pulang';
-                    statusBadge = 'warning';
-                }
-                // Rule 2: Lupa absen masuk namun absen pulang
-                else if (!cIn && cOut) {
-                    statusBadge = 'warning';
-                    // Calculate relative late minutes from standard Pagi shift (07:30)
-                    let startH = 7, startM = 30; 
-                    if(a.shift && a.shift.toLowerCase() === 'siang') { startH = 13; startM = 0; }
-                    
-                    const outParts = cOut.replace('.',':').split(':');
-                    const outH = parseInt(outParts[0]||0);
-                    const outM = parseInt(outParts[1]||0);
-                    
-                    const outTotal = (outH * 60) + outM;
-                    const startTotal = (startH * 60) + startM;
-                    const minutesLate = outTotal - startTotal;
-                    
-                    if (minutesLate > 0) {
-                        statusText = `Terlambat (${minutesLate} Menit)`;
-                    } else {
-                        statusText = `Terlambat (Tanpa Absen Masuk)`;
-                    }
-                }
-
                 // Attach calculated fields for export
                 a._exportStatus = statusText;
                 

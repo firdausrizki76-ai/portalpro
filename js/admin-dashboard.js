@@ -461,13 +461,13 @@ const adminDashboard = {
                         stack: 'attendance'
                     },
                     {
-                        label: 'Tidak Absen Masuk',
+                        label: 'T.A.M (Tanpa Masuk)',
                         data: noClockInData,
                         backgroundColor: '#F59E0B',
                         stack: 'attendance'
                     },
                     {
-                        label: 'Tidak Absen Pulang',
+                        label: 'T.A.P (Tanpa Pulang)',
                         data: noClockOutData,
                         backgroundColor: '#8B5CF6',
                         stack: 'secondary'
