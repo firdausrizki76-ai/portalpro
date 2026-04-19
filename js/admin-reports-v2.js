@@ -488,6 +488,8 @@ const adminReports = {
             return;
         }
 
+        const statusLabels = { 'pending': 'Menunggu', 'approved': 'Disetujui', 'rejected': 'Ditolak', 'batal': 'Dibatalkan' };
+
         data.forEach(row => {
             const lowerStatus = (row.status || '').toLowerCase();
             const approvalButtons = (lowerStatus === 'pending' || lowerStatus === 'menunggu') ? `
