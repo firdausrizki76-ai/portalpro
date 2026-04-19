@@ -159,7 +159,27 @@ const absensi = {
             const isAlfaTime = isTooLate;
 
             
-            if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
+            // --- NEW: Global Holiday Check ---
+            let isGlobalHoliday = false;
+            if (this.systemSettings.working_days) {
+                try {
+                    const workingDays = JSON.parse(this.systemSettings.working_days);
+                    const daysEng = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                    const dayMap = {
+                        'monday': 'senin', 'tuesday': 'selasa', 'wednesday': 'rabu',
+                        'thursday': 'kamis', 'friday': 'jumat', 'saturday': 'sabtu', 'sunday': 'minggu'
+                    };
+                    const todayNameEng = daysEng[new Date().getDay()];
+                    const idDay = dayMap[todayNameEng];
+                    if (workingDays[idDay] === false) {
+                        isGlobalHoliday = true;
+                    }
+                } catch (e) { console.error('Error checking global holiday:', e); }
+            }
+
+            if (isGlobalHoliday && !todayAttendance.clockIn) {
+                this.currentState = 'libur-global';
+            } else if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
                 this.currentState = 'libur';
             } else if (todayAttendance.clockOut) {
                 this.currentState = 'completed';
@@ -517,8 +537,21 @@ const absensi = {
     },
 
     checkShiftRangeStatus(action) {
+        // 1. Global Holiday Check
+        if (this.systemSettings.working_days) {
+            try {
+                const workingDays = JSON.parse(this.systemSettings.working_days);
+                const dayNameEng = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
+                const dayMap = {
+                    'monday': 'senin', 'tuesday': 'selasa', 'wednesday': 'rabu',
+                    'thursday': 'kamis', 'friday': 'jumat', 'saturday': 'sabtu', 'sunday': 'minggu'
+                };
+                if (workingDays[dayMap[dayNameEng]] === false) return false;
+            } catch (e) {}
+        }
+
         const shiftName = this.attendanceData.shift;
-        if (!shiftName || shiftName === 'Libur') return true;
+        if (!shiftName || shiftName === 'Libur') return false;
 
         const now = new Date();
         const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -574,10 +607,15 @@ const absensi = {
             statusRing.className = 'status-ring';
 
             switch (this.currentState) {
-                case 'libur':
+                case 'libur-global':
                     statusRing.classList.add('waiting');
                     if (statusText) statusText.textContent = 'Hari Libur';
-                    if (statusSubtext) statusSubtext.textContent = 'Anda tidak memiliki jadwal kerja hari ini.';
+                    if (statusSubtext) statusSubtext.textContent = 'Hari ini adalah hari libur (non-kerja).';
+                    break;
+                case 'libur':
+                    statusRing.classList.add('waiting');
+                    if (statusText) statusText.textContent = 'Jadwal Libur';
+                    if (statusSubtext) statusSubtext.textContent = 'Anda dijadwalkan libur hari ini.';
                     break;
                 case 'waiting':
                     statusRing.classList.add('waiting');
@@ -627,7 +665,7 @@ const absensi = {
         if (btnClockIn) {
             const isClockedIn = this.attendanceData.clockIn !== null && this.attendanceData.clockIn !== undefined;
             const isAlfa = this.currentState === 'alfa';
-            const isLibur = this.currentState === 'libur';
+            const isLibur = this.currentState === 'libur' || this.currentState === 'libur-global';
 
             btnClockIn.disabled = isClockedIn || isLibur;
 
@@ -637,8 +675,10 @@ const absensi = {
                 if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
             } else if (isLibur) {
                 btnClockIn.classList.add('completed');
+                btnClockIn.style.opacity = '0.5';
             } else {
                 btnClockIn.classList.remove('completed');
+                btnClockIn.style.opacity = '1';
             }
         }
 
