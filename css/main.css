@@ -1344,27 +1344,38 @@ img {
     }
 }
 
-/* Badge Status */
-.badge-status {
+/* Badge Status & Status Badge (Unified) */
+.badge-status, .status-badge {
     padding: 4px 10px;
     border-radius: 20px;
     font-size: var(--font-size-xs);
     font-weight: 500;
+    display: inline-block;
 }
 
-.badge-status.success {
+.badge-status.success, .status-badge.success {
     background: rgba(16, 185, 129, 0.1);
     color: var(--color-success);
 }
 
-.badge-status.warning {
+.badge-status.warning, .status-badge.warning {
     background: rgba(0, 51, 153, 0.1);
     color: #003399;
 }
 
-.badge-status.danger {
+.badge-status.danger, .status-badge.danger {
     background: rgba(239, 68, 68, 0.1);
     color: var(--color-danger);
+}
+
+.badge-status.info, .status-badge.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--color-info);
+}
+
+.badge-status.secondary, .status-badge.secondary {
+    background: var(--color-gray-100);
+    color: var(--color-gray-500);
 }
 
 /* Loading Animation - No Spin */

@@ -550,7 +550,11 @@ const adminReports = {
                     <td>${a.shift || '-'}</td>
                     <td>${a.clockIn || '-'}</td>
                     <td>${a.clockOut || '-'}</td>
-                    <td><span class="status-badge ${a.status.toLowerCase().includes('telat') ? 'warning' : 'success'}">${a.status}</span></td>
+                    <td>
+                        <span class="status-badge ${(dateTime.calculateAttendanceStatus(a).class)}">
+                            ${(dateTime.calculateAttendanceStatus(a).label)}
+                        </span>
+                    </td>
                 </tr>
             `).join('') || '<tr><td colspan="5" class="text-center">Tidak ada data untuk bulan ini</td></tr>';
 

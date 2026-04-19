@@ -474,6 +474,52 @@ var dateTime = {
         var minutes = Math.floor((diff % 3600000) / 60000);
 
         return hours + 'j ' + minutes + 'm';
+    },
+
+    /**
+     * Common logic to determine attendance status label and CSS class
+     */
+    calculateAttendanceStatus: function(record) {
+        const clockIn = record.clockIn;
+        const clockOut = record.clockOut;
+        const status = (record.status || '').toLowerCase();
+        
+        // Ensure date is yyyy-mm-dd
+        let serverDate = record.date || '';
+        if (serverDate.includes(' ')) serverDate = serverDate.split(' ')[0];
+        
+        const today = new Date().toISOString().split('T')[0];
+
+        // Case 1: Both exist (Normal complete attendance)
+        if (clockIn && clockOut) {
+            if (status.includes('telat') || status.includes('terlambat')) {
+                return { label: 'Terlambat', class: 'warning' };
+            }
+            return { label: 'Tepat Waktu', class: 'success' };
+        }
+
+        // Case 2: Only Clock In
+        if (clockIn && !clockOut) {
+            if (serverDate === today) {
+                return { label: 'Belum Pulang', class: 'info' };
+            }
+            return { label: 'T.A.P (Tanpa Pulang)', class: 'danger' };
+        }
+
+        // Case 3: Only Clock Out
+        if (!clockIn && clockOut) {
+            return { label: 'T.A.M (Tanpa Masuk)', class: 'danger' };
+        }
+
+        // Case 4: No attendance yet
+        if (!clockIn && !clockOut) {
+            if (serverDate < today) {
+                return { label: 'Alfa', class: 'danger' };
+            }
+            return { label: 'Waiting', class: 'secondary' };
+        }
+
+        return { label: record.status || 'Pending', class: 'secondary' };
     }
 };
 

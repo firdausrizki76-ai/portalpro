@@ -225,13 +225,9 @@ const absensi = {
                 }
             }
 
-            // Status Badge
-            let statusBadge = '<span class="badge-status">Waiting</span>';
-            if (record.status.toLowerCase() === 'ontime') {
-                statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
-            } else if (record.status.toLowerCase() === 'terlambat' || record.status.toLowerCase() === 'late') {
-                statusBadge = '<span class="badge-status warning">Terlambat</span>';
-            }
+            // Status Badge logic using shared utility
+            const statusInfo = dateTime.calculateAttendanceStatus(record);
+            let statusBadge = `<span class="badge-status ${statusInfo.class}">${statusInfo.label}</span>`;
 
             // Format date to local standard UI string
             const [y, m, d] = record.date.split('-');
