@@ -85,7 +85,7 @@ const settings = {
             }
 
             // Load additional points
-            for (let i = 2; i <= 4; i++) {
+            for (let i = 2; i <= 5; i++) {
                 const latEl = document.getElementById(`setting-office-lat-${i}`);
                 const lngEl = document.getElementById(`setting-office-lng-${i}`);
                 if (latEl) latEl.value = allSettings[`office_lat_${i}`] || '';
@@ -302,6 +302,8 @@ const settings = {
                 api.saveSetting('office_lng_3', offLng3 ? offLng3.value : ''),
                 api.saveSetting('office_lat_4', offLat4 ? offLat4.value : ''),
                 api.saveSetting('office_lng_4', offLng4 ? offLng4.value : ''),
+                api.saveSetting('office_lat_5', document.getElementById('setting-office-lat-5')?.value || ''),
+                api.saveSetting('office_lng_5', document.getElementById('setting-office-lng-5')?.value || ''),
                 api.saveSetting('require_face_recognition', faceToggle ? String(faceToggle.checked) : 'true'),
                 api.saveSetting('require_location_tracking', locToggle ? String(locToggle.checked) : 'true')
             ]);

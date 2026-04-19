@@ -249,7 +249,8 @@ const faceRecognition = {
                         { name: 'Kecamatan Cinere', lat: parseFloat(allSettings.office_lat), lng: parseFloat(allSettings.office_lng) },
                         { name: 'Kelurahan Cinere', lat: parseFloat(allSettings.office_lat_2), lng: parseFloat(allSettings.office_lng_2) },
                         { name: 'Kelurahan Pangkalan Jati', lat: parseFloat(allSettings.office_lat_3), lng: parseFloat(allSettings.office_lng_3) },
-                        { name: 'Kelurahan Pangkalan Jati Baru', lat: parseFloat(allSettings.office_lat_4), lng: parseFloat(allSettings.office_lng_4) }
+                        { name: 'Kelurahan Pangkalan Jati Baru', lat: parseFloat(allSettings.office_lat_4), lng: parseFloat(allSettings.office_lng_4) },
+                        { name: 'Kelurahan Gandul', lat: parseFloat(allSettings.office_lat_5), lng: parseFloat(allSettings.office_lng_5) }
                     ].filter(p => !isNaN(p.lat) && !isNaN(p.lng));
 
                     if (points.length > 0) {
