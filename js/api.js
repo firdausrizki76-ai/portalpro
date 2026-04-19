@@ -112,7 +112,7 @@ const api = {
                 success: true,
                 data: todayRecord || {
                     date: today, shift: 'Pagi', clockIn: null, clockOut: null,
-                    breakStart: null, breakEnd: null, overtimeStart: null, status: 'waiting'
+                    breakStart: null, breakEnd: null, status: 'waiting'
                 }
             };
         }
@@ -122,7 +122,7 @@ const api = {
     async saveAttendance(data) {
         if (!API_BASE_URL) {
             // Check Alfa status for Local Fallback
-            if (!data.clockOut && !data.overtimeStart) {
+            if (!data.clockOut) {
                 const now = new Date();
                 const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 

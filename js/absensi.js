@@ -118,7 +118,6 @@ const absensi = {
                     clockOut: null,
                     breakStart: null,
                     breakEnd: null,
-                    overtimeStart: null,
                     status: 'waiting'
                 };
             }
@@ -128,7 +127,6 @@ const absensi = {
             todayAttendance.clockOut = todayAttendance.clockOut || null;
             todayAttendance.breakStart = todayAttendance.breakStart || null;
             todayAttendance.breakEnd = todayAttendance.breakEnd || null;
-            todayAttendance.overtimeStart = todayAttendance.overtimeStart || null;
 
             // Handle dual verification mapping
             if (todayAttendance.verificationInPhoto) {
@@ -302,22 +300,6 @@ const absensi = {
             console.log('Clock In button initialized, disabled:', btnClockIn.disabled);
         }
 
-
-
-        // Overtime
-        const btnOvertime = document.getElementById('btn-overtime');
-        if (btnOvertime) {
-            btnOvertime.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.handleOvertime();
-            });
-            btnOvertime.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                this.handleOvertime();
-            });
-        }
-
         // Clock Out
         const btnClockOut = document.getElementById('btn-clock-out');
         if (btnClockOut) {
@@ -391,20 +373,6 @@ const absensi = {
         }, 100);
     },
 
-
-
-    handleOvertime() {
-        if (!this.attendanceData.clockIn) return;
-
-        // Navigate to face recognition
-        router.navigate('face-recognition');
-        setTimeout(() => {
-            if (window.faceRecognition) {
-                window.faceRecognition.init('overtime');
-            }
-        }, 100);
-    },
-
     handleClockOut() {
         if (!this.attendanceData.clockIn || this.attendanceData.clockOut) return;
 
@@ -441,8 +409,7 @@ const absensi = {
             case 'clock-in':
                 this.attendanceData.clockIn = timeStr;
                 break;
-            case 'overtime':
-                this.attendanceData.overtimeStart = timeStr;
+            // overtime case removed
                 break;
             case 'clock-out':
                 this.attendanceData.clockOut = timeStr;
@@ -477,7 +444,7 @@ const absensi = {
 
             // Notify Admin
             const recipientId = 'admin';
-            const actionLabel = action === 'clock-in' ? 'Clock In' : (action === 'clock-out' ? 'Clock Out' : 'Lembur');
+            const actionLabel = action === 'clock-in' ? 'Clock In' : 'Clock Out';
             notifications.add(recipientId, currentUser.name, `melakukan ${actionLabel}`, 'info');
             
             // Success navigation
@@ -635,14 +602,7 @@ const absensi = {
 
 
 
-        // Overtime button
-        if (btnOvertime) {
-            btnOvertime.disabled = !this.attendanceData.clockIn || this.attendanceData.clockOut !== null;
-            if (this.attendanceData.overtimeStart) {
-                btnOvertime.classList.add('completed');
-                document.getElementById('overtime-time').textContent = this.attendanceData.overtimeStart;
-            }
-        }
+        // Overtime UI update removed
 
         // Clock Out button
         if (btnClockOut) {
