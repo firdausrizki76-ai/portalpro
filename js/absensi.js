@@ -145,7 +145,19 @@ const absensi = {
             }
 
             // Determine current state
-            const isAlfaTime = this.checkAlfaStatus(todayAttendance.shift);
+            // Determine current state based on shift range
+            const shifts = storage.get('shifts') || [];
+            const activeShift = shifts.find(s => String(s.name) === String(todayAttendance.shift));
+            let isTooLate = false;
+            if (activeShift && activeShift.startTime) {
+                const [h, m] = activeShift.startTime.replace('.', ':').split(':').map(Number);
+                const startMin = (h || 0) * 60 + (m || 0);
+                const now = new Date();
+                const nowMin = now.getHours() * 60 + now.getMinutes();
+                isTooLate = nowMin > startMin + 60;
+            }
+            const isAlfaTime = isTooLate;
+
             
             if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
                 this.currentState = 'libur';
@@ -318,8 +330,8 @@ const absensi = {
     handleClockIn() {
         if (this.attendanceData.clockIn) return;
 
-        // Double check Alfa status right before proceeding
-        if (this.checkAlfaStatus(this.attendanceData.shift)) {
+        // Double check shift range status right before proceeding
+        if (!this.checkShiftRangeStatus('clock-in')) {
             modal.show(
                 'Peringatan Absensi Terlambat',
                 '<div style="text-align: center; padding: 20px;">' +
