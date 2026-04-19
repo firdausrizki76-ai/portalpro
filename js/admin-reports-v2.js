@@ -191,23 +191,29 @@ const adminReports = {
             const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
             let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
             let lastLocation = '-';
-            let lastStatus = '-';
 
             empAtt.forEach(a => {
                 const cIn = a.clockIn;
                 const cOut = a.clockOut;
-                const status = (a.status || '').toLowerCase();
                 
-                if (a.locationName) lastLocation = a.locationName;
-                if (a.status) lastStatus = a.status;
+                // Use a different key if status was accidentally moved to locationName
+                let statusVal = (a.status || '').toLowerCase();
+                let locVal = a.locationName || '';
+                
+                // HEURISTIC: If locationName looks like a status, Swap them
+                if (locVal.toLowerCase() === 'terlambat' || locVal.toLowerCase() === 'ontime') {
+                    statusVal = locVal.toLowerCase();
+                    locVal = '-';
+                }
 
-                // Only count as present if it meets criteria
-                if (cIn && cOut && status !== 'alfa') {
+                if (locVal) lastLocation = locVal;
+
+                if (cIn && cOut) {
                     present++;
-                    if (status.includes('telat') || status.includes('terlambat')) late++;
-                } else if (cIn && !cOut && status !== 'alfa') {
+                    if (statusVal.includes('telat') || statusVal.includes('terlambat')) late++;
+                } else if (cIn && !cOut) {
                     noClockOut++;
-                } else if (!cIn && cOut && status !== 'alfa') {
+                } else if (!cIn && cOut) {
                     noClockIn++;
                 }
             });
@@ -223,7 +229,6 @@ const adminReports = {
                 id: emp.id, name: emp.name, department: emp.department || '-',
                 avatar: emp.avatar, present, late, noClockOut, noClockIn, absent: absentCount,
                 location: lastLocation,
-                status: lastStatus,
                 total: present + late + noClockOut + noClockIn + absentCount
             };
         });
@@ -366,7 +371,6 @@ const adminReports = {
                 </td>
                 <td style="font-weight:500">${row.department}</td>
                 <td class="text-center" style="font-size:12px; font-weight:600; color:var(--primary-color)">${row.location}</td>
-                <td class="text-center"><span class="status-badge ${String(row.status).toLowerCase()}">${row.status}</span></td>
                 <td class="text-center success" style="color:#10B981; font-weight:700">${row.present}</td>
                 <td class="text-center warning" style="color:#F59E0B; font-weight:700">${row.late}</td>
                 <td class="text-center danger" style="color:#EF4444; font-weight:700">${row.absent}</td>
