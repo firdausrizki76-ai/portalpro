@@ -389,14 +389,17 @@ const absensi = {
     async processWithVerification(action, verificationData) {
         const timeStr = dateTime.formatTime(new Date());
 
-        // Pre-save Check: Always check Alfa before allowing process
-        if (action === 'clock-in' && this.checkAlfaStatus(this.attendanceData.shift)) {
+        // Restriction Check: Check if within allowed shift time range (+/- 1 hour)
+        if (!this.checkShiftRangeStatus(action)) {
             modal.show(
-                'Peringatan Absensi Terlambat',
+                'Akses Terbatas',
                 '<div style="text-align: center; padding: 20px;">' +
-                '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
-                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
-                'Anda sudah tidak diizinkan untuk melakukan absen, silahkan hubungi admin secara langsung untuk meminta izin' +
+                '<i class="fas fa-clock" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">' +
+                'anda sudah berada di luar range jam kerja' +
+                '</p>' +
+                '<p style="font-size: 14px; color: #64748b;">' +
+                'Silahkan hubungi admin jika terdapat kendala.' +
                 '</p>' +
                 '</div>',
                 [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
@@ -490,25 +493,41 @@ const absensi = {
         }
     },
 
-    checkAlfaStatus(shiftName) {
-        if (!shiftName || shiftName === 'Libur') return false;
+    checkShiftRangeStatus(action) {
+        const shiftName = this.attendanceData.shift;
+        if (!shiftName || shiftName === 'Libur') return true;
 
         const now = new Date();
-        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
 
-        // Get shift start time
-        let shiftStartTimeStr = "08:00"; // fallback
-        const shifts = storage.get('shifts', []);
+        // Get shift details
+        const shifts = storage.get('shifts') || [];
         const userShift = shifts.find(s => String(s.name) === String(shiftName));
         
-        if (userShift && userShift.startTime) {
-            shiftStartTimeStr = userShift.startTime.replace('.', ':');
-        }
-        
-        const [sH, sM] = shiftStartTimeStr.split(':').map(Number);
-        const shiftStartInMinutes = (sH || 0) * 60 + (sM || 0);
+        // Default fallbacks
+        let startMin = 480; // 08:00
+        let endMin = 1020;  // 17:00
 
-        return currentTimeInMinutes > (shiftStartInMinutes + 60);
+        if (userShift) {
+            if (userShift.startTime) {
+                const [h, m] = userShift.startTime.replace('.', ':').split(':').map(Number);
+                startMin = (h || 0) * 60 + (m || 0);
+            }
+            if (userShift.endTime) {
+                const [h, m] = userShift.endTime.replace('.', ':').split(':').map(Number);
+                endMin = (h || 0) * 60 + (m || 0);
+            }
+        }
+
+        if (action === 'clock-in') {
+            // Rule: ShiftStart +/- 60 min
+            return (nowMin >= startMin - 60 && nowMin <= startMin + 60);
+        } else if (action === 'clock-out') {
+            // Rule: Not more than 1 hour after ShiftEnd
+            return (nowMin <= endMin + 60);
+        }
+
+        return true;
     },
 
     updateUI() {
