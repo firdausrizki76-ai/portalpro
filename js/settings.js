@@ -132,9 +132,16 @@ const settings = {
      */
     normalizeTime(val) {
         if (!val) return '09:00';
-        const str = String(val);
+        let str = String(val);
+        
+        // Fix single digit hour without leading zero (e.g., "8:00" -> "08:00")
+        if (/^\d{1}:\d{2}$/.test(str)) {
+            str = '0' + str;
+        }
+        
         // Already HH:mm format
         if (/^\d{2}:\d{2}$/.test(str)) return str;
+        
         // ISO date string from Sheets - extract time portion based on timezone offset
         if (str.includes('T') || str.includes('1899')) {
             try {
