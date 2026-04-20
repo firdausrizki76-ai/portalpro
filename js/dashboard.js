@@ -419,11 +419,17 @@ const dashboard = {
                     bar.classList.remove('active');
                 }
                 
-                // Today indicator - more robust check
-                const isToday = iso === new Date().toISOString().split('T')[0];
+                // Today indicator - using local date to avoid UTC mismatch
+                const localToday = new Date().toLocaleDateString('en-CA'); // format: YYYY-MM-DD
+                const isToday = iso === localToday;
+                
                 if (isToday) {
+                    bar.parentElement.classList.add('today-active');
                     bar.parentElement.style.borderBottom = '3px solid var(--color-primary)';
+                    // Force height for visibility of active day indicator
+                    bar.style.backgroundColor = 'var(--color-primary)';
                 } else {
+                    bar.parentElement.classList.remove('today-active');
                     bar.parentElement.style.borderBottom = 'none';
                 }
             }
