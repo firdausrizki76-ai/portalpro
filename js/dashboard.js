@@ -9,55 +9,64 @@ const dashboard = {
 
     async init() {
         if (this.initialized) {
-            // Already initialized, just do a silent refresh in background
+            // Background refresh without showing loader
             this.loadData().then(() => {
-                this.updateWelcomeCard();
-                this.updateStats();
-                this.updateSessionInfo();
+                this.renderUI();
             });
             return;
         }
 
         try {
-            // Show UI immediately with cached/default data first
-            this.updateWelcomeCard();
-            this.updateStats();
-            this.updateSessionInfo();
-            this.updateProgressBar();
+            // Priority 1: Render UI immediately with whatever we have in cache
+            this.renderUI();
+            
+            // Priority 2: Hide loader as soon as the first render is visible
+            // This is key to perceived speed
+            if (typeof loader !== 'undefined') loader.hide();
 
-            // Then load fresh data from API in background
+            // Priority 3: Background load fresh data from API
             await this.loadData();
-            this.updateWelcomeCard();
-            this.updateStats();
-            this.updateSessionInfo();
+            
+            // Priority 4: Re-render with fresh data silently
+            this.renderUI();
+            
             this.initialized = true;
         } catch (error) {
             console.error('Dashboard init error:', error);
-        } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
+    },
+
+    // Centralized rendering method
+    renderUI() {
+        this.updateWelcomeCard();
+        this.updateStats();
+        this.updateSessionInfo();
+        this.updateProgressBar();
+        this.renderActivityList();
+        this.renderTeamPresence();
     },
 
     async loadData() {
         try {
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
-                // Run refreshProfile in parallel with data fetching (non-blocking)
-                const refreshPromise = auth.refreshProfile().catch(e => 
-                    console.warn('Profile refresh failed, using cached data:', e)
-                );
-                
-                // Fetch attendance and global settings concurrently
-                const [attResult, settingsRes] = await Promise.all([
+                // Run multiple requests in parallel
+                const [attResult, settingsRes, teamRes] = await Promise.allSettled([
                     api.getAttendance(currentUser.id),
-                    api.getSettings()
+                    api.getSettings(),
+                    api.getEmployees(), // For team presence
+                    auth.refreshProfile() // Ensure session is fresh
                 ]);
 
-                this.attendanceData = (attResult && attResult.success) ? attResult.data : [];
+                // 1. Process Attendance
+                if (attResult.status === 'fulfilled' && attResult.value.success) {
+                    this.attendanceData = attResult.value.data || [];
+                }
 
-                // Sync global schedule shift mapping from Admin to this employee's local instance
-                if (settingsRes && settingsRes.success && settingsRes.data) {
-                    const globalSettings = settingsRes.data;
+                // 2. Process Settings & Schedules
+                if (settingsRes.status === 'fulfilled' && settingsRes.value.success) {
+                    const globalSettings = settingsRes.value.data;
                     const loadedSchedules = {};
                     Object.keys(globalSettings).forEach(k => {
                         if (k.startsWith('shift_schedule_')) {
@@ -72,12 +81,13 @@ const dashboard = {
                     }
                 }
                 
-                // Wait for profile refresh to complete (but it won't block data display)
-                await refreshPromise;
+                // 3. Process Team Data
+                if (teamRes.status === 'fulfilled' && teamRes.value.success) {
+                    storage.set('admin_employees', teamRes.value.data || []);
+                }
             }
         } catch (error) {
             console.error('Error loading dashboard data:', error);
-            this.attendanceData = [];
         }
     },
 
@@ -230,6 +240,69 @@ const dashboard = {
         if (progressFill) {
             progressFill.style.width = `${progress}%`;
         }
+    },
+
+    renderActivityList() {
+        const container = document.getElementById('dashboard-activity-list');
+        if (!container) return;
+
+        // Get latest attendance entries
+        const attendance = [...this.attendanceData].slice(0, 5);
+
+        if (attendance.length === 0) {
+            container.innerHTML = '<div class="notification-empty">Tidak ada aktivitas terbaru</div>';
+            return;
+        }
+
+        container.innerHTML = attendance.map(att => {
+            const status = dateTime.calculateAttendanceStatus(att);
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon ${status.class}">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p class="activity-text">Absensi ${dateTime.formatDate(att.date, 'short')} - <strong>${status.label}</strong></p>
+                        <span class="activity-time">${att.clockIn ? att.clockIn : '--:--'} ${att.clockOut ? ' - ' + att.clockOut : ''}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    renderTeamPresence() {
+        const container = document.getElementById('dashboard-team-avatars');
+        if (!container) return;
+
+        const allEmployees = storage.get('admin_employees', []);
+        const currentUser = auth.getCurrentUser();
+        
+        // Exclude current user and filter online
+        const others = allEmployees.filter(e => String(e.id) !== String(currentUser?.id) && String(e.email) !== String(currentUser?.email));
+        const onlineCount = others.filter(e => e.isOnline === true || String(e.isOnline).toLowerCase() === 'true').length;
+        const offlineCount = others.length - onlineCount;
+
+        // Update counts
+        const countEl = document.getElementById('dashboard-team-count');
+        const onlineEl = document.getElementById('dashboard-online-count');
+        const offlineEl = document.getElementById('dashboard-offline-count');
+
+        if (countEl) countEl.textContent = `${others.length} orang`;
+        if (onlineEl) onlineEl.textContent = onlineCount;
+        if (offlineEl) offlineEl.textContent = offlineCount;
+
+        if (others.length === 0) {
+            container.innerHTML = '<div class="notification-empty">Kehadiran tim belum tersedia</div>';
+            return;
+        }
+
+        // Render up to 6 avatars
+        container.innerHTML = others.slice(0, 6).map(emp => `
+            <div class="team-avatar-wrapper" title="${emp.name} (${emp.isOnline ? 'Online' : 'Offline'})">
+                <img src="${getAvatarUrl(emp)}" alt="${emp.name}" class="team-member-avatar ${emp.isOnline ? 'online' : ''}">
+                <span class="status-indicator ${emp.isOnline ? 'online' : ''}"></span>
+            </div>
+        `).join('') + (others.length > 6 ? `<div class="avatar-more">+${others.length - 6}</div>` : '');
     }
 };
 

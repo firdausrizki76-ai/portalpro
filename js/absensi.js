@@ -13,7 +13,7 @@ const absensi = {
 
     async init() {
         if (this.initialized) {
-            // Already initialized, just do a silent refresh in background
+            // Background refresh without showing loader
             this.loadTodayAttendance().then(() => this.updateUI());
             return;
         }
@@ -21,27 +21,32 @@ const absensi = {
         try {
             console.log('Initializing absensi page...');
             
-            // PRIORITY 1: Initialize local/visual elements first so page is responsive immediately
+            // PRIORITY 1: Initialize visual elements and render with cache immediately
             this.initLiveClock();
             this.initButtons();
+            
+            // Initial render with cached/default data
+            this.updateUI(); 
             this.renderTimeline();
-            this.updateUI(); // Initial render with cached/default data
 
-            // PRIORITY 2: Background load of heavy data
-            // We load today's record and history in parallel
-            await Promise.all([
+            // PRIORITY 2: Hide loader as soon as the first render is visible
+            if (typeof loader !== 'undefined') loader.hide();
+
+            // PRIORITY 3: Background load fresh data
+            await Promise.allSettled([
                 this.loadTodayAttendance(),
                 this.loadAttendanceHistory()
             ]);
             
-            this.updateUI(); // Final render with fresh data
+            // Final render with fresh data
+            this.updateUI();
+            this.renderTimeline(); // Re-render timeline with fresh data
+            
             this.initialized = true;
         } catch (error) {
             console.error('Absensi init error:', error);
-            // Fallback UI update in case of failure
-            this.updateUI();
-        } finally {
             if (typeof loader !== 'undefined') loader.hide();
+            this.updateUI();
         }
     },
 
@@ -98,10 +103,16 @@ const absensi = {
                     const currentDay = todayObj.getDate();
                     const key = `${currentYear}-${currentMonth}`;
 
+                    // Update shift from profile if available (fresher from database)
+                    const freshUser = auth.getCurrentUser();
+                    if (freshUser && freshUser.shift) {
+                        currentShift = freshUser.shift;
+                    }
+
                     if (schedules[key] && schedules[key][stringUserId]) {
                         const assignedShift = schedules[key][stringUserId][currentDay];
-                        if (assignedShift && assignedShift !== '') {
-                            console.log('Absen Shift Sync - Overriding with Schedule:', assignedShift);
+                        if (assignedShift && assignedShift.trim() !== '') {
+                            console.log('Absen Shift Sync - Found Schedule:', assignedShift);
                             currentShift = assignedShift;
                         }
                     }
