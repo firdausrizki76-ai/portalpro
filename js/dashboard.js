@@ -45,6 +45,7 @@ const dashboard = {
         this.updateProgressBar();
         this.renderActivityList();
         this.renderTeamPresence();
+        this.updateWeeklyAttendanceChart();
     },
 
     async loadData() {
@@ -52,12 +53,19 @@ const dashboard = {
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
                 // Run multiple requests in parallel
-                const [attResult, settingsRes, teamRes] = await Promise.allSettled([
+                const [attResult, settingsRes, teamRes, profileRes] = await Promise.allSettled([
                     api.getAttendance(currentUser.id),
                     api.getSettings(),
                     api.getEmployees(), // For team presence
                     auth.refreshProfile() // Ensure session is fresh
                 ]);
+
+                // Immediately update Welcome card if profile was refreshed 
+                // (This ensures shift changes from DB are shown ASAP)
+                if (profileRes.status === 'fulfilled') {
+                    console.log('Profile refreshed, updating welcome card specifically.');
+                    this.updateWelcomeCard();
+                }
 
                 // 1. Process Attendance
                 if (attResult.status === 'fulfilled' && attResult.value.success) {
@@ -303,6 +311,43 @@ const dashboard = {
                 <span class="status-indicator ${emp.isOnline ? 'online' : ''}"></span>
             </div>
         `).join('') + (others.length > 6 ? `<div class="avatar-more">+${others.length - 6}</div>` : '');
+    },
+
+    updateWeeklyAttendanceChart() {
+        const attendance = this.attendanceData;
+        const days = ['min', 'sab', 'jum', 'kam', 'rab', 'sel', 'sen'];
+        const today = new Date();
+        
+        // Loop through last 7 days including today
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const iso = date.toISOString().split('T')[0];
+            const dayName = days[date.getDay()]; // Note: getDay() is 0 for Sunday
+            
+            const record = attendance.find(a => a.date === iso);
+            const bar = document.getElementById(`bar-${dayName}`);
+            
+            if (bar) {
+                if (record && (record.clockIn)) {
+                    // Check if they worked full day or were late
+                    const status = dateTime.calculateAttendanceStatus(record);
+                    bar.style.height = '80%'; // Just a visual representation
+                    bar.classList.add('active');
+                    if (status.class === 'danger') bar.style.height = '30%';
+                    if (status.class === 'warning') bar.style.height = '50%';
+                } else {
+                    bar.style.height = '10%'; // Empty
+                    bar.classList.remove('active');
+                }
+                
+                // Highlight today
+                if (i === 0) {
+                    bar.style.boxShadow = '0 0 8px var(--color-primary-light)';
+                    bar.style.width = '16px';
+                }
+            }
+        }
     }
 };
 
