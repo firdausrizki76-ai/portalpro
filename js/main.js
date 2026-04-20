@@ -373,8 +373,13 @@ var dateTime = {
 
     calculateDuration: function(start, end) {
         if (!start || !end) return '-';
-        var startTime = new Date('2000-01-01 ' + start);
-        var endTime = new Date('2000-01-01 ' + end);
+        
+        // Normalize time format (replace . with :)
+        const s = start.toString().replace('.', ':');
+        const e = end.toString().replace('.', ':');
+        
+        var startTime = new Date('2000-01-01 ' + s);
+        var endTime = new Date('2000-01-01 ' + e);
         var diff = endTime - startTime;
 
         // Handle night shifts (e.g., 16:30 to 06:00)
