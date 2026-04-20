@@ -1225,9 +1225,10 @@
                                     <thead>
                                         <tr>
                                             <th>Nama Pegawai</th>
-                                            <th>ID Pegawai</th>
+                                            <th>NIP</th>
                                             <th>Bidang</th>
                                             <th>Jabatan</th>
+                                            <th>Masa Kerja</th>
                                             <th>Shift</th>
                                             <th>Status</th>
                                             <th>Aksi</th>
@@ -1812,11 +1813,15 @@
                         <input type="text" id="emp-name" placeholder="Nama pegawai" required>
                     </div>
                     <div class="form-group">
-                        <label for="emp-email">Email</label>
-                        <input type="email" id="emp-email" placeholder="email@company.com" required>
+                        <label for="emp-nip">NIP</label>
+                        <input type="text" id="emp-nip" placeholder="Contoh: 19900113..." required>
                     </div>
                 </div>
                 <div class="form-row two-col">
+                    <div class="form-group">
+                        <label for="emp-email">Email</label>
+                        <input type="email" id="emp-email" placeholder="email@company.com" required>
+                    </div>
                     <div class="form-group">
                         <label for="emp-department">Bidang</label>
                         <input type="text" id="emp-department" list="dept-list"
@@ -1979,23 +1984,23 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/api.js?v=999"></script>
-    <script src="js/main.js?v=999"></script>
-    <script src="js/auth.js?v=999"></script>
+    <script src="js/api.js?v=3.5"></script>
+    <script src="js/main.js?v=3.5"></script>
+    <script src="js/auth.js?v=3.5"></script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
-    <script src="js/router.js?v=999"></script>
-    <script src="js/dashboard.js?v=3.3"></script>
-    <script src="js/absensi.js?v=3.3"></script>
-    <script src="js/face-api-logic.js?v=3.3"></script>
-    <script src="js/izin.js?v=999"></script>
-    <script src="js/laporan-kinerja.js?v=3.3"></script>
-    <script src="js/cuti.js?v=999"></script>
-    <script src="js/admin-dashboard.js?v=999"></script>
-    <script src="js/admin-employees.js?v=999"></script>
-    <script src="js/admin-reports-v2.js?v=999"></script>
-    <script src="js/shift-schedule.js?v=999"></script>
-    <script src="js/settings.js?v=999"></script>
-    <script src="js/mobile.js?v=999"></script>
+    <script src="js/router.js?v=3.5"></script>
+    <script src="js/dashboard.js?v=3.5"></script>
+    <script src="js/absensi.js?v=3.5"></script>
+    <script src="js/face-api-logic.js?v=3.5"></script>
+    <script src="js/izin.js?v=3.5"></script>
+    <script src="js/laporan-kinerja.js?v=3.5"></script>
+    <script src="js/cuti.js?v=3.5"></script>
+    <script src="js/admin-dashboard.js?v=3.5"></script>
+    <script src="js/admin-employees.js?v=3.5"></script>
+    <script src="js/admin-reports-v2.js?v=3.5"></script>
+    <script src="js/shift-schedule.js?v=3.5"></script>
+    <script src="js/settings.js?v=3.5"></script>
+    <script src="js/mobile.js?v=3.5"></script>
     <style>
         .performance-photo-thumb {
             width: 45px;

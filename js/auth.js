@@ -92,6 +92,7 @@ const auth = {
                 user = {
                     id: result.data.id,
                     email: result.data.email,
+                    nip: result.data.nip || '',
                     name: result.data.name,
                     role: result.data.role || role,
                     department: result.data.department || '',
@@ -388,6 +389,7 @@ const auth = {
                     ...this.currentUser,
                     name: result.data.name,
                     email: result.data.email,
+                    nip: result.data.nip || '',
                     department: result.data.department || '',
                     position: result.data.position || '',
                     shift: result.data.shift || '',
