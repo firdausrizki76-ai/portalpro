@@ -6,6 +6,7 @@
 // Global Page Loader
 var loader = {
     element: null,
+    failsafe: null,
 
     init() {
         this.element = document.getElementById('global-loader');
@@ -17,12 +18,22 @@ var loader = {
             const textEl = this.element.querySelector('.loader-text');
             if (textEl) textEl.textContent = message;
             this.element.classList.remove('hidden');
+            
+            // Failsafe: hide loader after 15 seconds to prevent permanent lock
+            clearTimeout(this.failsafe);
+            this.failsafe = setTimeout(() => {
+                if (this.element && !this.element.classList.contains('hidden')) {
+                    console.warn('[Loader] Failsafe triggered (15s timeout)');
+                    this.hide();
+                }
+            }, 15000);
         }
     },
 
     hide() {
         if (!this.element) this.init();
         if (this.element) {
+            clearTimeout(this.failsafe);
             // Small delay for smooth transition
             setTimeout(() => {
                 this.element.classList.add('hidden');
@@ -40,10 +51,16 @@ window.syncData = async function() {
         loader.show('Sinkronisasi database terbaru...');
     }
 
-    // Force clear local cache to ensure fresh data from server
+    // Clear ONLY data cache keys, preserve session and branding
     if (typeof storage !== 'undefined') {
-        storage.clear();
-        console.log('[Sync] Local storage cleared for fresh sync.');
+        const keysToPreserve = ['session', 'branding_version_v1', 'notifications'];
+        const allKeys = Object.keys(localStorage);
+        allKeys.forEach(key => {
+            if (!keysToPreserve.includes(key)) {
+                localStorage.removeItem(key);
+            }
+        });
+        console.log('[Sync] Data cache cleared (session preserved).');
     }
 
     // List of all page modules that have an 'initialized' flag
@@ -62,6 +79,14 @@ window.syncData = async function() {
     // Re-trigger the current page's initialization
     if (typeof router !== 'undefined' && router.currentPage) {
         router.showPage(router.currentPage, false);
+    }
+
+    if (typeof toast !== 'undefined') {
+        toast.success('Sinkronisasi database berhasil.');
+    }
+
+    if (typeof loader !== 'undefined') {
+        loader.hide();
     }
 };
 
@@ -175,8 +200,8 @@ var notifications = {
         this.render();
         this.setupEventListeners();
         
-        // Background: Repair database to ensure new columns (faceData, etc) are present
-        api.request('repairDatabase').catch(console.error);
+        // NOTE: repairDatabase removed from here - it was causing slow page loads
+        // Run it only when user clicks Sync button or on admin settings page
     },
 
     setList(newList) {

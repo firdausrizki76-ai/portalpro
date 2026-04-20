@@ -19,11 +19,17 @@ const dashboard = {
         }
 
         try {
-            await this.loadData();
+            // Show UI immediately with cached/default data first
             this.updateWelcomeCard();
             this.updateStats();
             this.updateSessionInfo();
             this.updateProgressBar();
+
+            // Then load fresh data from API in background
+            await this.loadData();
+            this.updateWelcomeCard();
+            this.updateStats();
+            this.updateSessionInfo();
             this.initialized = true;
         } catch (error) {
             console.error('Dashboard init error:', error);
@@ -34,11 +40,13 @@ const dashboard = {
 
     async loadData() {
         try {
-            // First, refresh the profile to get latest shift/name from database
-            await auth.refreshProfile();
-            
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
+                // Run refreshProfile in parallel with data fetching (non-blocking)
+                const refreshPromise = auth.refreshProfile().catch(e => 
+                    console.warn('Profile refresh failed, using cached data:', e)
+                );
+                
                 // Fetch attendance and global settings concurrently
                 const [attResult, settingsRes] = await Promise.all([
                     api.getAttendance(currentUser.id),
@@ -63,6 +71,9 @@ const dashboard = {
                         storage.set('shift_schedule', loadedSchedules);
                     }
                 }
+                
+                // Wait for profile refresh to complete (but it won't block data display)
+                await refreshPromise;
             }
         } catch (error) {
             console.error('Error loading dashboard data:', error);

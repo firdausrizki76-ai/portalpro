@@ -12,13 +12,20 @@ const jurnal = {
 
     async init() {
         try {
-            await this.loadJurnals();
+            // Priority 1: Init UI immediately
             this.initDateSelector();
             this.initForm();
             this.initFilters();
             this.initPhotoUpload();
+            this.updateUI(); // Render with current state/cache
             this.renderJurnalList();
-            this.updateUI();
+
+            // Priority 2: Load data in background
+            this.loadJurnals().then(() => {
+                // Re-render with fresh data
+                this.updateUI();
+                this.renderJurnalList();
+            });
         } catch (error) {
             console.error('Jurnal init error:', error);
         } finally {

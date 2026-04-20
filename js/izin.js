@@ -10,22 +10,30 @@ const izin = {
     filterStatus: '',
 
     async init() {
-        if (typeof loader !== 'undefined') loader.show('Memuat data izin...');
         try {
-            await this.loadIzinData();
+            // Priority 1: Initialize form and UI elements immediately so page is responsive
             this.initForm();
             this.initFilters();
-            this.renderIzinList();
-            this.updateStats();
-
+            
             // Set default date to today
             const dateInput = document.getElementById('izin-date');
             if (dateInput) {
                 dateInput.valueAsDate = new Date();
             }
+
+            // Render with cached data if available
+            this.renderIzinList();
+            this.updateStats();
+
+            // Priority 2: Background load of fresh data
+            await this.loadIzinData();
+            
+            // Final render with fresh data
+            this.renderIzinList();
+            this.updateStats();
         } catch (error) {
             console.error('Izin init error:', error);
-            toast.error('Gagal memuat data izin');
+            // toast.error('Gagal memuat data izin');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }

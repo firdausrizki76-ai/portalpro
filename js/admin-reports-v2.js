@@ -36,53 +36,73 @@ const adminReports = {
      * Initialization for each report tab
      */
     async initAttendanceReports() {
-        if (typeof loader !== 'undefined') loader.show('Memuat rekap absensi...');
         try {
+            // Priority 1: Initialize local elements immediately
             const monthInput = document.getElementById('attendance-month');
             if (monthInput) monthInput.value = this.filters.attendance.month;
 
-            await this.loadData(this.filters.attendance.month);
             this.updateDynamicDeptFilter();
             this.bindAttendanceEvents();
+            
+            // Initial render with cache if exists
+            this.renderAttendanceReports();
+
+            // Priority 2: Background load fresh data
+            await this.loadData(this.filters.attendance.month);
+            
+            // Final render with fresh data
+            this.updateDynamicDeptFilter();
             this.renderAttendanceReports();
         } catch (error) {
             console.error('Init attendance error:', error);
-            toast.error('Gagal memuat rekap absensi');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
     },
 
     async initJurnalReports() {
-        if (typeof loader !== 'undefined') loader.show('Memuat rekap jurnal...');
         try {
+            // Priority 1: Initialize local elements immediately
             const monthInput = document.getElementById('jurnal-month');
             if (monthInput) monthInput.value = this.filters.jurnal.month;
 
-            await this.loadData(this.filters.jurnal.month);
             this.populateEmployeeFilter();
             this.bindJurnalEvents();
+            
+            // Initial render with cache
+            this.renderJurnalReports();
+
+            // Priority 2: Background load fresh data
+            await this.loadData(this.filters.jurnal.month);
+            
+            // Final render with fresh data
+            this.populateEmployeeFilter();
             this.renderJurnalReports();
         } catch (error) {
             console.error('Init jurnal error:', error);
-            toast.error('Gagal memuat rekap jurnal');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
     },
 
     async initLeaveReports() {
-        if (typeof loader !== 'undefined') loader.show('Memuat rekap cuti/izin...');
         try {
+            // Priority 1: Initialize local elements immediately
             const monthInput = document.getElementById('leave-month');
             if (monthInput) monthInput.value = this.filters.leave.month;
 
-            await this.loadData(this.filters.leave.month);
             this.bindLeaveEvents();
+            
+            // Initial render with cache
+            this.renderLeaveReports();
+
+            // Priority 2: Background load fresh data
+            await this.loadData(this.filters.leave.month);
+            
+            // Final render with fresh data
             this.renderLeaveReports();
         } catch (error) {
             console.error('Init leave error:', error);
-            toast.error('Gagal memuat rekap cuti/izin');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }

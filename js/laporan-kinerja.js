@@ -12,16 +12,26 @@ const jurnal = {
 
     async init() {
         try {
-            await this.loadJurnals();
+            // Priority 1: Init UI immediately so page is responsive
             this.initDateSelector();
             this.initForm();
             this.initFilters();
             this.initPhotoUpload();
-            this.renderJurnalList();
-            this.updateUI();
             
-            // Initial summary recalculation
-            setTimeout(() => this.updateSummary(), 1000);
+            // Initial render with current state (cache/today)
+            this.updateUI();
+            this.renderJurnalList();
+            
+            // Recalculate summary with current data
+            this.updateSummary();
+
+            // Priority 2: Load fresh data in the background
+            await this.loadJurnals();
+            
+            // Final render with fresh data
+            this.updateUI();
+            this.renderJurnalList();
+            this.updateSummary();
         } catch (error) {
             console.error('Jurnal init error:', error);
         } finally {
@@ -377,9 +387,6 @@ const jurnal = {
                         </button>
                         <button class="btn-icon-sm" title="Edit" onclick="jurnal.editJurnal('${jurnal.date}')">
                             <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon-sm btn-delete" title="Hapus" onclick="jurnal.deleteJurnal('${jurnal.date}', '${jurnal.id}')" style="color: #EF4444;">
-                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>

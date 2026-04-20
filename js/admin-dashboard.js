@@ -12,17 +12,15 @@ const adminDashboard = {
     initialized: false,
 
     async init() {
-        if (typeof loader !== 'undefined') loader.show('Memuat dashboard...');
+        if (!auth.isAdmin()) {
+            toast.error('Anda tidak memiliki akses!');
+            router.navigate('dashboard');
+            return;
+        }
 
         try {
-            if (!auth.isAdmin()) {
-                toast.error('Anda tidak memiliki akses!');
-                router.navigate('dashboard');
-                return;
-            }
-
-            await this.loadData();
-            this.syncNotifications(); // Pass real data to global notification system
+            // Priority 1: Initialize local elements immediately
+            this.syncNotifications(); 
             this.updateStats();
             this.renderRecentActivity();
             this.renderOnlineUsers();
@@ -34,6 +32,16 @@ const adminDashboard = {
             
             const deptFilter = document.getElementById('admin-dept-filter');
             if (deptFilter) deptFilter.addEventListener('change', () => this.renderDeptChart());
+
+            // Priority 2: Background load fresh data
+            await this.loadData();
+            
+            // Final render with fresh data
+            this.syncNotifications();
+            this.updateStats();
+            this.renderRecentActivity();
+            this.renderOnlineUsers();
+            this.initCharts();
             
             this.initialized = true;
         } catch (error) {

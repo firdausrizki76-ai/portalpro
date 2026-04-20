@@ -13,7 +13,7 @@ const absensi = {
 
     async init() {
         if (this.initialized) {
-            // Background sync
+            // Already initialized, just do a silent refresh in background
             this.loadTodayAttendance().then(() => this.updateUI());
             return;
         }
@@ -28,8 +28,11 @@ const absensi = {
             this.updateUI(); // Initial render with cached/default data
 
             // PRIORITY 2: Background load of heavy data
-            await this.loadTodayAttendance();
-            await this.loadAttendanceHistory();
+            // We load today's record and history in parallel
+            await Promise.all([
+                this.loadTodayAttendance(),
+                this.loadAttendanceHistory()
+            ]);
             
             this.updateUI(); // Final render with fresh data
             this.initialized = true;
@@ -43,13 +46,6 @@ const absensi = {
     },
 
     async loadTodayAttendance() {
-        try {
-            // SYNC: Refresh the profile to get latest shift/data from backend first
-            await auth.refreshProfile();
-        } catch (e) {
-            console.warn('Profile refresh failed, using cached data');
-        }
-
         const currentUser = auth.getCurrentUser();
         const userId = currentUser?.id || 'demo-user';
 
@@ -58,10 +54,12 @@ const absensi = {
         let currentShift = currentUser?.shift || 'Pagi';
 
         try {
-            const [result, settingsRes, shiftRes] = await Promise.allSettled([
+            // Fetch everything in parallel including profile refresh
+            const [result, settingsRes, shiftRes, refreshRes] = await Promise.allSettled([
                 api.getTodayAttendance(userId),
                 api.getSettings(),
-                api.getShifts()
+                api.getShifts(),
+                auth.refreshProfile() // Now runs in parallel
             ]);
 
             // Sync fresh shifts to local storage

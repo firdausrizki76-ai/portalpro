@@ -9,16 +9,25 @@ const cuti = {
     filterStatus: '',
 
     async init() {
-        if (typeof loader !== 'undefined') loader.show('Memuat data cuti...');
         try {
-            await this.loadLeaves();
+            // Priority 1: Init UI immediately so page is responsive
             this.initForm();
             this.initFilters();
-            this.renderLeaveList();
+            
+            // Initial render with cached/default values
+            this.updateBalanceDisplay();
             this.updateStats();
+            this.renderLeaveList();
+
+            // Priority 2: Load fresh data in background
+            this.loadLeaves().then(() => {
+                // Re-render when data arrives
+                this.updateBalanceDisplay();
+                this.updateStats();
+                this.renderLeaveList();
+            });
         } catch (error) {
             console.error('Cuti init error:', error);
-            toast.error('Gagal memuat data cuti');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
