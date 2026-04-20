@@ -671,6 +671,7 @@ const absensi = {
                         if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
                         
                         // Show Thumbnail & Location
+                        const ver = this.attendanceData.verificationIn;
                         if (ver && ver.photo) {
                             const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
@@ -695,6 +696,7 @@ const absensi = {
                         if (timeEl) timeEl.textContent = this.attendanceData.clockOut;
 
                         // Show Thumbnail & Location for Clock Out
+                        const ver = this.attendanceData.verificationOut;
                         if (ver && ver.photo) {
                             const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
