@@ -140,17 +140,27 @@ const absensi = {
             todayAttendance.overtimeStart = todayAttendance.overtimeStart || null;
 
             // Handle dual verification mapping
+            const safeParse = (str) => {
+                if (!str) return null;
+                try {
+                    return JSON.parse(str);
+                } catch (e) {
+                    console.warn('Failed to parse JSON field:', str.substring(0, 20) + '...');
+                    return null;
+                }
+            };
+
             if (todayAttendance.verificationInPhoto) {
                 todayAttendance.verificationIn = {
                     photo: todayAttendance.verificationInPhoto,
-                    location: todayAttendance.verificationInLocation ? JSON.parse(todayAttendance.verificationInLocation) : null,
+                    location: safeParse(todayAttendance.verificationInLocation),
                     timestamp: todayAttendance.verificationInTimestamp
                 };
             }
             if (todayAttendance.verificationOutPhoto) {
                 todayAttendance.verificationOut = {
                     photo: todayAttendance.verificationOutPhoto,
-                    location: todayAttendance.verificationOutLocation ? JSON.parse(todayAttendance.verificationOutLocation) : null,
+                    location: safeParse(todayAttendance.verificationOutLocation),
                     timestamp: todayAttendance.verificationOutTimestamp
                 };
             }

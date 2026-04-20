@@ -80,8 +80,12 @@ const dashboard = {
                         if (k.startsWith('shift_schedule_')) {
                             const monthKey = k.replace('shift_schedule_', '');
                             try {
-                                loadedSchedules[monthKey] = JSON.parse(globalSettings[k]);
-                            } catch (e) { }
+                                const data = globalSettings[k];
+                                // Some environments might return strings with escaped characters
+                                loadedSchedules[monthKey] = typeof data === 'string' ? JSON.parse(data) : data;
+                            } catch (e) {
+                                console.warn('Failed to parse schedule for:', monthKey);
+                            }
                         }
                     });
                     if (Object.keys(loadedSchedules).length > 0) {
@@ -140,30 +144,35 @@ const dashboard = {
         const shifts = storage.get('shifts', []);
         let currentShiftName = auth.getCurrentUser()?.shift || 'Pagi';
 
-        // Automated shift lookup from admin schedule
-        try {
-            const userId = String(auth.getCurrentUser()?.id);
-            const schedules = storage.get('shift_schedule', {});
-            const todayObj = new Date();
-            const currentYear = todayObj.getFullYear();
-            const currentMonth = todayObj.getMonth();
-            const currentDay = todayObj.getDate();
-            const key = `${currentYear}-${currentMonth}`;
+            // Automated shift lookup from admin schedule
+            try {
+                const currentUser = auth.getCurrentUser();
+                const userId = String(currentUser?.id);
+                const schedules = storage.get('shift_schedule', {});
+                const todayObj = new Date();
+                const currentYear = todayObj.getFullYear();
+                const currentMonth = todayObj.getMonth();
+                const currentDay = todayObj.getDate();
+                const key = `${currentYear}-${currentMonth}`;
 
-            console.log('Dashboard Shift Sync - Key:', key, 'UserId:', userId, 'Day:', currentDay);
+                console.log('Dashboard Shift Sync - Key:', key, 'UserId:', userId, 'Day:', currentDay);
 
-            if (schedules[key] && schedules[key][userId]) {
-                const assignedShift = schedules[key][userId][currentDay];
-                console.log('Dashboard Shift Sync - Found Shift:', assignedShift);
-                if (assignedShift) {
-                    currentShiftName = assignedShift;
+                if (schedules[key]) {
+                    // Try by ID first, then by Email as fallback
+                    const userSchedule = schedules[key][userId] || schedules[key][currentUser?.email];
+                    if (userSchedule) {
+                        const assignedShift = userSchedule[currentDay];
+                        console.log('Dashboard Shift Sync - Found Shift:', assignedShift);
+                        if (assignedShift && assignedShift.trim() !== '') {
+                            currentShiftName = assignedShift;
+                        }
+                    }
+                } else {
+                    console.log('Dashboard Shift Sync - Missing Schedule key for this month.');
                 }
-            } else {
-                console.log('Dashboard Shift Sync - Missing Schedule key or User record.');
+            } catch (e) {
+                console.error('Error reading shift schedule:', e);
             }
-        } catch (e) {
-            console.error('Error reading shift schedule:', e);
-        }
 
         const activeShift = shifts.find(s => s.name === currentShiftName) || shifts[0] || { name: 'Pagi', startTime: '08:00', endTime: '17:00' };
 
@@ -315,36 +324,36 @@ const dashboard = {
 
     updateWeeklyAttendanceChart() {
         const attendance = this.attendanceData;
-        const days = ['min', 'sab', 'jum', 'kam', 'rab', 'sel', 'sen'];
+        const days = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'];
         const today = new Date();
         
-        // Loop through last 7 days including today
+        // Loop through last 7 days
         for (let i = 0; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
             const iso = date.toISOString().split('T')[0];
-            const dayName = days[date.getDay()]; // Note: getDay() is 0 for Sunday
+            const dayName = days[date.getDay()];
             
             const record = attendance.find(a => a.date === iso);
             const bar = document.getElementById(`bar-${dayName}`);
             
             if (bar) {
-                if (record && (record.clockIn)) {
-                    // Check if they worked full day or were late
+                if (record && record.clockIn) {
                     const status = dateTime.calculateAttendanceStatus(record);
-                    bar.style.height = '80%'; // Just a visual representation
+                    let height = 80;
+                    if (status.class === 'danger') height = 30;
+                    if (status.class === 'warning') height = 50;
+                    
+                    bar.style.height = `${height}%`;
                     bar.classList.add('active');
-                    if (status.class === 'danger') bar.style.height = '30%';
-                    if (status.class === 'warning') bar.style.height = '50%';
                 } else {
-                    bar.style.height = '10%'; // Empty
+                    bar.style.height = '10%';
                     bar.classList.remove('active');
                 }
                 
-                // Highlight today
+                // Today indicator
                 if (i === 0) {
-                    bar.style.boxShadow = '0 0 8px var(--color-primary-light)';
-                    bar.style.width = '16px';
+                    bar.parentElement.style.borderBottom = '2px solid var(--color-primary)';
                 }
             }
         }
