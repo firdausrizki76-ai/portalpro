@@ -382,11 +382,9 @@ const dashboard = {
         `).join('') + (others.length > 6 ? `<div class="avatar-more">+${others.length - 6}</div>` : '');
     },
 
-    updateWeeklyAttendanceChart() {
-        const days = ['sen', 'sel', 'rab', 'kam', 'jum'];
+    updateWeeklyAttendanceChart(attendance = []) {
         const today = new Date();
         
-        // Loop through last 5 working days
         for (let i = 0; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
@@ -397,48 +395,44 @@ const dashboard = {
             if (dayIndex === 0 || dayIndex === 6) continue;
             
             const dayName = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'][dayIndex];
-            
-            const record = attendance.find(a => a.date === iso);
             const bar = document.getElementById(`bar-${dayName}`);
             
             if (bar) {
-                if (record && record.clockIn) {
-                    // Make sure the bar is visible even with low or no data
-                    let height = 0;
-                    if (record) {
-                        // If present but 0 min (too fast), show minimal bar
-                        height = Math.max(15, (record.totalMinutes / 1440) * 100);
-                    } else {
-                        height = 10; // Base visible height for empty days
-                    }
-
-                    bar.style.height = `${height}%`;
-                    bar.classList.add('active');
-                } else {
-                    bar.style.height = '10%';
-                    bar.classList.remove('active');
-                }
-                
-                // FORCE BLUE INDICATOR ON THE LABEL
                 const label = bar.parentElement.querySelector('.bar-label');
-                if (record && record.clockIn && record.clockIn !== '--:--' && record.clockIn !== '') {
-                    if (label) {
-                        label.style.color = 'var(--color-primary)';
-                        label.style.fontWeight = '700';
-                        label.style.borderBottom = '3px solid var(--color-primary)';
-                        label.style.paddingBottom = '2px';
-                    }
-                    bar.style.backgroundColor = 'var(--color-primary)';
-                    bar.style.height = '15%'; // Minimum height if present
+                
+                // Normalisasi dan Pencocokan Tanggal (Robust Matching)
+                const record = (attendance || []).find(a => {
+                    if (!a.date) return false;
+                    const recDate = String(a.date).split('T')[0];
+                    return recDate === iso;
+                });
+
+                const hasClockIn = record && record.clockIn && record.clockIn !== '--:--';
+
+                if (hasClockIn) {
+                    // GAYA AKTIF (BIRU)
+                    const height = Math.max(15, (record.totalMinutes / 1440) * 100);
+                    bar.style.setProperty('height', `${height}%`, 'important');
+                    bar.style.setProperty('background-color', 'var(--color-primary)', 'important');
                     bar.classList.add('active');
+
+                    if (label) {
+                        label.style.setProperty('color', 'var(--color-primary)', 'important');
+                        label.style.setProperty('font-weight', '700', 'important');
+                        label.style.setProperty('border-bottom', '3px solid var(--color-primary)', 'important');
+                        label.style.setProperty('padding-bottom', '2px', 'important');
+                    }
                 } else {
+                    // GAYA NON-AKTIF (ABU-ABU)
+                    bar.style.height = '10%';
+                    bar.style.backgroundColor = 'var(--color-gray-200)';
+                    bar.classList.remove('active');
+
                     if (label) {
                         label.style.color = 'var(--text-muted)';
                         label.style.fontWeight = '400';
                         label.style.borderBottom = 'none';
                     }
-                    bar.style.backgroundColor = 'var(--color-gray-200)';
-                    bar.classList.remove('active');
                 }
             }
         }
