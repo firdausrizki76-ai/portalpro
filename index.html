@@ -29,13 +29,26 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Emergency Layout Fixes */
-        .team-avatars {
+        /* Surgical Dashboard Fixes */
+        #dashboard-team-avatars.team-avatars {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: wrap !important;
-            gap: 8px !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 12px !important;
+            min-height: 70px !important;
             align-items: center !important;
+            padding: 5px !important;
+        }
+        
+        .bar-fill {
+            width: 30px !important;
+            min-width: 30px !important;
+            background-color: var(--color-primary-light) !important;
+        }
+
+        .bar-fill.active {
+            background-color: var(--color-primary) !important;
         }
     </style>
 </head>
