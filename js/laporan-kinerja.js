@@ -473,31 +473,6 @@ const jurnal = {
         
         const missed = Math.max(0, workingDaysPassed - monthJurnals.length);
         if (missedEl) missedEl.textContent = missed;
-
-        let streak = 0;
-        let d = new Date();
-        const journalDates = this.jurnals
-            .map(j => {
-                const pd = this.parseDate(j.date);
-                return pd ? pd.toISOString().split('T')[0] : null;
-            })
-            .filter(d => d !== null);
-        
-        while (true) {
-            const iso = d.toISOString().split('T')[0];
-            if (journalDates.includes(iso)) {
-                streak++;
-                d.setDate(d.getDate() - 1);
-            } else {
-                if (d.getDay() === 0 || d.getDay() === 6) {
-                    d.setDate(d.getDate() - 1);
-                    continue;
-                }
-                break;
-            }
-        }
-        const streakEl = document.getElementById('jurnal-streak-days');
-        if (streakEl) streakEl.textContent = streak;
     },
 
     parseDate(dateStr) {
