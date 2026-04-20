@@ -237,8 +237,6 @@ const dashboard = {
         const latePath = document.querySelector('.donut-fill.late');       // Biru (Late)
         const absentPath = document.querySelector('.donut-fill.absent');
 
-        const totalCircumference = 251; // Length of the circle border
-
         if (presentPath && latePath) {
             // 1. Calculate Dash for Ontime (Green)
             const ontimePercent = totalDaysInMonth > 0 ? (ontimeCount / totalDaysInMonth) : 0;
