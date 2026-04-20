@@ -383,16 +383,20 @@ const dashboard = {
     },
 
     updateWeeklyAttendanceChart() {
-        const attendance = this.attendanceData;
-        const days = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'];
+        const days = ['sen', 'sel', 'rab', 'kam', 'jum'];
         const today = new Date();
         
-        // Loop through last 7 days
+        // Loop through last 5 working days
         for (let i = 0; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
             const iso = date.toISOString().split('T')[0];
-            const dayName = days[date.getDay()];
+            const dayIndex = date.getDay();
+            
+            // Skip weekend in processing
+            if (dayIndex === 0 || dayIndex === 6) continue;
+            
+            const dayName = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'][dayIndex];
             
             const record = attendance.find(a => a.date === iso);
             const bar = document.getElementById(`bar-${dayName}`);
