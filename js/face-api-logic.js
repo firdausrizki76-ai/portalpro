@@ -27,6 +27,31 @@ const faceRecognition = {
         this.position = null;
         this.isRegistering = (action === 'register-face');
 
+        // FORCE CAMERA REFRESH - Clear previous capture and restore video element
+        const preview = document.getElementById('camera-preview');
+        if (preview) {
+            preview.innerHTML = `
+                <video id="camera-video" autoplay playsinline></video>
+                <canvas id="camera-canvas" style="display: none;"></canvas>
+                <div class="face-overlay" id="face-overlay" style="pointer-events: none;">
+                    <div class="face-frame">
+                        <div class="face-corner top-left"></div>
+                        <div class="face-corner top-right"></div>
+                        <div class="face-corner bottom-left"></div>
+                        <div class="face-corner bottom-right"></div>
+                    </div>
+                    <div class="face-guide"><i class="fas fa-user"></i>
+                        <p>Posisikan wajah di dalam frame</p>
+                    </div>
+                </div>
+                <div class="scanning-line" id="scanning-line" style="display: none;"></div>
+                <div class="verification-status" id="verification-status">
+                    <div class="status-icon"><i class="fas fa-check-circle"></i></div>
+                    <p>Wajah Terverifikasi</p>
+                </div>
+            `;
+        }
+
         // Update UI
         this.updateActionTitle(action);
         

@@ -480,7 +480,7 @@ const absensi = {
             // Success navigation
             setTimeout(() => {
                 router.navigate('absensi');
-            }, 1000);
+            }, 800);
         } else {
             // Handle error (e.g. Alfa rejected by server)
             const errorMsg = (result && result.error) ? result.error : 'Gagal menyimpan absensi';
@@ -493,13 +493,6 @@ const absensi = {
 
         // Clean up temp data
         storage.remove('temp_attendance');
-
-        // Auto navigate back to attendance page
-        setTimeout(() => {
-            if (window.location.hash === '#face-recognition') {
-                router.navigate('absensi');
-            }
-        }, 3000);
     },
 
     async saveAttendance() {
