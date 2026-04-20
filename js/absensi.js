@@ -450,6 +450,7 @@ const absensi = {
         if (action === 'clock-in') {
             this.attendanceData.verificationIn = {
                 timestamp: verificationData.timestamp,
+                locationId: verificationData.locationId,
                 location: verificationData.location,
                 photo: verificationData.photo
             };

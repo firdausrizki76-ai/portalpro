@@ -283,19 +283,31 @@ const faceRecognition = {
                     let customMaxDistance = maxDistance;
 
                     if (isSpecialMode) {
+                        const clockInData = window.absensi ? window.absensi.attendanceData.verificationIn : null;
+
                         if (this.currentAction === 'clock-in') {
                             console.log(`Special Mode (${pointId}) Clock In: Skipping distance check.`);
                             // Allow Clock In from anywhere
-                        } else {
-                            // Clock Out or others: Compare with Clock In Location
-                            const clockInData = window.absensi ? window.absensi.attendanceData.verificationIn : null;
-                            const clockInLoc = clockInData ? clockInData.location : null;
+                        } else if (this.currentAction === 'clock-out') {
+                            // MODE CONSISTENCY CHECK
+                            const clockInId = clockInData ? clockInData.locationId : null;
+                            if (clockInId !== pointId) {
+                                let clockInModeName = "Mode Kantor";
+                                if (clockInId === 'wfh') clockInModeName = 'WFH';
+                                else if (clockInId === 'wfa') clockInModeName = 'WFA';
+                                else if (clockInId === 'dinas') clockInModeName = 'Dinas Kerja';
 
+                                toast.error(`Mode pulang harus sama dengan mode masuk. Tadi Anda masuk menggunakan: ${clockInModeName}`);
+                                return;
+                            }
+
+                            // Clock Out: Compare with Clock In Location
+                            const clockInLoc = clockInData ? clockInData.location : null;
                             if (clockInLoc && clockInLoc.latitude && clockInLoc.longitude) {
                                 targetLat = clockInLoc.latitude;
                                 targetLng = clockInLoc.longitude;
                                 targetName = 'Titik Clock In';
-                                customMaxDistance = 100; // Hardcoded 100m for special modes as requested
+                                customMaxDistance = maxDistance; // Sync with global radius as requested
                                 console.log('Special Mode Clock Out: Comparing with Clock In Location');
                             } else {
                                 // Fallback if clock in loc not found
@@ -504,6 +516,7 @@ const faceRecognition = {
         const attendanceData = {
             action: this.currentAction,
             timestamp: new Date().toISOString(),
+            locationId: selectedPoint ? selectedPoint.id : '',
             locationName: selectedPoint ? selectedPoint.name : '',
             location: this.position ? {
                 latitude: this.position.coords.latitude,
