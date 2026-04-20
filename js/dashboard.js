@@ -419,18 +419,15 @@ const dashboard = {
                     bar.classList.remove('active');
                 }
                 
-                // Today indicator - using local date to avoid UTC mismatch
-                const localToday = new Date().toLocaleDateString('en-CA'); // format: YYYY-MM-DD
-                const isToday = iso === localToday;
-                
-                if (isToday) {
-                    bar.parentElement.classList.add('today-active');
+                // Simple logic: If present (has clockIn) -> Blue indicator
+                if (record && record.clockIn && record.clockIn !== '--:--') {
                     bar.parentElement.style.borderBottom = '3px solid var(--color-primary)';
-                    // Force height for visibility of active day indicator
                     bar.style.backgroundColor = 'var(--color-primary)';
+                    bar.classList.add('active');
                 } else {
-                    bar.parentElement.classList.remove('today-active');
                     bar.parentElement.style.borderBottom = 'none';
+                    bar.style.backgroundColor = 'var(--color-gray-200)';
+                    bar.classList.remove('active');
                 }
             }
         }
