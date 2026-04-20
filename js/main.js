@@ -17,15 +17,6 @@ var loader = {
             const textEl = this.element.querySelector('.loader-text');
             if (textEl) textEl.textContent = message;
             this.element.classList.remove('hidden');
-            
-            // Failsafe: hide loader anyway after 20 seconds to prevent total lock
-            clearTimeout(this.failsafe);
-            this.failsafe = setTimeout(() => {
-                if (!this.element.classList.contains('hidden')) {
-                    console.warn('Loader failsafe triggered (20s timeout)');
-                    this.hide();
-                }
-            }, 20000);
         }
     },
 
@@ -49,47 +40,28 @@ window.syncData = async function() {
         loader.show('Sinkronisasi database terbaru...');
     }
 
-    try {
-        // Step 1: Trigger backend repair/alignment
-        if (typeof api !== 'undefined' && api.repairDatabase) {
-            console.log('Sync: Triggering backend repairDatabase...');
-            const repairResult = await api.repairDatabase();
-            if (repairResult && repairResult.success) {
-                console.log('Sync: Backend repair successful');
-            }
-        }
+    // Force clear local cache to ensure fresh data from server
+    if (typeof storage !== 'undefined') {
+        storage.clear();
+        console.log('[Sync] Local storage cleared for fresh sync.');
+    }
 
-        // List of all page modules that have an 'initialized' flag
-        const modules = [
-            'dashboard', 'absensi', 'faceRecognition', 'izin', 'jurnal', 'cuti',
-            'adminDashboard', 'adminEmployees', 'adminReports', 'shiftSchedule', 'settings'
-        ];
+    // List of all page modules that have an 'initialized' flag
+    const modules = [
+        'dashboard', 'absensi', 'faceRecognition', 'izin', 'jurnal', 'cuti',
+        'adminDashboard', 'adminEmployees', 'adminReports', 'shiftSchedule', 'settings'
+    ];
 
-        // Reset all modules to non-initialized state
-        modules.forEach(m => {
-            if (window[m]) {
-                window[m].initialized = false;
-            }
-        });
+    // Reset all modules to non-initialized state
+    modules.forEach(m => {
+        if (window[m]) {
+            window[m].initialized = false;
+        }
+    });
 
-        // Re-trigger the current page's initialization
-        if (typeof router !== 'undefined' && router.currentPage) {
-            router.showPage(router.currentPage, false);
-        }
-
-        if (typeof toast !== 'undefined') {
-            toast.success('Inkronisasi database berhasil.');
-        }
-
-    } catch (error) {
-        console.error('Sync Error:', error);
-        if (typeof toast !== 'undefined') {
-            toast.error('Gagal sinkronisasi: ' + error.message);
-        }
-    } finally {
-        if (typeof loader !== 'undefined') {
-            loader.hide();
-        }
+    // Re-trigger the current page's initialization
+    if (typeof router !== 'undefined' && router.currentPage) {
+        router.showPage(router.currentPage, false);
     }
 };
 
@@ -195,41 +167,21 @@ var notifications = {
     badge: null,
     dropdown: null,
 
-    async init() {
+    init() {
         this.badge = document.getElementById('notification-badge');
         this.dropdown = document.getElementById('notification-dropdown');
-        
-        // Setup listeners even if no user yet, so the button is responsive
-        this.setupEventListeners();
-
-        const currentUser = auth.getCurrentUser();
-        if (!currentUser) return;
-
-        const recipientId = auth.isAdmin() ? 'admin' : currentUser.id;
-        
-        try {
-            const result = await api.getNotifications(recipientId);
-            this.list = result.success ? result.data : [];
-        } catch (e) {
-            console.error('Error fetching notifications:', e);
-            this.list = storage.get('notifications_' + recipientId, []);
-        }
+        this.list = storage.get('notifications', []);
 
         this.render();
         this.setupEventListeners();
+        
+        // Background: Repair database to ensure new columns (faceData, etc) are present
+        api.request('repairDatabase').catch(console.error);
     },
 
     setList(newList) {
-        // Use a robust string-based sort (YYYY-MM-DD HH:mm:ss) to ensure newest is always first
-        this.list = [...newList]
-            .map(item => {
-                // Ensure every item has a sortKey string
-                let sk = item.sortKey;
-                if (typeof sk !== 'string') sk = String(item.time || '');
-                return { ...item, sortKey: sk };
-            })
-            .sort((a, b) => b.sortKey.localeCompare(a.sortKey))
-            .slice(0, 20);
+        this.list = newList.slice(0, 20);
+        storage.set('notifications', this.list);
         this.render();
     },
 
@@ -239,17 +191,10 @@ var notifications = {
         const btnClose = document.getElementById('btn-close-notifications');
 
         if (btnToggle) {
-            // Remove old listener if re-initializing
-            if (btnToggle._notifListener) {
-                btnToggle.removeEventListener('click', btnToggle._notifListener);
-            }
-            
-            btnToggle._notifListener = (e) => {
+            btnToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.toggle();
-            };
-            
-            btnToggle.addEventListener('click', btnToggle._notifListener);
+            });
         }
 
         if (btnClear) {
@@ -283,51 +228,33 @@ var notifications = {
         }
     },
 
-    async add(recipientId, user, action, type = 'info') {
-        const currentUser = auth.getCurrentUser();
-        const initiator = user || (currentUser ? currentUser.name : 'Sistem');
-        
+    add(user, action, time, avatar) {
         const newNotif = {
             id: Date.now(),
-            recipientId: recipientId,
-            user: initiator,
-            action: action,
-            time: new Date().toISOString(),
-            avatar: getAvatarUrl({name: initiator}),
-            type: type
+            user,
+            action,
+            time: time || 'Baru saja',
+            avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user)}&background=003399&color=fff`
         };
 
-        // UI Update (Optimistic)
-        const myRecipientId = auth.isAdmin() ? 'admin' : (currentUser ? currentUser.id : '');
-        if (String(recipientId) === String(myRecipientId)) {
-            this.list.unshift(newNotif);
-            if (this.list.length > 20) this.list.pop();
-            this.render();
-            toast.info(`${initiator} ${action}`, 'Notifikasi Baru');
-        }
+        this.list.unshift(newNotif);
+        if (this.list.length > 20) this.list.pop(); // Keep only last 20
 
-        // Backend Save
-        try {
-            await api.addNotification(recipientId, type, initiator, action);
-        } catch (e) {
-            console.error('Error adding backend notification:', e);
+        storage.set('notifications', this.list);
+        this.render();
+
+        // Optional: show toast for new notifications if not just added during init
+        if (time === 'Baru saja') {
+            toast.info(`${user} ${action}`, 'Aktivitas Baru');
         }
     },
 
-    async clearAll() {
+    clearAll() {
         if (confirm('Hapus semua notifikasi?')) {
-            const currentUser = auth.getCurrentUser();
-            const recipientId = auth.isAdmin() ? 'admin' : currentUser?.id;
-            
             this.list = [];
+            storage.set('notifications', []);
             this.render();
-            
-            try {
-                await api.clearNotifications(recipientId);
-                toast.success('Notifikasi dihapus');
-            } catch (e) {
-                console.error('Error clearing notifications:', e);
-            }
+            toast.success('Notifikasi dihapus');
         }
     },
 
@@ -341,22 +268,15 @@ var notifications = {
             container.innerHTML = '<div class="notification-empty">Tidak ada notifikasi baru</div>';
             if (badge) badge.textContent = '0';
         } else {
-            container.innerHTML = this.list.map(notif => {
-                const avatarUrl = notif.avatar || getAvatarUrl({name: notif.user});
-                const timeStr = typeof notif.time === 'string' && notif.time.includes('T') 
-                    ? dateTime.formatTime(notif.time) 
-                    : (notif.time || 'Baru saja');
-                
-                return `
-                    <div class="notification-item">
-                        <img src="${avatarUrl}" alt="${notif.user}" class="notif-avatar">
-                        <div class="notif-content">
-                            <div class="notif-text"><strong>${notif.user}</strong> ${notif.action}</div>
-                            <div class="notif-time">${timeStr}</div>
-                        </div>
+            container.innerHTML = this.list.map(notif => `
+                <div class="notification-item">
+                    <img src="${notif.avatar}" alt="${notif.user}" class="notif-avatar">
+                    <div class="notif-content">
+                        <p class="notif-text"><strong>${notif.user}</strong> ${notif.action}</p>
+                        <span class="notif-time">${notif.time}</span>
                     </div>
-                `;
-            }).join('');
+                </div>
+            `).join('');
             if (badge) badge.textContent = this.list.length;
         }
     }
@@ -364,51 +284,21 @@ var notifications = {
 
 // Date & Time Utilities
 var dateTime = {
-    getSortKey(dateStr, timeStr) {
-        if (!dateStr) return 0;
-        try {
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return 0;
-            
-            // If timeStr is provided (like "14:31" or "14.31"), override the time part
-            if (timeStr) {
-                const parts = timeStr.replace('.', ':').split(':');
-                if (parts.length >= 2) {
-                    d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
-                }
-            }
-            
-            const Y = d.getFullYear();
-            const M = String(d.getMonth() + 1).padStart(2, '0');
-            const D = String(d.getDate()).padStart(2, '0');
-            const h = String(d.getHours()).padStart(2, '0');
-            const m = String(d.getMinutes()).padStart(2, '0');
-            const s = String(d.getSeconds()).padStart(2, '0');
-            
-            const sk = parseInt(`${Y}${M}${D}${h}${m}${s}`, 10);
-            return isNaN(sk) ? 0 : sk;
-        } catch (e) {
-            return 0;
-        }
-    },
     formatDate(date, format = 'full') {
         const d = new Date(date);
-        if (isNaN(d.getTime())) return '-';
-
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-        const monthName = months[d.getMonth()] || '';
-        const dayName = days[d.getDay()] || '';
+        const dayName = days[d.getDay()];
         const day = d.getDate();
+        const month = months[d.getMonth()];
         const year = d.getFullYear();
 
         if (format === 'full') {
-            return `${dayName}, ${day} ${monthName} ${year}`;
+            return `${dayName}, ${day} ${month} ${year}`;
         } else if (format === 'short') {
-            const shortMonth = monthName.substring(0, 3);
-            return `${day} ${shortMonth} ${year}`;
+            return `${day} ${months[d.getMonth()].substring(0, 3)} ${year}`;
         } else if (format === 'day') {
             return dayName;
         }
@@ -436,16 +326,10 @@ var dateTime = {
         return this.formatDate(new Date());
     },
 
-    getLocalDate(offset = 0) {
+    getLocalDate() {
+        // Returns YYYY-MM-DD for the local timezone, not UTC
         const today = new Date();
-        if (offset !== 0) today.setDate(today.getDate() + offset);
         return new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    },
-
-    formatLocalDate(date) {
-        if (!date) return '';
-        const d = new Date(date);
-        return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     },
 
     getGreeting: function() {
@@ -477,49 +361,47 @@ var dateTime = {
     },
 
     /**
-     * Common logic to determine attendance status label and CSS class
+     * Calculate attendance status label and CSS class
+     * @param {Object} record Attendance record from database
+     * @returns {Object} { label, class }
      */
     calculateAttendanceStatus: function(record) {
         const clockIn = record.clockIn;
         const clockOut = record.clockOut;
         const status = (record.status || '').toLowerCase();
         
-        // Ensure date is yyyy-mm-dd
-        let serverDate = record.date || '';
-        if (serverDate.includes(' ')) serverDate = serverDate.split(' ')[0];
-        
-        const today = new Date().toISOString().split('T')[0];
+        // Use the status from database if it looks like our new detailed format
+        if (status.includes(' dan ')) {
+            let className = 'success';
+            if (status.includes('tanpa absen')) {
+                className = 'danger';
+            } else if (status.includes('terlambat') || status.includes('pulang awal')) {
+                className = 'warning';
+            }
+            return { label: record.status, class: className };
+        }
 
-        // Case 1: Both exist (Normal complete attendance)
+        // Fallback for old/other records
+        if (!clockIn && !clockOut) {
+            return { label: 'Tanpa Keterangan', class: 'danger' };
+        }
+        
         if (clockIn && clockOut) {
             if (status.includes('telat') || status.includes('terlambat')) {
                 return { label: record.status || 'Terlambat', class: 'warning' };
             }
-            return { label: 'Tepat Waktu', class: 'success' };
+            return { label: record.status || 'Tepat Waktu', class: 'success' };
         }
-
-        // Case 2: Only Clock In
+        
         if (clockIn && !clockOut) {
-            if (serverDate === today) {
-                return { label: 'Belum Pulang', class: 'info' };
-            }
-            return { label: 'T.A.P (Tanpa Pulang)', class: 'danger' };
+            return { label: 'Belum Pulang', class: 'warning' };
         }
-
-        // Case 3: Only Clock Out
+        
         if (!clockIn && clockOut) {
-            return { label: 'T.A.M (Tanpa Masuk)', class: 'danger' };
+            return { label: 'Tanpa Absen Masuk', class: 'danger' };
         }
-
-        // Case 4: No attendance yet
-        if (!clockIn && !clockOut) {
-            if (serverDate < today) {
-                return { label: 'Alfa', class: 'danger' };
-            }
-            return { label: 'Waiting', class: 'secondary' };
-        }
-
-        return { label: record.status || 'Pending', class: 'secondary' };
+        
+        return { label: record.status || 'Unknown', class: 'secondary' };
     }
 };
 

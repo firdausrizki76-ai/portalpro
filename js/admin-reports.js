@@ -550,11 +550,7 @@ const adminReports = {
                     <td>${a.shift || '-'}</td>
                     <td>${a.clockIn || '-'}</td>
                     <td>${a.clockOut || '-'}</td>
-                    <td>
-                        <span class="status-badge ${(dateTime.calculateAttendanceStatus(a).class)}">
-                            ${(dateTime.calculateAttendanceStatus(a).label)}
-                        </span>
-                    </td>
+                    <td><span class="status-badge ${a.status.toLowerCase().includes('telat') ? 'warning' : 'success'}">${a.status}</span></td>
                 </tr>
             `).join('') || '<tr><td colspan="5" class="text-center">Tidak ada data untuk bulan ini</td></tr>';
 
@@ -593,49 +589,10 @@ const adminReports = {
 
         modal.show('Detail Pengajuan: ' + item.name, `
             <div class="leave-detail-view">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; background: #f9fafb; padding: 15px; border-radius: 8px;">
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">NIP</div>
-                        <div style="font-weight: 600;">${item.nip || '-'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Jabatan</div>
-                        <div style="font-weight: 600;">${item.jabatan || item.department || '-'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Masa Kerja</div>
-                        <div style="font-weight: 600;">${item.masaKerja || '-'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Tipe Cuti</div>
-                        <div style="font-weight: 600;">${item.type}</div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Periode</div>
-                    <div style="font-weight: 600;">${item.dates} (${item.duration} hari)</div>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Alasan</div>
-                    <div style="padding: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; margin-top: 5px;">${item.reason || '-'}</div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; border-top: 1px dashed #e5e7eb; padding-top: 15px;">
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Alamat Selama Cuti</div>
-                        <div style="font-weight: 500;">${item.alamatCuti || '-'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">No. Telepon</div>
-                        <div style="font-weight: 500;">${item.telpCuti || '-'}</div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 10px;">
-                    <span class="status-badge ${item.status}">${(item.status || '').toUpperCase()}</span>
-                </div>
+                <p><strong>Tipe:</strong> ${item.type}</p>
+                <p><strong>Periode:</strong> ${item.dates} (${item.duration} hari)</p>
+                <p><strong>Alasan:</strong> ${item.reason || '-'}</p>
+                <p><strong>Status:</strong> ${item.status.toUpperCase()}</p>
             </div>
         `);
     },

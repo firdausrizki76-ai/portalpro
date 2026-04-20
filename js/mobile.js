@@ -18,18 +18,12 @@ const mobile = {
     },
     
     checkMobile() {
-        const wasMobile = this.isMobile;
         this.isMobile = window.innerWidth <= 768;
-        
-        // If transitioning to mobile, ensure UI is refreshed
-        if (this.isMobile && !wasMobile) {
-            this.refreshRoleUI();
-        }
-        
         return this.isMobile;
     },
     
     handleResize() {
+        const wasMobile = this.isMobile;
         this.checkMobile();
         
         // Toggle mobile menu button visibility
@@ -42,22 +36,17 @@ const mobile = {
         const sidebar = document.getElementById('sidebar');
         if (sidebar) {
             if (this.isMobile) {
-                // Keep classes but ensure transform is handled by CSS
-                this.sidebarOpen = sidebar.classList.contains('open');
-            } else {
                 sidebar.classList.remove('open');
-                sidebar.style.transform = '';
                 this.sidebarOpen = false;
+            } else {
+                sidebar.style.transform = '';
             }
         }
         
-        // Toggle bottom nav visibility
+        // Toggle bottom nav
         const bottomNav = document.getElementById('bottom-nav');
         if (bottomNav) {
             bottomNav.style.display = this.isMobile ? 'flex' : 'none';
-            if (this.isMobile) {
-                this.refreshRoleUI();
-            }
         }
         
         // Update tables to cards on mobile
@@ -70,15 +59,11 @@ const mobile = {
         const overlay = document.getElementById('sidebar-overlay');
         const sidebarToggle = document.getElementById('sidebar-toggle');
         
-        // Use event delegation for more resilient toggle binding
-        document.addEventListener('click', (e) => {
-            const toggle = e.target.closest('#mobile-menu-toggle');
-            if (toggle) {
-                console.log('Mobile menu toggle clicked (delegated)');
-                this.toggleSidebar();
-            }
-        });
-
+        // Mobile menu toggle
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => this.toggleSidebar());
+        }
+        
         // Sidebar toggle button (collapse/expand on desktop)
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', () => {
@@ -108,59 +93,31 @@ const mobile = {
         const bottomNav = document.getElementById('bottom-nav');
         if (!bottomNav) return;
         
-        // Remove old bottom-nav-item listeners by removing class markers if needed
-        // but cleaner to just bind once.
+        const userRole = (auth.currentUser && auth.currentUser.role === 'admin') ? 'admin' : 'employee';
         const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
         
         navItems.forEach(item => {
-            // Check if already bound
-            if (item.dataset.bound) return;
-            
+            // Role-based filtering
+            const itemRole = item.dataset.role || 'employee';
+            if (itemRole !== userRole) {
+                item.style.display = 'none';
+            } else {
+                item.style.display = 'flex';
+            }
+
             item.addEventListener('click', (e) => {
+                e.preventDefault();
                 const page = item.dataset.page;
                 if (page) {
-                    e.preventDefault();
-                    console.log('Mobile routing to:', page);
-                    router.navigate(page);
-                    
-                    // Force active state update visually
+                    // Update active state
                     navItems.forEach(n => n.classList.remove('active'));
                     item.classList.add('active');
+                    
+                    // Navigate
+                    router.navigate(page);
                 }
             });
-            item.dataset.bound = "true";
         });
-
-        this.refreshRoleUI();
-    },
-
-    refreshRoleUI() {
-        const bottomNav = document.getElementById('bottom-nav');
-        const employeeMenu = document.getElementById('employee-menu');
-        const adminMenu = document.getElementById('admin-menu-nav');
-
-        const currentUser = auth.getCurrentUser();
-        const userRole = (currentUser && currentUser.role === 'admin') ? 'admin' : 'employee';
-        
-        console.log('Refreshing Mobile UI for role:', userRole);
-
-        // Filter bottom nav items if they exist
-        if (bottomNav) {
-            const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
-            navItems.forEach(item => {
-                const itemRole = item.dataset.role || 'employee';
-                item.style.display = (itemRole === userRole) ? 'flex' : 'none';
-            });
-        }
-
-        // Toggle sidebar menus
-        if (userRole === 'admin') {
-            if (employeeMenu) employeeMenu.classList.add('hidden');
-            if (adminMenu) adminMenu.classList.remove('hidden');
-        } else {
-            if (employeeMenu) employeeMenu.classList.remove('hidden');
-            if (adminMenu) adminMenu.classList.add('hidden');
-        }
     },
     
     toggleSidebar() {

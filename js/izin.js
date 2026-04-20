@@ -23,9 +23,6 @@ const izin = {
             if (dateInput) {
                 dateInput.valueAsDate = new Date();
             }
-
-            // Auto-fill employee info
-            this.fillEmployeeInfo();
         } catch (error) {
             console.error('Izin init error:', error);
             toast.error('Gagal memuat data izin');
@@ -74,14 +71,19 @@ const izin = {
 
     initForm() {
         const form = document.getElementById('izin-form');
+        const verifyBtn = document.getElementById('btn-verify-izin');
         const fileInput = document.getElementById('izin-document');
         const fileUpload = document.getElementById('file-upload');
 
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.submitIzinDirectly();
+                this.startVerification();
             });
+        }
+
+        if (verifyBtn) {
+            verifyBtn.addEventListener('click', () => this.startVerification());
         }
 
         // File upload handling
@@ -122,30 +124,6 @@ const izin = {
         }
 
         this.initFilters();
-    },
-
-    async fillEmployeeInfo() {
-        const currentUser = auth.getCurrentUser();
-        if (!currentUser) return;
-
-        const nipEl = document.getElementById('izin-nip');
-        const jabatanEl = document.getElementById('izin-jabatan');
-        const masaKerjaEl = document.getElementById('izin-masa-kerja');
-
-        if (nipEl) nipEl.value = currentUser.nip || '';
-        if (jabatanEl) jabatanEl.value = currentUser.position || '';
-        
-        if (masaKerjaEl && currentUser.joinDate) {
-            const join = new Date(currentUser.joinDate);
-            const now = new Date();
-            let years = now.getFullYear() - join.getFullYear();
-            let months = now.getMonth() - join.getMonth();
-            if (months < 0) {
-                years--;
-                months += 12;
-            }
-            masaKerjaEl.value = `${years} thn ${months} bln`;
-        }
     },
 
     initFilters() {
@@ -197,7 +175,8 @@ const izin = {
         if (fileInput) fileInput.value = '';
     },
 
-    async submitIzinDirectly() {
+    startVerification() {
+        // Validate form first
         const type = document.getElementById('izin-type')?.value;
         const date = document.getElementById('izin-date')?.value;
         const duration = document.getElementById('izin-duration')?.value;
@@ -208,7 +187,27 @@ const izin = {
             return;
         }
 
-        if (typeof loader !== 'undefined') loader.show('Mengirim pengajuan izin...');
+        // Save form data temporarily
+        this.tempFormData = { type, date, duration, reason };
+        storage.set('temp_izin_form', this.tempFormData);
+
+        // Navigate to face recognition
+        router.navigate('face-recognition');
+
+        // Initialize with izin action
+        setTimeout(() => {
+            if (window.faceRecognition) {
+                window.faceRecognition.init('izin');
+            }
+        }, 100);
+    },
+
+    async submitWithVerification(verificationData) {
+        const formData = storage.get('temp_izin_form');
+        if (!formData) {
+            toast.error('Data form tidak ditemukan');
+            return;
+        }
 
         const typeLabels = {
             'sick': 'Sakit',
@@ -220,46 +219,40 @@ const izin = {
 
         const izinEntry = {
             userId: currentUser?.id || 'demo-user',
-            employeeName: currentUser?.name || 'User',
-            type,
-            typeLabel: typeLabels[type] || type,
-            date,
-            duration: parseInt(duration),
-            reason,
-            nip: document.getElementById('izin-nip')?.value || '',
-            jabatan: document.getElementById('izin-jabatan')?.value || '',
-            masaKerja: document.getElementById('izin-masa-kerja')?.value || '',
-            alamatIzin: document.getElementById('izin-alamat')?.value || '',
-            telpIzin: document.getElementById('izin-telp')?.value || '',
+            type: formData.type,
+            typeLabel: typeLabels[formData.type] || formData.type,
+            date: formData.date,
+            duration: parseInt(formData.duration),
+            reason: formData.reason,
             hasAttachment: !!this.currentFile,
-            verificationPhoto: '',
-            verificationLocation: '',
-            verificationTimestamp: new Date().toISOString()
+            verificationPhoto: verificationData.photo || '',
+            verificationLocation: verificationData.location || '',
+            verificationTimestamp: verificationData.timestamp || ''
         };
 
         try {
             const result = await api.submitIzin(izinEntry);
             if (result.success) {
                 this.izinData.unshift(result.data);
-                toast.success('Pengajuan izin berhasil dikirim!');
-
-                // Notify Admin
-                notifications.add('admin', currentUser.name, `mengajukan Izin: ${izinEntry.typeLabel}`, 'warning');
-                
-                // Reset form
-                const form = document.getElementById('izin-form');
-                if (form) form.reset();
-                this.removeFile();
-
-                this.renderIzinList();
-                this.updateStats();
             }
         } catch (error) {
             console.error('Error submitting izin:', error);
-            toast.error('Gagal mengirim pengajuan');
-        } finally {
-            if (typeof loader !== 'undefined') loader.hide();
         }
+
+        // Clear temp data
+        storage.remove('temp_izin_form');
+        storage.remove('temp_attendance');
+        this.currentFile = null;
+
+        toast.success('Pengajuan izin berhasil dikirim!');
+
+        // Reset form
+        const form = document.getElementById('izin-form');
+        if (form) form.reset();
+        this.removeFile();
+
+        this.renderIzinList();
+        this.updateStats();
     },
 
     updateStats() {
@@ -301,13 +294,12 @@ const izin = {
 
         // Sort by date descending
         const sortedData = filteredData.sort((a, b) =>
-            new Date(b.appliedAt || 0) - new Date(a.appliedAt || 0)
+            new Date(b.appliedAt) - new Date(a.appliedAt)
         );
 
         list.innerHTML = sortedData.map(izin => {
-            const dateObj = new Date(izin.date);
-            const isValid = !isNaN(dateObj.getTime());
-            const dateFormatted = isValid ? dateTime.formatDate(dateObj, 'short') : '-';
+            const date = new Date(izin.date);
+            const dateFormatted = dateTime.formatDate(date, 'short');
 
             const icons = {
                 'sick': 'fa-heartbeat',
@@ -323,9 +315,7 @@ const izin = {
                     <div class="izin-content">
                         <div class="izin-header-row">
                             <h4 class="izin-type">${izin.typeLabel}</h4>
-                            <div class="izin-actions-row">
-                                <span class="izin-status ${izin.status}">${this.getStatusLabel(izin.status)}</span>
-                            </div>
+                            <span class="izin-status ${izin.status}">${this.getStatusLabel(izin.status)}</span>
                         </div>
                         <div class="izin-details">
                             <span class="izin-date">
@@ -334,18 +324,12 @@ const izin = {
                             </span>
                         </div>
                         <p class="izin-reason">${izin.reason}</p>
-                        <div class="izin-footer-actions">
-                            <button class="btn-export-word-large" onclick="izin.exportToWord(${izin.id})">
-                                <i class="fas fa-file-word"></i>
-                                <span>Unduh Dokumen Word</span>
-                            </button>
-                            ${izin.hasAttachment ? `
-                                <span class="izin-attachment">
-                                    <i class="fas fa-paperclip"></i>
-                                    Lampiran tersedia
-                                </span>
-                            ` : ''}
-                        </div>
+                        ${izin.hasAttachment ? `
+                            <span class="izin-attachment">
+                                <i class="fas fa-paperclip"></i>
+                                Lampiran tersedia
+                            </span>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -389,212 +373,14 @@ const izin = {
             toast.info('Pengajuan izin ditolak');
         } catch (error) {
             console.error('Error rejecting izin:', error);
-            toast.error('Kesalahan sistem');
         }
-    },
-
-    // WORD EXPORT (Matching official form)
-    async exportToWord(izinId) {
-        const item = this.izinData.find(i => String(i.id) === String(izinId));
-        if (!item) return;
-
-        if (typeof loader !== 'undefined') loader.show('Menyiapkan dokumen...');
-
-        try {
-            const settingsResult = await api.getSettings();
-            const config = settingsResult.data || {};
-
-            const template = this.generateWordTemplate(item, config);
-            
-            // Standard Blob without BOM for better Word compatibility
-            const blob = new Blob([template], {
-                type: 'application/msword'
-            });
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `Form_Izin_${item.employeeName || 'Pegawai'}.doc`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            toast.success('Dokumen berhasil diunduh!');
-        } catch (error) {
-            console.error('Export error:', error);
-            toast.error('Gagal membuat dokumen');
-        } finally {
-            if (typeof loader !== 'undefined') loader.hide();
-        }
-    },
-
-    generateWordTemplate(item, config) {
-        const today = new Date();
-        const todayStr = dateTime.formatDate(today, 'long');
-        const itemDate = new Date(item.date);
-        const startStr = dateTime.formatDate(itemDate, 'long');
-        const endDate = new Date(itemDate);
-        endDate.setDate(endDate.getDate() + (parseInt(item.duration) || 1) - 1);
-        const endStr = dateTime.formatDate(endDate, 'long');
-
-        const check = (val, target) => (val === target ? '&#10003;' : '');
-        
-        const mappedType = {
-            'sick': 'sick',
-            'permission': 'important',
-            'emergency': 'important'
-        }[item.type] || 'important';
-
-        return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-            <meta charset="utf-8">
-            <!--[if gte mso 9]>
-            <xml>
-                <w:WordDocument>
-                    <w:View>Print</w:View>
-                    <w:Zoom>100</w:Zoom>
-                    <w:DoNotOptimizeForBrowser/>
-                </w:WordDocument>
-            </xml>
-            <![endif]-->
-            <style>
-                @page Section1 {
-                    size: 8.5in 13.0in;
-                    margin: 1.0in 0.75in 1.0in 0.75in;
-                    mso-header-margin: .5in;
-                    mso-footer-margin: .5in;
-                    mso-paper-source: 0;
-                }
-                div.Section1 { page: Section1; }
-                body { font-family: 'Times New Roman', serif; font-size: 10.5pt; color: black; background: white; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 5px; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-                td { border: 1px solid black; padding: 4px; vertical-align: top; mso-border-alt: solid windowtext .5pt; }
-                .no-border td { border: none; padding: 1px; mso-border-alt: none; }
-                .center { text-align: center; }
-                .header-table { border: none; margin-bottom: 10px; }
-                .header-table td { border: none; }
-                .title { font-weight: bold; text-decoration: underline; text-align: center; font-size: 12pt; margin-bottom: 10px; }
-                .section-title { font-weight: bold; background-color: #f2f2f2; font-size: 10pt; }
-                p.MsoNormal { margin: 0; padding: 0; line-height: normal; }
-            </style>
-        </head>
-        <body>
-            <div class="Section1">
-            <table class="header-table">
-                <tr>
-                    <td width="55%"></td>
-                    <td>
-                        <p class="MsoNormal">Depok, ${todayStr}</p>
-                        <p class="MsoNormal">Kepada</p>
-                        <p class="MsoNormal">Yth. Kasubag UPEP & Kepegawaian</p>
-                        <p class="MsoNormal">Di</p>
-                        <p class="MsoNormal">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Depok</p>
-                    </td>
-                </tr>
-            </table>
-
-            <p class="title">FORMULIR PERMINTAAN DAN PEMBERIAN IZIN/CUTI</p>
-
-            <table>
-                <tr><td colspan="4" class="section-title"><p class="MsoNormal">I. DATA PEGAWAI</p></td></tr>
-                <tr>
-                    <td width="15%"><p class="MsoNormal">Nama</p></td><td width="35%"><p class="MsoNormal">${item.employeeName || '-'}</p></td>
-                    <td width="15%"><p class="MsoNormal">NIP</p></td><td><p class="MsoNormal">${item.nip || '-'}</p></td>
-                </tr>
-                <tr>
-                    <td><p class="MsoNormal">Jabatan</p></td><td><p class="MsoNormal">${item.jabatan || '-'}</p></td>
-                    <td><p class="MsoNormal">Masa Kerja</p></td><td><p class="MsoNormal">${item.masaKerja || '-'}</p></td>
-                </tr>
-                <tr>
-                    <td><p class="MsoNormal">Unit Kerja</p></td><td colspan="3"><p class="MsoNormal">UPEP</p></td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td colspan="4" class="section-title"><p class="MsoNormal">II. JENIS IZIN/CUTI YANG DIAMBIL **</p></td></tr>
-                <tr>
-                    <td width="40%"><p class="MsoNormal">1. Cuti Tahunan</p></td><td width="10%" class="center"><p class="MsoNormal">${check(mappedType, 'annual')}</p></td>
-                    <td width="40%"><p class="MsoNormal">2. Cuti Besar</p></td><td width="10%" class="center"><p class="MsoNormal">${check(mappedType, 'large')}</p></td>
-                </tr>
-                <tr>
-                    <td><p class="MsoNormal">3. Cuti Sakit</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'sick')}</p></td>
-                    <td><p class="MsoNormal">4. Cuti Melahirkan</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'maternity')}</p></td>
-                </tr>
-                <tr>
-                    <td><p class="MsoNormal">5. Cuti Karena Alasan Penting</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'important')}</p></td>
-                    <td><p class="MsoNormal">6. Cuti di Luar Tanggungan Negara</p></td><td class="center"><p class="MsoNormal">${check(mappedType, 'other')}</p></td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td class="section-title"><p class="MsoNormal">III. ALASAN IZIN/CUTI</p></td></tr>
-                <tr><td style="height: 40px;"><p class="MsoNormal">${item.reason || ''}</p></td></tr>
-            </table>
-
-            <table>
-                <tr><td colspan="6" class="section-title"><p class="MsoNormal">IV. LAMANYA IZIN/CUTI</p></td></tr>
-                <tr>
-                    <td width="10%"><p class="MsoNormal">Selama</p></td><td width="15%" class="center"><p class="MsoNormal">${item.duration} hari</p></td>
-                    <td width="15%"><p class="MsoNormal">Mulai tgl</p></td><td width="20%" class="center"><p class="MsoNormal">${startStr}</p></td>
-                    <td width="5%"><p class="MsoNormal">s/d</p></td><td width="35%" class="center"><p class="MsoNormal">${endStr}</p></td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td colspan="5" class="section-title"><p class="MsoNormal">V. ALAMAT SELAMA MENJALANKAN IZIN/CUTI</p></td></tr>
-                <tr>
-                    <td width="60%" style="height: 60px;"><p class="MsoNormal">${item.alamatIzin || ''}</p></td>
-                    <td width="40%">
-                        <p class="MsoNormal">TELP: ${item.telpIzin || ''}</p>
-                        <p class="MsoNormal">Hormat saya,</p>
-                        <p class="MsoNormal"><br><br></p>
-                        <p class="MsoNormal"><b>${item.employeeName || ''}</b></p>
-                    </td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td class="section-title"><p class="MsoNormal">VI. PERTIMBANGAN ATASAN LANGSUNG**</p></td></tr>
-                <tr>
-                    <td>
-                        <p class="MsoNormal">&nbsp;</p>
-                        <div style="text-align: right; padding-right: 20px;">
-                            <p class="MsoNormal">Kasubag UPEP & Kepegawaian</p>
-                            <p class="MsoNormal"><br><br></p>
-                            <p class="MsoNormal"><b><u>${config.signature_kasubag_name || '...'}</u></b></p>
-                            <p class="MsoNormal">NIP. ${config.signature_kasubag_nip || '...'}</p>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
-            <table>
-                <tr><td class="section-title"><p class="MsoNormal">VII. KEPUTUSAN PEJABAT YANG BERWENANG**</p></td></tr>
-                <tr>
-                    <td>
-                        <p class="MsoNormal">&nbsp;</p>
-                        <div style="text-align: right; padding-right: 20px;">
-                            <p class="MsoNormal"><b>CAMAT CINERE</b></p>
-                            <p class="MsoNormal"><br><br></p>
-                            <p class="MsoNormal"><b><u>${config.signature_camat_name || '...'}</u></b></p>
-                            <p class="MsoNormal">NIP. ${config.signature_camat_nip || '...'}</p>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
-            <p class="MsoNormal" style="font-size: 8.5pt; margin-top: 10px;">
-                Catatan:<br>
-                * Coret yang tidak perlu | ** Beri tanda centang (v)<br>
-                *** Diisi pejabat kepegawaian | **** Diberi tanda centang dan alasannya.
-            </p>
-            </div>
-        </body>
-        </html>`;
     }
 };
 
+// Global init function
 window.initIzin = () => {
     izin.init();
 };
 
+// Expose
 window.izin = izin;

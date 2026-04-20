@@ -40,6 +40,12 @@ window.syncData = async function() {
         loader.show('Sinkronisasi database terbaru...');
     }
 
+    // Force clear local cache to ensure fresh data from server
+    if (typeof storage !== 'undefined') {
+        storage.clear();
+        console.log('[Sync] Local storage cleared for fresh sync.');
+    }
+
     // List of all page modules that have an 'initialized' flag
     const modules = [
         'dashboard', 'absensi', 'faceRecognition', 'izin', 'jurnal', 'cuti',
@@ -352,6 +358,50 @@ var dateTime = {
         var minutes = Math.floor((diff % 3600000) / 60000);
 
         return hours + 'j ' + minutes + 'm';
+    },
+
+    /**
+     * Calculate attendance status label and CSS class
+     * @param {Object} record Attendance record from database
+     * @returns {Object} { label, class }
+     */
+    calculateAttendanceStatus: function(record) {
+        const clockIn = record.clockIn;
+        const clockOut = record.clockOut;
+        const status = (record.status || '').toLowerCase();
+        
+        // Use the status from database if it looks like our new detailed format
+        if (status.includes(' dan ')) {
+            let className = 'success';
+            if (status.includes('tanpa absen')) {
+                className = 'danger';
+            } else if (status.includes('terlambat') || status.includes('pulang awal')) {
+                className = 'warning';
+            }
+            return { label: record.status, class: className };
+        }
+
+        // Fallback for old/other records
+        if (!clockIn && !clockOut) {
+            return { label: 'Tanpa Keterangan', class: 'danger' };
+        }
+        
+        if (clockIn && clockOut) {
+            if (status.includes('telat') || status.includes('terlambat')) {
+                return { label: record.status || 'Terlambat', class: 'warning' };
+            }
+            return { label: record.status || 'Tepat Waktu', class: 'success' };
+        }
+        
+        if (clockIn && !clockOut) {
+            return { label: 'Belum Pulang', class: 'warning' };
+        }
+        
+        if (!clockIn && clockOut) {
+            return { label: 'Tanpa Absen Masuk', class: 'danger' };
+        }
+        
+        return { label: record.status || 'Unknown', class: 'secondary' };
     }
 };
 

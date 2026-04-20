@@ -223,6 +223,7 @@ const auth = {
                 // Show admin menu, hide employee menu
                 if (employeeMenu) employeeMenu.classList.add('hidden');
                 if (adminMenu) adminMenu.classList.remove('hidden');
+                if (bottomNav) bottomNav.style.display = 'none';
 
                 // Navigate to admin dashboard
                 router.navigate('admin-dashboard');
@@ -230,22 +231,15 @@ const auth = {
                 // Show employee menu, hide admin menu
                 if (employeeMenu) employeeMenu.classList.remove('hidden');
                 if (adminMenu) adminMenu.classList.add('hidden');
+                if (bottomNav) bottomNav.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
 
                 // Navigate to employee dashboard
                 router.navigate('dashboard');
             }
 
-            // Initialize mobile UI
+            // Initialize mobile
             if (window.mobile) {
                 window.mobile.handleResize();
-                if (typeof window.mobile.refreshRoleUI === 'function') {
-                    window.mobile.refreshRoleUI();
-                }
-            }
-
-            // Always re-init notifications to ensure listeners are bound and data is correct
-            if (window.notifications) {
-                window.notifications.init();
             }
         }
     },
@@ -277,34 +271,6 @@ const auth = {
         if (userRoleEl) userRoleEl.textContent = this.currentUser.role === 'admin' ? 'Administrator' : 'Pegawai';
         if (userAvatarEl) userAvatarEl.src = getAvatarUrl(this.currentUser);
         if (welcomeNameEl) welcomeNameEl.textContent = this.currentUser.name.split(' ')[0];
-    },
-
-    /**
-     * Refresh the current user's profile from the backend
-     */
-    async refreshProfile() {
-        if (!this.currentUser || !this.currentUser.id) return null;
-        
-        try {
-            const result = await api.getEmployeeProfile(this.currentUser.id);
-            if (result && result.success && result.data) {
-                // Update specific fields while preserving core session data
-                const profile = result.data;
-                this.currentUser.department = profile.department || this.currentUser.department;
-                this.currentUser.position = profile.position || this.currentUser.position;
-                this.currentUser.shift = profile.shift || this.currentUser.shift;
-                
-                // Keep local storage in sync
-                storage.set('session', this.currentUser);
-                
-                // Update UI elements that depend on profile data
-                this.updateUserUI();
-                return this.currentUser;
-            }
-        } catch (error) {
-            console.error('Error refreshing profile:', error);
-        }
-        return null;
     },
 
     async openProfileModal() {

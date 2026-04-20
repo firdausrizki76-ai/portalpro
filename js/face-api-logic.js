@@ -70,7 +70,7 @@ const faceRecognition = {
         const titles = {
             'clock-in': { title: 'Clock In - Verifikasi Wajah', subtitle: 'Verifikasi wajah Anda untuk Clock In' },
             'clock-out': { title: 'Clock Out - Verifikasi Wajah', subtitle: 'Verifikasi wajah Anda untuk Clock Out' },
-
+            'overtime': { title: 'Lembur - Verifikasi Wajah', subtitle: 'Verifikasi wajah Anda untuk mulai lembur' },
             'register-face': { title: 'Pendaftaran Wajah', subtitle: 'Ambil foto selfie jelas untuk mendaftarkan wajah Anda' },
             'izin': { title: 'Pengajuan Izin - Verifikasi Wajah', subtitle: 'Verifikasi wajah untuk pengajuan izin' }
         };

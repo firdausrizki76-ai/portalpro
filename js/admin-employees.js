@@ -183,7 +183,7 @@ const adminEmployees = {
         const deptFilter = document.getElementById('dept-filter');
         if (deptFilter) {
             const currentVal = deptFilter.value;
-            deptFilter.innerHTML = '<option value="">Semua Bidang</option>' + 
+            deptFilter.innerHTML = '<option value="">Semua Departemen</option>' + 
                 depts.map(d => `<option value="${d}" ${d === currentVal ? 'selected' : ''}>${d}</option>`).join('');
         }
 
@@ -291,7 +291,7 @@ const adminEmployees = {
                     <span class="mobile-card-value">EMP${String(emp.id).padStart(3, '0')}</span>
                 </div>
                 <div class="mobile-card-row">
-                    <span class="mobile-card-label">Bidang</span>
+                    <span class="mobile-card-label">Departemen</span>
                     <span class="mobile-card-value">${emp.department}</span>
                 </div>
                 <div class="mobile-card-row">
@@ -538,7 +538,7 @@ const adminEmployees = {
                         <p>${emp.email || '-'}</p>
                     </div>
                     <div class="detail-item">
-                        <label>Bidang</label>
+                        <label>Departemen</label>
                         <p>${emp.department || '-'}</p>
                     </div>
                     <div class="detail-item">

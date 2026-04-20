@@ -81,8 +81,6 @@ const router = {
             absensi: 'Absensi',
             jurnal: 'Jurnal Kerja',
             cuti: 'Pengajuan Cuti',
-            'admin-dashboard': 'Dashboard Admin',
-            'employees': 'Data Pegawai',
             'attendance-reports': 'Rekap Absensi',
             'jurnal-reports': 'Rekap Jurnal',
             'leave-reports': 'Rekap Cuti & Izin',
@@ -124,20 +122,9 @@ const router = {
         
         // Trigger page-specific init functions
         this.triggerPageInit(page);
-
-        // Close mobile sidebar if open
-        if (window.mobile && window.mobile.isMobile && window.mobile.sidebarOpen) {
-            window.mobile.closeSidebar();
-        }
-
-        // Failsafe: Ensure loader is hidden after 500ms even if init hits trouble
-        setTimeout(() => {
-            if (typeof loader !== 'undefined') loader.hide();
-        }, 500);
-
+        
         // Scroll to top
-        const pageContent = document.querySelector('.page-content');
-        if (pageContent) pageContent.scrollTop = 0;
+        document.querySelector('.page-content').scrollTop = 0;
     },
     
     triggerPageInit(page) {

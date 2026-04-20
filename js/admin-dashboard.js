@@ -22,7 +22,7 @@ const adminDashboard = {
             }
 
             await this.loadData();
-            // syncNotifications was removed in favor of backend notifications
+            this.syncNotifications(); // Pass real data to global notification system
             this.updateStats();
             this.renderRecentActivity();
             this.renderOnlineUsers();
@@ -136,48 +136,23 @@ const adminDashboard = {
         
         // Loop attendance
         this.attendance.forEach(att => {
-            if (!att.date) return;
             const name = this.getEmployeeName(att);
-            
-            // Robust timestamp: Try both YYYY-MM-DD and Locale formatted strings
-            const parseDateTime = (d, t) => {
-                if (!t) return new Date(d).getTime();
-                // Replace dot with colon for 14.31 -> 14:31
-                const cleanTime = t.replace('.', ':');
-                const combined = new Date(`${d} ${cleanTime}`);
-                return isNaN(combined.getTime()) ? new Date(d).getTime() : combined.getTime();
-            };
-
-            const toIso = (dStr) => {
-                const d = new Date(dStr);
-                if (isNaN(d.getTime())) return '0000-00-00';
-                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-            };
-
             if (att.clockIn) {
-                const isoDate = toIso(att.date);
-                const time = (att.clockIn || '00:00').replace('.', ':');
-                const sk = `${isoDate} ${time}:00`;
-                
                 events.push({
                     id: `in_${att.date}_${name}`,
                     user: name,
                     action: 'Clock In',
-                    sortKey: sk,
+                    timestamp: new Date(`${att.date} ${att.clockIn}`).getTime() || Date.now(),
                     time: dateTime.formatDate(att.date, 'short') + ' ' + att.clockIn,
                     avatar: getAvatarUrl({name})
                 });
             }
             if (att.clockOut) {
-                const isoDate = toIso(att.date);
-                const time = (att.clockOut || '00:00').replace('.', ':');
-                const sk = `${isoDate} ${time}:00`;
-                
                 events.push({
                     id: `out_${att.date}_${name}`,
                     user: name,
                     action: 'Clock Out',
-                    sortKey: sk,
+                    timestamp: new Date(`${att.date} ${att.clockOut}`).getTime() || Date.now(),
                     time: dateTime.formatDate(att.date, 'short') + ' ' + att.clockOut,
                     avatar: getAvatarUrl({name})
                 });
@@ -187,30 +162,18 @@ const adminDashboard = {
         // Loop leaves
         this.leaves.forEach(l => {
              const name = this.getEmployeeName(l);
-             const leaveDate = l.startDate || l.date;
-             if (!leaveDate) return; 
-             
-             const toIso = (dStr) => {
-                const d = new Date(dStr);
-                if (isNaN(d.getTime())) return '0000-00-00';
-                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-             };
-
-             // Ensure sortKey uses YYYY-MM-DD format
-             const sk = `${toIso(leaveDate)} 00:00:00`;
-             
              events.push({
-                  id: `leave_${l.id || Math.random()}`,
+                  id: `leave_${l.id}`,
                   user: name,
                   action: `Mengajukan Cuti`,
-                  sortKey: sk,
-                  time: dateTime.formatDate(leaveDate, 'short'),
+                  timestamp: new Date(l.appliedAt || l.startDate).getTime() || Date.now(),
+                  time: dateTime.formatDate(l.startDate, 'short'),
                   avatar: getAvatarUrl({name})
              });
         });
         
-        // Robust string sort
-        events.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+        // Sort descending
+        events.sort((a,b) => b.timestamp - a.timestamp);
         
         // Pass to global notifications
         if (window.notifications && typeof window.notifications.setList === 'function') {
@@ -243,16 +206,8 @@ const adminDashboard = {
         const onLeave = this.leaves.filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr).length +
             this.izin.filter(i => i.status === 'approved' && i.date === todayStr).length;
 
-        // Everyone not present and not on leave is absent (No Clock In)
+        // Everyone not present and not on leave is absent
         const absentToday = Math.max(0, totalEmployees - presentToday - onLeave);
-        const noClockIn = absentToday;
-
-        let noClockOut = 0;
-        todayAttendance.forEach(att => {
-            if (att.clockIn && !att.clockOut) {
-                noClockOut++;
-            }
-        });
 
         // Count pending requests
         const pendingLeaves = this.leaves.filter(l => l.status === 'pending').length;
@@ -266,9 +221,7 @@ const adminDashboard = {
             'absent-today': absentToday,
             'late-today': lateToday,
             'on-leave': onLeave,
-            'pending-requests': totalPending,
-            'no-clock-in': noClockIn,
-            'no-clock-out': noClockOut
+            'pending-requests': totalPending
         };
 
         Object.entries(els).forEach(([id, value]) => {
@@ -311,7 +264,7 @@ const adminDashboard = {
         const container = document.getElementById('admin-recent-activity');
         if (!container) return;
 
-        // Fetch from the global notifications list which is now backend-driven
+        // Sync with global notifications system
         const list = window.notifications ? window.notifications.list.slice(0, 5) : []; 
 
         if (list.length === 0) {
@@ -319,23 +272,17 @@ const adminDashboard = {
             return;
         }
 
-        container.innerHTML = list.map(notif => {
-            const timeStr = typeof notif.time === 'string' && notif.time.includes('T') 
-                ? dateTime.formatTime(notif.time) 
-                : (notif.time || 'Baru saja');
-                
-            return `
-                <div class="activity-item">
-                    <div class="activity-avatar">
-                        <img src="${notif.avatar || getAvatarUrl({name: notif.user})}" alt="${notif.user}">
-                    </div>
-                    <div class="activity-content">
-                        <p class="activity-text"><strong>${notif.user}</strong> ${notif.action}</p>
-                        <span class="activity-time">${timeStr}</span>
-                    </div>
+        container.innerHTML = list.map(notif => `
+            <div class="activity-item">
+                <div class="activity-avatar">
+                    <img src="${notif.avatar}" alt="${notif.user}">
                 </div>
-            `;
-        }).join('');
+                <div class="activity-content">
+                    <p class="activity-text"><strong>${notif.user}</strong> ${notif.action}</p>
+                    <span class="activity-time">${notif.time}</span>
+                </div>
+            </div>
+        `).join('');
     },
 
     renderOnlineUsers() {
@@ -404,44 +351,16 @@ const adminDashboard = {
 
         const presentData = new Array(daysToCover).fill(0);
         const lateData = new Array(daysToCover).fill(0);
-        const noClockInData = new Array(daysToCover).fill(0);
-        const noClockOutData = new Array(daysToCover).fill(0);
 
-        const totalEmployees = this.employees.length;
-
-        datesIso.forEach((isoDate, idx) => {
-            const dayAttendance = this.attendance.filter(a => a.date === isoDate);
-            let dayLate = 0;
-            let dayPresent = 0;
-            let dayNoClockOut = 0;
-
-            dayAttendance.forEach(att => {
-                if (att.clockIn) {
-                    const statusVal = (att.status || '').toLowerCase();
-                    if (statusVal.includes('terlambat') || statusVal.includes('late')) {
-                        dayLate++;
-                    } else {
-                        dayPresent++;
-                    }
-                    
-                    if (!att.clockOut) {
-                        dayNoClockOut++;
-                    }
+        this.attendance.forEach(att => {
+            const idx = datesIso.indexOf(att.date);
+            if (idx !== -1) {
+                if (att.status && (att.status.toLowerCase() === 'terlambat' || att.status.toLowerCase() === 'late')) {
+                    lateData[idx]++;
+                } else if (att.clockIn) {
+                    presentData[idx]++;
                 }
-            });
-
-            presentData[idx] = dayPresent;
-            lateData[idx] = dayLate;
-            noClockOutData[idx] = dayNoClockOut;
-
-            // Calculate No Clock In (Absent)
-            // Need to account for those on leave on this physical date
-            const dayLeaves = this.leaves.filter(l => l.status === 'approved' && l.startDate <= isoDate && l.endDate >= isoDate).length;
-            const dayIzin = this.izin.filter(i => i.status === 'approved' && i.date === isoDate).length;
-            const totalOnLeave = dayLeaves + dayIzin;
-            const totalPresent = dayLate + dayPresent;
-            
-            noClockInData[idx] = Math.max(0, totalEmployees - totalPresent - totalOnLeave);
+            }
         });
 
         this._attendanceChart = new Chart(ctx, {
@@ -453,25 +372,11 @@ const adminDashboard = {
                         label: 'Tepat Waktu',
                         data: presentData, 
                         backgroundColor: '#10B981',
-                        stack: 'attendance'
                     },
                     {
                         label: 'Terlambat',
                         data: lateData,
                         backgroundColor: '#EF4444',
-                        stack: 'attendance'
-                    },
-                    {
-                        label: 'T.A.M (Tanpa Masuk)',
-                        data: noClockInData,
-                        backgroundColor: '#F59E0B',
-                        stack: 'attendance'
-                    },
-                    {
-                        label: 'T.A.P (Tanpa Pulang)',
-                        data: noClockOutData,
-                        backgroundColor: '#8B5CF6',
-                        stack: 'secondary'
                     }
                 ]
             },
@@ -481,12 +386,6 @@ const adminDashboard = {
                 scales: {
                     x: { stacked: true },
                     y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
-                },
-                plugins: {
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
-                    }
                 }
             }
         });

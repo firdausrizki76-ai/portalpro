@@ -118,6 +118,7 @@ const absensi = {
                     clockOut: null,
                     breakStart: null,
                     breakEnd: null,
+                    overtimeStart: null,
                     status: 'waiting'
                 };
             }
@@ -127,6 +128,7 @@ const absensi = {
             todayAttendance.clockOut = todayAttendance.clockOut || null;
             todayAttendance.breakStart = todayAttendance.breakStart || null;
             todayAttendance.breakEnd = todayAttendance.breakEnd || null;
+            todayAttendance.overtimeStart = todayAttendance.overtimeStart || null;
 
             // Handle dual verification mapping
             if (todayAttendance.verificationInPhoto) {
@@ -145,41 +147,9 @@ const absensi = {
             }
 
             // Determine current state
-            // Determine current state based on shift range
-            const shifts = storage.get('shifts') || [];
-            const activeShift = shifts.find(s => String(s.name) === String(todayAttendance.shift));
-            let isTooLate = false;
-            if (activeShift && activeShift.startTime) {
-                const [h, m] = activeShift.startTime.replace('.', ':').split(':').map(Number);
-                const startMin = (h || 0) * 60 + (m || 0);
-                const now = new Date();
-                const nowMin = now.getHours() * 60 + now.getMinutes();
-                isTooLate = nowMin > startMin + 60;
-            }
-            const isAlfaTime = isTooLate;
-
+            const isAlfaTime = this.checkAlfaStatus(todayAttendance.shift);
             
-            // --- NEW: Global Holiday Check ---
-            let isGlobalHoliday = false;
-            if (this.systemSettings.working_days) {
-                try {
-                    const workingDays = JSON.parse(this.systemSettings.working_days);
-                    const daysEng = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                    const dayMap = {
-                        'monday': 'senin', 'tuesday': 'selasa', 'wednesday': 'rabu',
-                        'thursday': 'kamis', 'friday': 'jumat', 'saturday': 'sabtu', 'sunday': 'minggu'
-                    };
-                    const todayNameEng = daysEng[new Date().getDay()];
-                    const idDay = dayMap[todayNameEng];
-                    if (workingDays[idDay] === false) {
-                        isGlobalHoliday = true;
-                    }
-                } catch (e) { console.error('Error checking global holiday:', e); }
-            }
-
-            if (isGlobalHoliday && !todayAttendance.clockIn) {
-                this.currentState = 'libur-global';
-            } else if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
+            if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
                 this.currentState = 'libur';
             } else if (todayAttendance.clockOut) {
                 this.currentState = 'completed';
@@ -245,9 +215,13 @@ const absensi = {
                 }
             }
 
-            // Status Badge logic using shared utility
-            const statusInfo = dateTime.calculateAttendanceStatus(record);
-            let statusBadge = `<span class="badge-status ${statusInfo.class}">${statusInfo.label}</span>`;
+            // Status Badge
+            let statusBadge = '<span class="badge-status">Waiting</span>';
+            if (record.status.toLowerCase() === 'ontime') {
+                statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
+            } else if (record.status.toLowerCase() === 'terlambat' || record.status.toLowerCase() === 'late') {
+                statusBadge = '<span class="badge-status warning">Terlambat</span>';
+            }
 
             // Format date to local standard UI string
             const [y, m, d] = record.date.split('-');
@@ -328,6 +302,22 @@ const absensi = {
             console.log('Clock In button initialized, disabled:', btnClockIn.disabled);
         }
 
+
+
+        // Overtime
+        const btnOvertime = document.getElementById('btn-overtime');
+        if (btnOvertime) {
+            btnOvertime.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleOvertime();
+            });
+            btnOvertime.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.handleOvertime();
+            });
+        }
+
         // Clock Out
         const btnClockOut = document.getElementById('btn-clock-out');
         if (btnClockOut) {
@@ -346,14 +336,14 @@ const absensi = {
     handleClockIn() {
         if (this.attendanceData.clockIn) return;
 
-        // Double check shift range status right before proceeding
-        if (!this.checkShiftRangeStatus('clock-in')) {
+        // Double check Alfa status right before proceeding
+        if (this.checkAlfaStatus(this.attendanceData.shift)) {
             modal.show(
-                'Akses Terbatas',
+                'Peringatan Absensi Terlambat',
                 '<div style="text-align: center; padding: 20px;">' +
                 '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
                 '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
-                'anda sudah berada di luar range jam kerja' +
+                'Anda sudah tidak diizinkan untuk melakukan absen, silahkan hubungi admin secara langsung untuk meminta izin' +
                 '</p>' +
                 '</div>',
                 [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
@@ -401,23 +391,22 @@ const absensi = {
         }, 100);
     },
 
+
+
+    handleOvertime() {
+        if (!this.attendanceData.clockIn) return;
+
+        // Navigate to face recognition
+        router.navigate('face-recognition');
+        setTimeout(() => {
+            if (window.faceRecognition) {
+                window.faceRecognition.init('overtime');
+            }
+        }, 100);
+    },
+
     handleClockOut() {
         if (!this.attendanceData.clockIn || this.attendanceData.clockOut) return;
-
-        // Restriction Check: Check if within allowed shift time range (+/- 1 hour)
-        if (!this.checkShiftRangeStatus('clock-out')) {
-            modal.show(
-                'Akses Terbatas',
-                '<div style="text-align: center; padding: 20px;">' +
-                '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
-                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
-                'anda sudah berada di luar range jam kerja' +
-                '</p>' +
-                '</div>',
-                [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
-            );
-            return;
-        }
 
         // Navigate to face recognition
         router.navigate('face-recognition');
@@ -432,17 +421,14 @@ const absensi = {
     async processWithVerification(action, verificationData) {
         const timeStr = dateTime.formatTime(new Date());
 
-        // Restriction Check: Check if within allowed shift time range (+/- 1 hour)
-        if (!this.checkShiftRangeStatus(action)) {
+        // Pre-save Check: Always check Alfa before allowing process
+        if (action === 'clock-in' && this.checkAlfaStatus(this.attendanceData.shift)) {
             modal.show(
-                'Akses Terbatas',
+                'Peringatan Absensi Terlambat',
                 '<div style="text-align: center; padding: 20px;">' +
-                '<i class="fas fa-clock" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
-                '<p style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">' +
-                'anda sudah berada di luar range jam kerja' +
-                '</p>' +
-                '<p style="font-size: 14px; color: #64748b;">' +
-                'Silahkan hubungi admin jika terdapat kendala.' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #EF4444; margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
+                'Anda sudah tidak diizinkan untuk melakukan absen, silahkan hubungi admin secara langsung untuk meminta izin' +
                 '</p>' +
                 '</div>',
                 [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
@@ -455,7 +441,8 @@ const absensi = {
             case 'clock-in':
                 this.attendanceData.clockIn = timeStr;
                 break;
-            // overtime case removed
+            case 'overtime':
+                this.attendanceData.overtimeStart = timeStr;
                 break;
             case 'clock-out':
                 this.attendanceData.clockOut = timeStr;
@@ -490,7 +477,7 @@ const absensi = {
 
             // Notify Admin
             const recipientId = 'admin';
-            const actionLabel = action === 'clock-in' ? 'Clock In' : 'Clock Out';
+            const actionLabel = action === 'clock-in' ? 'Clock In' : (action === 'clock-out' ? 'Clock Out' : 'Lembur');
             notifications.add(recipientId, currentUser.name, `melakukan ${actionLabel}`, 'info');
             
             // Success navigation
@@ -536,54 +523,25 @@ const absensi = {
         }
     },
 
-    checkShiftRangeStatus(action) {
-        // 1. Global Holiday Check
-        if (this.systemSettings.working_days) {
-            try {
-                const workingDays = JSON.parse(this.systemSettings.working_days);
-                const dayNameEng = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
-                const dayMap = {
-                    'monday': 'senin', 'tuesday': 'selasa', 'wednesday': 'rabu',
-                    'thursday': 'kamis', 'friday': 'jumat', 'saturday': 'sabtu', 'sunday': 'minggu'
-                };
-                if (workingDays[dayMap[dayNameEng]] === false) return false;
-            } catch (e) {}
-        }
-
-        const shiftName = this.attendanceData.shift;
+    checkAlfaStatus(shiftName) {
         if (!shiftName || shiftName === 'Libur') return false;
 
         const now = new Date();
-        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // Get shift details
-        const shifts = storage.get('shifts') || [];
+        // Get shift start time
+        let shiftStartTimeStr = "08:00"; // fallback
+        const shifts = storage.get('shifts', []);
         const userShift = shifts.find(s => String(s.name) === String(shiftName));
         
-        // Default fallbacks
-        let startMin = 480; // 08:00
-        let endMin = 1020;  // 17:00
-
-        if (userShift) {
-            if (userShift.startTime) {
-                const [h, m] = userShift.startTime.replace('.', ':').split(':').map(Number);
-                startMin = (h || 0) * 60 + (m || 0);
-            }
-            if (userShift.endTime) {
-                const [h, m] = userShift.endTime.replace('.', ':').split(':').map(Number);
-                endMin = (h || 0) * 60 + (m || 0);
-            }
+        if (userShift && userShift.startTime) {
+            shiftStartTimeStr = userShift.startTime.replace('.', ':');
         }
+        
+        const [sH, sM] = shiftStartTimeStr.split(':').map(Number);
+        const shiftStartInMinutes = (sH || 0) * 60 + (sM || 0);
 
-        if (action === 'clock-in') {
-            // Rule: ShiftStart +/- 60 min
-            return (nowMin >= startMin - 60 && nowMin <= startMin + 60);
-        } else if (action === 'clock-out') {
-            // Rule: Not more than 1 hour after ShiftEnd
-            return (nowMin <= endMin + 60);
-        }
-
-        return true;
+        return currentTimeInMinutes > (shiftStartInMinutes + 60);
     },
 
     updateUI() {
@@ -607,15 +565,10 @@ const absensi = {
             statusRing.className = 'status-ring';
 
             switch (this.currentState) {
-                case 'libur-global':
-                    statusRing.classList.add('waiting');
-                    if (statusText) statusText.textContent = 'Hari Libur';
-                    if (statusSubtext) statusSubtext.textContent = 'Hari ini adalah hari libur (non-kerja).';
-                    break;
                 case 'libur':
                     statusRing.classList.add('waiting');
-                    if (statusText) statusText.textContent = 'Jadwal Libur';
-                    if (statusSubtext) statusSubtext.textContent = 'Anda dijadwalkan libur hari ini.';
+                    if (statusText) statusText.textContent = 'Hari Libur';
+                    if (statusSubtext) statusSubtext.textContent = 'Anda tidak memiliki jadwal kerja hari ini.';
                     break;
                 case 'waiting':
                     statusRing.classList.add('waiting');
@@ -665,9 +618,9 @@ const absensi = {
         if (btnClockIn) {
             const isClockedIn = this.attendanceData.clockIn !== null && this.attendanceData.clockIn !== undefined;
             const isAlfa = this.currentState === 'alfa';
-            const isLibur = this.currentState === 'libur' || this.currentState === 'libur-global';
+            const isLibur = this.currentState === 'libur';
 
-            btnClockIn.disabled = isClockedIn || isLibur;
+            btnClockIn.disabled = isClockedIn || isLibur || isAlfa;
 
             if (isClockedIn) {
                 btnClockIn.classList.add('completed');
@@ -675,16 +628,21 @@ const absensi = {
                 if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
             } else if (isLibur) {
                 btnClockIn.classList.add('completed');
-                btnClockIn.style.opacity = '0.5';
             } else {
                 btnClockIn.classList.remove('completed');
-                btnClockIn.style.opacity = '1';
             }
         }
 
 
 
-        // Overtime UI update removed
+        // Overtime button
+        if (btnOvertime) {
+            btnOvertime.disabled = !this.attendanceData.clockIn || this.attendanceData.clockOut !== null;
+            if (this.attendanceData.overtimeStart) {
+                btnOvertime.classList.add('completed');
+                document.getElementById('overtime-time').textContent = this.attendanceData.overtimeStart;
+            }
+        }
 
         // Clock Out button
         if (btnClockOut) {

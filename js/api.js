@@ -7,53 +7,37 @@
  * - Jika API_BASE_URL diisi → semua request dikirim ke Google Apps Script
  */
 
-const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzq1rsse_tHG5X8shyIxT0QBLc6TxxbBk0WHgHrFvNmY9wtxhrAnBxLyqv7aKYkbWSR/exec'; // v44 Maintenance & Cleanup Release
+const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwWfN84WXxHN2OL-35JQ2t0IqVJF9fUVvdqoRWJ-JkVqrw44VWb4LnYzEQsWyIppiOD/exec'; // Kosongkan untuk mode localStorage, isi dengan URL Web App GAS
 
 const api = {
 
     // ========== CORE REQUEST ==========
 
     async request(action, data = {}) {
+        // Jika API_BASE_URL kosong, gunakan localStorage fallback
         if (!API_BASE_URL) {
             return this._localFallback(action, data);
         }
 
-        const isLargePayloadAction = action === 'registerFace' || action === 'saveAttendance';
-        const timeoutMs = isLargePayloadAction ? 90000 : 20000;
-
         try {
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('TIMEOUT_' + action)), timeoutMs)
-            );
-
-            const payload = JSON.stringify({ action, ...data });
-            console.log(`API Request: ${action} (${payload.length} bytes, timeout: ${timeoutMs}ms)`);
-
-            // GAS requires very specific fetch config to handle CORS redirects
-            const fetchPromise = fetch(API_BASE_URL, {
+            const response = await fetch(API_BASE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: payload
-            }).then(async res => {
-                const text = await res.text();
-                console.log(`API Response (${action}):`, text.substring(0, 100));
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.error('Parse error:', text.substring(0, 300));
-                    return { success: false, error: 'Server returned invalid JSON: ' + text.substring(0, 100) };
-                }
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action, ...data })
             });
 
-            return await Promise.race([fetchPromise, timeoutPromise]);
-
-        } catch (error) {
-            console.error(`API Error (${action}):`, error.message);
-            if (error.message && error.message.startsWith('TIMEOUT_')) {
-                return { success: false, error: 'Server tidak merespons setelah menunggu (Timeout). Cek koneksi internet Anda.' };
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse response:', text.substring(0, 200));
+                return { success: false, error: 'Invalid response from server' };
             }
-            // Enhance other errors with raw message inclusion
-            return this._localFallback(action, { ...data, serverError: error.message });
+        } catch (error) {
+            console.error('API Error:', error);
+            // Fallback to localStorage on network error
+            return this._localFallback(action, data);
         }
     },
 
@@ -112,7 +96,7 @@ const api = {
                 success: true,
                 data: todayRecord || {
                     date: today, shift: 'Pagi', clockIn: null, clockOut: null,
-                    breakStart: null, breakEnd: null, status: 'waiting'
+                    breakStart: null, breakEnd: null, overtimeStart: null, status: 'waiting'
                 }
             };
         }
@@ -122,7 +106,7 @@ const api = {
     async saveAttendance(data) {
         if (!API_BASE_URL) {
             // Check Alfa status for Local Fallback
-            if (!data.clockOut) {
+            if (!data.clockOut && !data.overtimeStart) {
                 const now = new Date();
                 const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -352,16 +336,6 @@ const api = {
         return this.request('getSettings');
     },
 
-    async setupDailyTrigger() {
-        if (!API_BASE_URL) return { success: true };
-        return this.request('setupDailyTrigger');
-    },
-
-    async repairDatabase() {
-        if (!API_BASE_URL) return { success: true };
-        return this.request('repairDatabase');
-    },
-
     async saveSetting(key, value) {
         if (!API_BASE_URL) {
             if (key === 'company_name' || key === 'company_logo') {
@@ -478,7 +452,6 @@ window.getAvatarUrl = function (emp) {
     const colorIdx = name.charCodeAt(0) % colors.length;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${colors[colorIdx]}&color=fff`;
 };
-
 // Helper: normalize image URLs (especially Google Drive links)
 window.normalizeImageUrl = function (url) {
     if (!url || typeof url !== 'string') return url;
@@ -494,27 +467,4 @@ window.normalizeImageUrl = function (url) {
     }
     
     return url;
-};
-
-// ========== NOTIFICATIONS ==========
-api.getNotifications = async function(userId) {
-    if (!API_BASE_URL) {
-        return { success: true, data: storage.get('notifications', []) };
-    }
-    return this.request('getNotifications', { userId });
-};
-
-api.addNotification = async function(recipientId, type, user, action) {
-    if (!API_BASE_URL) {
-        // Local fallback if needed
-        return { success: true };
-    }
-    return this.request('addNotification', { recipientId, type, user, action });
-};
-
-api.clearNotifications = async function(userId) {
-    if (!API_BASE_URL) {
-        return { success: true };
-    }
-    return this.request('clearNotifications', { userId });
 };
