@@ -673,18 +673,19 @@ const absensi = {
                         // Show Thumbnail & Location
                         const ver = this.attendanceData.verificationIn;
                         if (ver && ver.photo) {
+                            // CLEAN UP: Remove if already exists to prevent duplication
+                            const existing = item.querySelector('.timeline-verification');
+                            if (existing) existing.remove();
+
                             const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
-                            html += `<img src="${photoUrl}" class="verification-thumbnail">`;
+                            html += `<img src="${photoUrl}" class="verification-thumbnail" onerror="console.error('Timeline Image Load Failed:', this.src)">`;
                             html += `<div class="verification-info">
                                 <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
                             </div></div>`;
                             
-                            // Only add if not already present
-                            if (!item.querySelector('.timeline-verification')) {
-                                item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
-                            }
+                            item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
                         }
                     }
                     break;
@@ -698,18 +699,19 @@ const absensi = {
                         // Show Thumbnail & Location for Clock Out
                         const ver = this.attendanceData.verificationOut;
                         if (ver && ver.photo) {
+                            // CLEAN UP: Remove if already exists to prevent duplication
+                            const existing = item.querySelector('.timeline-verification');
+                            if (existing) existing.remove();
+
                             const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
-                            html += `<img src="${photoUrl}" class="verification-thumbnail">`;
+                            html += `<img src="${photoUrl}" class="verification-thumbnail" onerror="console.error('Timeline Image Load Failed:', this.src)">`;
                             html += `<div class="verification-info">
                                 <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
                             </div></div>`;
                             
-                            // Only add if not already present
-                            if (!item.querySelector('.timeline-verification')) {
-                                item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
-                            }
+                            item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
                         }
                     }
                     break;

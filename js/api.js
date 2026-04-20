@@ -458,12 +458,12 @@ window.normalizeImageUrl = function (url) {
     if (url.startsWith('data:image')) return url;
     
     // Detect Google Drive URLs and convert to direct link format
-    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=)|docs\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=))([a-zA-Z0-9_-]+)/;
+    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=)|docs\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=))([a-zA-Z0-9_-]{25,})/;
     const match = url.match(driveRegex);
     
     if (match && match[1]) {
-        // Returns the most reliable direct view format for Google Drive
-        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+        // Use the most compatible export=view format
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
     }
     
     return url;
