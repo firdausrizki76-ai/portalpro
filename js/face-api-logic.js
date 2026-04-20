@@ -276,35 +276,60 @@ const faceRecognition = {
                         return;
                     }
 
-                    // Define point key based on selection (Point 1 is legacy 'office_lat', 2-5 are 'office_lat_N')
                     const pointId = selectedPoint.id;
-                    const latKey = pointId === '1' ? 'office_lat' : `office_lat_${pointId}`;
-                    const lngKey = pointId === '1' ? 'office_lng' : `office_lng_${pointId}`;
+                    const isSpecialMode = ['wfh', 'wfa', 'dinas'].includes(pointId);
+                    
+                    let targetLat, targetLng, targetName;
+                    let customMaxDistance = maxDistance;
 
-                    const targetLat = parseFloat(allSettings[latKey]);
-                    const targetLng = parseFloat(allSettings[lngKey]);
+                    if (isSpecialMode) {
+                        if (this.currentAction === 'clock-in') {
+                            console.log(`Special Mode (${pointId}) Clock In: Skipping distance check.`);
+                            // Allow Clock In from anywhere
+                        } else {
+                            // Clock Out or others: Compare with Clock In Location
+                            const clockInData = window.absensi ? window.absensi.attendanceData.verificationIn : null;
+                            const clockInLoc = clockInData ? clockInData.location : null;
 
-                    // Check if admin has set the coordinates
-                    if (isNaN(targetLat) || isNaN(targetLng) || targetLat === 0) {
-                        modal.show(
-                            'Lokasi Belum Diset',
-                            `<div style="text-align:center; padding: 20px;">
-                                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
-                                <p style="font-weight:600; font-size:18px; color:#333;">Tolong kontak admin untuk set lokasi absen</p>
-                                <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                                    Titik koordinat untuk <b>${selectedPoint.name}</b> belum dikonfigurasi.
-                                </p>
-                            </div>`,
-                            [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
-                        );
-                        return;
+                            if (clockInLoc && clockInLoc.latitude && clockInLoc.longitude) {
+                                targetLat = clockInLoc.latitude;
+                                targetLng = clockInLoc.longitude;
+                                targetName = 'Titik Clock In';
+                                customMaxDistance = 100; // Hardcoded 100m for special modes as requested
+                                console.log('Special Mode Clock Out: Comparing with Clock In Location');
+                            } else {
+                                // Fallback if clock in loc not found
+                                console.warn('Special Mode: Clock In location not found. Allowing any location.');
+                            }
+                        }
+                    } else {
+                        // Normal Office Mode
+                        const latKey = pointId === '1' ? 'office_lat' : `office_lat_${pointId}`;
+                        const lngKey = pointId === '1' ? 'office_lng' : `office_lng_${pointId}`;
+
+                        targetLat = parseFloat(allSettings[latKey]);
+                        targetLng = parseFloat(allSettings[lngKey]);
+                        targetName = selectedPoint.name;
                     }
 
-                    const points = [
-                        { name: selectedPoint.name, lat: targetLat, lng: targetLng }
-                    ];
+                    // Proceed with check only if target is defined (Normal or Special-ClockOut)
+                    if (targetLat && targetLng) {
+                        // Check if admin has set the coordinates for normal mode
+                        if (!isSpecialMode && (isNaN(targetLat) || isNaN(targetLng) || targetLat === 0)) {
+                            modal.show(
+                                'Lokasi Belum Diset',
+                                `<div style="text-align:center; padding: 20px;">
+                                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
+                                    <p style="font-weight:600; font-size:18px; color:#333;">Tolong kontak admin untuk set lokasi absen</p>
+                                    <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                                        Titik koordinat untuk <b>${selectedPoint.name}</b> belum dikonfigurasi.
+                                    </p>
+                                </div>`,
+                                [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
+                            );
+                            return;
+                        }
 
-                    if (points.length > 0) {
                         if (!this.position) {
                             toast.error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.');
                             return;
@@ -317,10 +342,14 @@ const faceRecognition = {
                         let minDistance = Infinity;
                         let closestPoint = null;
 
+                        const points = [
+                            { name: targetName, lat: targetLat, lng: targetLng }
+                        ];
+
                         points.forEach(p => {
                             const d = this.calculateDistance(userLat, userLng, p.lat, p.lng);
                             console.log(`Distance to ${p.name}: ${d.toFixed(1)}m`);
-                            if (d <= maxDistance) {
+                            if (d <= customMaxDistance) {
                                 withinRange = true;
                             }
                             if (d < minDistance) {
@@ -334,9 +363,9 @@ const faceRecognition = {
                                 'Di Luar Jangkauan',
                                 `<div style="text-align:center; padding: 20px;">
                                     <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
-                                    <p>Anda berada di luar radius absen yang diizinkan.</p>
+                                    <p>Anda berada di luar radius yang diizinkan.</p>
                                     <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                                        Radius maksimal: <b>${maxDistance}m</b><br>
+                                        Radius maksimal: <b>${customMaxDistance}m</b><br>
                                         Paling dekat ke: <b>${closestPoint.name}</b> (${minDistance.toFixed(0)}m)
                                     </p>
                                 </div>`,
@@ -344,8 +373,9 @@ const faceRecognition = {
                             );
                             return;
                         }
-                    } else {
-                        console.warn('Location tracking enabled but no office coordinates set.');
+                    } else if (isSpecialMode && this.currentAction === 'clock-in') {
+                        // Explicitly set withinRange for skip case
+                        console.log('Distance check bypassed for special mode Clock In');
                     }
                 } else {
                     console.log('Location tracking skipped (disabled in settings)');
