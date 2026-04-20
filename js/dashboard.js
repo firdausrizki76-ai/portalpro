@@ -410,17 +410,27 @@ const dashboard = {
                 const hasClockIn = record && record.clockIn && record.clockIn !== '--:--';
 
                 if (hasClockIn) {
-                    // GAYA AKTIF (BIRU)
-                    const height = Math.max(15, (record.totalMinutes / 1440) * 100);
+                    // GAYA AKTIF (BIRU TERANG)
+                    // Hitung durasi manual jika totalMinutes tidak ada
+                    let totalMin = record.totalMinutes;
+                    if (!totalMin && record.clockIn && record.clockOut && record.clockOut !== '--:--') {
+                        const [h1, m1] = record.clockIn.split('.').map(Number);
+                        const [h2, m2] = record.clockOut.split('.').map(Number);
+                        totalMin = (h2 * 60 + m2) - (h1 * 60 + m1);
+                    }
+                    
+                    const height = Math.max(20, Math.min(100, ((totalMin || 30) / 480) * 100));
                     bar.style.setProperty('height', `${height}%`, 'important');
-                    bar.style.setProperty('background-color', 'var(--color-primary)', 'important');
+                    bar.style.setProperty('background-color', '#3B82F6', 'important'); // Electric Blue
                     bar.classList.add('active');
 
                     if (label) {
-                        label.style.setProperty('color', 'var(--color-primary)', 'important');
-                        label.style.setProperty('font-weight', '700', 'important');
-                        label.style.setProperty('border-bottom', '3px solid var(--color-primary)', 'important');
-                        label.style.setProperty('padding-bottom', '2px', 'important');
+                        label.style.setProperty('color', '#3B82F6', 'important');
+                        label.style.setProperty('font-weight', '900', 'important');
+                        label.style.setProperty('font-size', '14px', 'important');
+                        label.style.setProperty('border-bottom', '3px solid #3B82F6', 'important');
+                        label.style.setProperty('padding-bottom', '4px', 'important');
+                        label.style.setProperty('text-shadow', '0 0 5px rgba(59, 130, 246, 0.4)', 'important');
                     }
                 } else {
                     // GAYA NON-AKTIF (ABU-ABU)
@@ -431,7 +441,9 @@ const dashboard = {
                     if (label) {
                         label.style.color = 'var(--text-muted)';
                         label.style.fontWeight = '400';
+                        label.style.fontSize = '12px';
                         label.style.borderBottom = 'none';
+                        label.style.textShadow = 'none';
                     }
                 }
             }
