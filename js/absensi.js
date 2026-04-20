@@ -214,33 +214,11 @@ const absensi = {
         }
 
         tbody.innerHTML = historyData.slice(0, 10).map(record => {
-            // Calculate duration if clocked out
-            let duration = '--';
-            if (record.clockIn && record.clockOut) {
-                const [inH, inM] = record.clockIn.split(':').map(Number);
-                const [outH, outM] = record.clockOut.split(':').map(Number);
-                let diffInMinutes = (outH * 60 + outM) - (inH * 60 + inM);
-
-                if (diffInMinutes > 0) {
-                    const h = Math.floor(diffInMinutes / 60);
-                    const m = diffInMinutes % 60;
-                    duration = `${h}j ${m}m`;
-                }
-
-                if (diffInMinutes > 0) {
-                    const h = Math.floor(diffInMinutes / 60);
-                    const m = diffInMinutes % 60;
-                    duration = `${h}j ${m}m`;
-                }
-            }
-
-            // Status Badge
-            let statusBadge = '<span class="badge-status">Waiting</span>';
-            if (record.status.toLowerCase() === 'ontime') {
-                statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
-            } else if (record.status.toLowerCase() === 'terlambat' || record.status.toLowerCase() === 'late') {
-                statusBadge = '<span class="badge-status warning">Terlambat</span>';
-            }
+            // Calculate duration and status using robust utilities
+            const duration = dateTime.calculateDuration(record.clockIn, record.clockOut);
+            const statusInfo = dateTime.calculateAttendanceStatus(record);
+            
+            const statusBadge = `<span class="badge-status ${statusInfo.class}">${statusInfo.label}</span>`;
 
             // Format date to local standard UI string
             const [y, m, d] = record.date.split('-');
@@ -693,10 +671,10 @@ const absensi = {
                         if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
                         
                         // Show Thumbnail & Location
-                        const ver = this.attendanceData.verificationIn;
                         if (ver && ver.photo) {
+                            const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
-                            html += `<img src="${ver.photo}" class="verification-thumbnail">`;
+                            html += `<img src="${photoUrl}" class="verification-thumbnail">`;
                             html += `<div class="verification-info">
                                 <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
@@ -717,10 +695,10 @@ const absensi = {
                         if (timeEl) timeEl.textContent = this.attendanceData.clockOut;
 
                         // Show Thumbnail & Location for Clock Out
-                        const ver = this.attendanceData.verificationOut;
                         if (ver && ver.photo) {
+                            const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
-                            html += `<img src="${ver.photo}" class="verification-thumbnail">`;
+                            html += `<img src="${photoUrl}" class="verification-thumbnail">`;
                             html += `<div class="verification-info">
                                 <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>

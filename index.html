@@ -29,57 +29,68 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Surgical Dashboard Fixes - FINAL PREMIUM */
+        /* DASHBOARD PREMIUM FIX - ULTIMATE SURGICAL */
         #dashboard-team-avatars.team-avatars {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
-            gap: 12px !important;
-            min-height: 80px !important;
+            gap: 15px !important;
+            min-height: 85px !important;
             align-items: center !important;
-            padding: 10px 5px !important;
+            padding: 15px 5px !important;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
             scrollbar-width: none;
         }
         
         #dashboard-team-avatars::-webkit-scrollbar { display: none; }
 
-        /* CIRCULAR AVATARS FIX */
-        .team-avatar-wrapper, .team-member-avatar, .avatar-initials {
-            width: 46px !important;
-            height: 46px !important;
-            border-radius: 50% !important; /* MUST BE CIRCLE */
+        /* CIRCULAR AVATARS (FORCE EVERYTHING) */
+        .team-avatar-wrapper, 
+        .team-avatar-wrapper div,
+        .team-member-avatar,
+        .avatar-initials {
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            border-radius: 50% !important; /* CIRCULAR FORCE */
             overflow: hidden !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             flex-shrink: 0 !important;
-            border: 2px solid #ffffff !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.12) !important;
+            border: 3px solid #ffffff !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
+            background: #F1F5F9 !important;
+            font-size: 16px !important;
             font-weight: 700 !important;
-            font-size: 14px !important;
-            color: white !important;
+            text-transform: uppercase !important;
+            color: #1E293B !important;
         }
 
         .team-avatar-wrapper img {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
+            border-radius: 50% !important;
         }
 
-        /* PREMIUM BAR CHART FIX */
+        /* PREMIUM BAR CHART REBUILD */
         .bar-chart {
             display: flex !important;
             align-items: flex-end !important;
             justify-content: space-between !important;
-            height: 160px !important; /* Explicit working height */
-            padding: 15px 10px !important;
-            background: rgba(0,0,0,0.02) !important;
-            border-radius: 12px !important;
+            height: 170px !important;
+            padding: 20px 10px !important;
+            background: linear-gradient(to bottom, rgba(248,250,252,0.5), rgba(241,245,249,1)) !important;
+            border-radius: 16px !important;
+            margin-bottom: 10px;
         }
 
         .bar-item {
             flex: 1 !important;
+            max-width: 40px;
             height: 100% !important;
             display: flex !important;
             flex-direction: column !important;
@@ -88,24 +99,27 @@
         }
 
         .bar-fill {
-            width: 24px !important;
-            max-width: 28px !important;
-            background-color: #CBD5E1 !important; /* Default Gray */
-            border-radius: 6px 6px 0 0 !important;
-            transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-            height: 10% !important; /* Default min height */
+            width: 28px !important;
+            min-width: 28px !important;
+            background: #E2E8F0 !important;
+            border-radius: 8px 8px 0 0 !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            position: relative;
+            z-index: 1;
         }
 
         .bar-fill.active {
             background: linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%) !important;
-            box-shadow: 0 4px 10px rgba(29, 78, 216, 0.3) !important;
+            box-shadow: 0 6px 15px rgba(29, 78, 216, 0.35) !important;
         }
-        
+
         .bar-label {
-            margin-top: 10px !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
-            color: #64748B !important;
+            margin-top: 12px !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+            letter-spacing: -0.01em;
         }
     </style>
 </head>

@@ -233,10 +233,16 @@ const dashboard = {
             if (clockOutEl) clockOutEl.textContent = todayAttendance.clockOut || '--:--';
 
             if (todayAttendance.clockIn && todayAttendance.clockOut && durationEl) {
-                durationEl.textContent = dateTime.calculateDuration(
+                const duration = dateTime.calculateDuration(
                     todayAttendance.clockIn,
                     todayAttendance.clockOut
                 );
+                console.log('Dashboard Duration Debug:', {
+                    in: todayAttendance.clockIn,
+                    out: todayAttendance.clockOut,
+                    result: duration
+                });
+                durationEl.textContent = duration;
             }
         }
     },
@@ -341,11 +347,15 @@ const dashboard = {
             
             if (bar) {
                 if (record && record.clockIn) {
-                    const status = dateTime.calculateAttendanceStatus(record);
-                    let height = 80;
-                    if (status.class === 'danger') height = 30;
-                    if (status.class === 'warning') height = 50;
-                    
+                    // Make sure the bar is visible even with low or no data
+                    let height = 0;
+                    if (record) {
+                        // If present but 0 min (too fast), show minimal bar
+                        height = Math.max(15, (record.totalMinutes / 1440) * 100);
+                    } else {
+                        height = 10; // Base visible height for empty days
+                    }
+
                     bar.style.height = `${height}%`;
                     bar.classList.add('active');
                 } else {
