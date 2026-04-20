@@ -223,7 +223,8 @@ const dashboard = {
         const absentCount = 0; // Will be calculated dynamically if needed
 
         // Update donut chart based on (Total Attendance / Days in Month)
-        const progressPercent = totalDaysInMonth > 0 ? Math.round((presentCount / totalDaysInMonth) * 100) : 0;
+        const progressPercent = totalDaysInMonth > 0 ? (presentCount / totalDaysInMonth) : 0;
+        const totalCircumference = 251; // Length of the circle border
 
         // Update center text display (e.g., 1/30)
         const donutValue = document.querySelector('.donut-value');
@@ -231,10 +232,19 @@ const dashboard = {
             donutValue.textContent = `${presentCount}/${totalDaysInMonth}`;
         }
         
-        // Update the circle progress via CSS global variable
-        const donutChart = document.querySelector('.donut-chart');
-        if (donutChart) {
-            donutChart.style.setProperty('--percent', progressPercent);
+        // Update SVG paths dynamically
+        const presentPath = document.querySelector('.donut-fill.present');
+        const latePath = document.querySelector('.donut-fill.late');
+        const absentPath = document.querySelector('.donut-fill.absent');
+
+        if (presentPath) {
+            // Set dash-array to reflect 1/20 progres
+            const dashValue = progressPercent * totalCircumference;
+            presentPath.style.strokeDasharray = `${dashValue} ${totalCircumference}`;
+            
+            // Hide other segments for this progressive mode
+            if (latePath) latePath.style.display = 'none';
+            if (absentPath) absentPath.style.display = 'none';
         }
 
         // Update legend
