@@ -417,7 +417,8 @@ const adminDashboard = {
 
             dayAttendance.forEach(att => {
                 if (att.clockIn) {
-                    if (att.status && (att.status.toLowerCase() === 'terlambat' || att.status.toLowerCase() === 'late')) {
+                    const statusVal = (att.status || '').toLowerCase();
+                    if (statusVal.includes('terlambat') || statusVal.includes('late')) {
                         dayLate++;
                     } else {
                         dayPresent++;

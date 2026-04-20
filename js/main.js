@@ -493,7 +493,7 @@ var dateTime = {
         // Case 1: Both exist (Normal complete attendance)
         if (clockIn && clockOut) {
             if (status.includes('telat') || status.includes('terlambat')) {
-                return { label: 'Terlambat', class: 'warning' };
+                return { label: record.status || 'Terlambat', class: 'warning' };
             }
             return { label: 'Tepat Waktu', class: 'success' };
         }
