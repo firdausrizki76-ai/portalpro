@@ -419,15 +419,24 @@ const dashboard = {
                     bar.classList.remove('active');
                 }
                 
-                // Simple logic: If present (any clockIn recorded) -> Blue indicator
-                const hasClockIn = record && record.clockIn && record.clockIn !== '--:--' && record.clockIn !== '';
-                
-                if (hasClockIn) {
-                    bar.parentElement.style.borderBottom = '3px solid var(--color-primary)';
+                // FORCE BLUE INDICATOR ON THE LABEL
+                const label = bar.parentElement.querySelector('.bar-label');
+                if (record && record.clockIn && record.clockIn !== '--:--' && record.clockIn !== '') {
+                    if (label) {
+                        label.style.color = 'var(--color-primary)';
+                        label.style.fontWeight = '700';
+                        label.style.borderBottom = '3px solid var(--color-primary)';
+                        label.style.paddingBottom = '2px';
+                    }
                     bar.style.backgroundColor = 'var(--color-primary)';
+                    bar.style.height = '15%'; // Minimum height if present
                     bar.classList.add('active');
                 } else {
-                    bar.parentElement.style.borderBottom = 'none';
+                    if (label) {
+                        label.style.color = 'var(--text-muted)';
+                        label.style.fontWeight = '400';
+                        label.style.borderBottom = 'none';
+                    }
                     bar.style.backgroundColor = 'var(--color-gray-200)';
                     bar.classList.remove('active');
                 }
