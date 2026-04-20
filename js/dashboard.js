@@ -55,11 +55,12 @@ const dashboard = {
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
                 // Run multiple requests in parallel
-                const [attResult, settingsRes, teamRes, profileRes] = await Promise.allSettled([
+                const [attResult, settingsRes, teamRes, profileRes, shiftsRes] = await Promise.allSettled([
                     api.getAttendance(currentUser.id),
                     api.getSettings(),
                     api.getEmployees(), // For team presence
-                    auth.refreshProfile() // Ensure session is fresh
+                    auth.refreshProfile(), // Ensure session is fresh
+                    api.getShifts() // Fetch master shifts for time info
                 ]);
 
                 // Immediately update Welcome card if profile was refreshed 
@@ -98,6 +99,11 @@ const dashboard = {
                 // 3. Process Team Data
                 if (teamRes.status === 'fulfilled' && teamRes.value.success) {
                     storage.set('admin_employees', teamRes.value.data || []);
+                }
+
+                // 4. Process Master Shifts
+                if (shiftsRes.status === 'fulfilled' && shiftsRes.value.success) {
+                    storage.set('shifts', shiftsRes.value.data || []);
                 }
             }
         } catch (error) {
