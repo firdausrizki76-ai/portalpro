@@ -233,17 +233,29 @@ const dashboard = {
         }
         
         // Update SVG paths dynamically
-        const presentPath = document.querySelector('.donut-fill.present');
-        const latePath = document.querySelector('.donut-fill.late');
+        const presentPath = document.querySelector('.donut-fill.present'); // Hijau (Ontime)
+        const latePath = document.querySelector('.donut-fill.late');       // Biru (Late)
         const absentPath = document.querySelector('.donut-fill.absent');
 
-        if (presentPath) {
-            // Set dash-array to reflect 1/20 progres
-            const dashValue = progressPercent * totalCircumference;
-            presentPath.style.strokeDasharray = `${dashValue} ${totalCircumference}`;
+        const totalCircumference = 251; // Length of the circle border
+
+        if (presentPath && latePath) {
+            // 1. Calculate Dash for Ontime (Green)
+            const ontimePercent = totalDaysInMonth > 0 ? (ontimeCount / totalDaysInMonth) : 0;
+            const ontimeDash = ontimePercent * totalCircumference;
+            presentPath.style.strokeDasharray = `${ontimeDash} ${totalCircumference}`;
+            presentPath.style.display = ontimeCount > 0 ? 'block' : 'none';
+
+            // 2. Calculate Dash for Late (Blue)
+            const latePercent = totalDaysInMonth > 0 ? (lateCount / totalDaysInMonth) : 0;
+            const lateDash = latePercent * totalCircumference;
+            latePath.style.strokeDasharray = `${lateDash} ${totalCircumference}`;
             
-            // Hide other segments for this progressive mode
-            if (latePath) latePath.style.display = 'none';
+            // Start the blue line exactly where the green line ends
+            latePath.style.strokeDashoffset = -ontimeDash;
+            latePath.style.display = lateCount > 0 ? 'block' : 'none';
+            
+            // Hide absent segment as we move to a 1/20 progressive scale
             if (absentPath) absentPath.style.display = 'none';
         }
 
