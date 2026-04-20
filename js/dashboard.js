@@ -206,8 +206,8 @@ const dashboard = {
         // Filter attendance for current month only
         const thisMonthAttendance = attendance.filter(a => a.date && a.date.startsWith(yearMonthPrefix));
 
-        // Get total days in current month (28, 29, 30, or 31)
-        const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+        // Use fixed 20 working days as denominator per user request
+        const totalDaysInMonth = 20;
 
         // Calculate stats
         // PRESENT: Any record that has a clock-in time and is for this month
