@@ -419,9 +419,12 @@ const dashboard = {
                     bar.classList.remove('active');
                 }
                 
-                // Today indicator
-                if (i === 0) {
-                    bar.parentElement.style.borderBottom = '2px solid var(--color-primary)';
+                // Today indicator - more robust check
+                const isToday = iso === new Date().toISOString().split('T')[0];
+                if (isToday) {
+                    bar.parentElement.style.borderBottom = '3px solid var(--color-primary)';
+                } else {
+                    bar.parentElement.style.borderBottom = 'none';
                 }
             }
         }
