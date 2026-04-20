@@ -377,7 +377,13 @@ var dateTime = {
         var endTime = new Date('2000-01-01 ' + end);
         var diff = endTime - startTime;
 
-        if (isNaN(diff) || diff < 0) return '-';
+        // Handle night shifts (e.g., 16:30 to 06:00)
+        if (diff < 0) {
+            endTime = new Date('2000-01-02 ' + end);
+            diff = endTime - startTime;
+        }
+
+        if (isNaN(diff)) return '-';
 
         var hours = Math.floor(diff / 3600000);
         var minutes = Math.floor((diff % 3600000) / 60000);

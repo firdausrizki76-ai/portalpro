@@ -16,18 +16,16 @@ const dashboard = {
             return;
         }
 
-        try {
-            // Priority 1: Render UI immediately with whatever we have in cache
-            this.renderUI();
-            
-            // Priority 2: Hide loader as soon as the first render is visible
-            // This is key to perceived speed
-            if (typeof loader !== 'undefined') loader.hide();
+        // Priority 1: Render UI immediately with whatever we have in cache
+        // and hide loader ASAP for perceived speed
+        this.renderUI();
+        if (typeof loader !== 'undefined') loader.hide();
 
-            // Priority 3: Background load fresh data from API
+        try {
+            // Priority 2: Background load fresh data from API
             await this.loadData();
             
-            // Priority 4: Re-render with fresh data silently
+            // Priority 3: Re-render with fresh data silently
             this.renderUI();
             
             this.initialized = true;
@@ -39,13 +37,17 @@ const dashboard = {
 
     // Centralized rendering method
     renderUI() {
-        this.updateWelcomeCard();
-        this.updateStats();
-        this.updateSessionInfo();
-        this.updateProgressBar();
-        this.renderActivityList();
-        this.renderTeamPresence();
-        this.updateWeeklyAttendanceChart();
+        try {
+            this.updateWelcomeCard();
+            this.updateStats();
+            this.updateSessionInfo();
+            this.updateProgressBar();
+            this.renderActivityList();
+            this.renderTeamPresence();
+            this.updateWeeklyAttendanceChart();
+        } catch (e) {
+            console.error('Error in renderUI:', e);
+        }
     },
 
     async loadData() {
