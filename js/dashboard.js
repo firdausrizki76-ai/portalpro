@@ -194,29 +194,55 @@ const dashboard = {
     },
 
     updateStats() {
-        const attendance = this.attendanceData;
+        const attendance = this.attendanceData || [];
+        
+        // Get current date info
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); 
+        const monthStr = (month + 1).toString().padStart(2, '0');
+        const yearMonthPrefix = `${year}-${monthStr}`;
+
+        // Filter attendance for current month only
+        const thisMonthAttendance = attendance.filter(a => a.date && a.date.startsWith(yearMonthPrefix));
+
+        // Get total days in current month (28, 29, 30, or 31)
+        const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
 
         // Calculate stats
-        const total = Math.max(26, attendance.length); // Assuming min 26 working days base
-        const present = attendance.filter(a => a.status === 'ontime').length;
-        const late = attendance.filter(a => a.status === 'late').length;
-        const absent = attendance.filter(a => a.status === 'absent').length;
+        // PRESENT: Any record that has a clock-in time and is for this month
+        const presentRecords = thisMonthAttendance.filter(a => a.clockIn && a.clockIn !== '--:--');
+        const presentCount = presentRecords.length;
+        
+        // Split statuses for the detailed legend
+        const ontimeCount = presentRecords.filter(a => !String(a.status || '').toLowerCase().includes('terlambat')).length;
+        const lateCount = presentRecords.filter(a => String(a.status || '').toLowerCase().includes('terlambat')).length;
+        
+        // ABSENT: Remaining days in the month (approximate based on days passed minus present)
+        // But for statistics display, let's keep it simple
+        const absentCount = 0; // Will be calculated dynamically if needed
 
-        // Update donut chart values
-        const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
+        // Update donut chart based on (Total Attendance / Days in Month)
+        const progressPercent = totalDaysInMonth > 0 ? Math.round((presentCount / totalDaysInMonth) * 100) : 0;
 
-        // Update center text
+        // Update center text display (e.g., 1/30)
         const donutValue = document.querySelector('.donut-value');
         if (donutValue) {
-            donutValue.textContent = `${presentPercent}%`;
+            donutValue.textContent = `${presentCount}/${totalDaysInMonth}`;
+        }
+        
+        // Update the circle progress via CSS global variable
+        const donutChart = document.querySelector('.donut-chart');
+        if (donutChart) {
+            donutChart.style.setProperty('--percent', progressPercent);
         }
 
         // Update legend
         const legendValues = document.querySelectorAll('.legend-value');
         if (legendValues.length >= 3) {
-            legendValues[0].textContent = `${present} hari`;
-            legendValues[1].textContent = `${late} hari`;
-            legendValues[2].textContent = `${absent} hari`;
+            legendValues[0].textContent = `${ontimeCount} hari`;
+            legendValues[1].textContent = `${lateCount} hari`;
+            legendValues[2].textContent = `-`; // Absent count logic can be added later
         }
     },
 
