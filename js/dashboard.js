@@ -419,8 +419,10 @@ const dashboard = {
                     bar.classList.remove('active');
                 }
                 
-                // Simple logic: If present (has clockIn) -> Blue indicator
-                if (record && record.clockIn && record.clockIn !== '--:--') {
+                // Simple logic: If present (any clockIn recorded) -> Blue indicator
+                const hasClockIn = record && record.clockIn && record.clockIn !== '--:--' && record.clockIn !== '';
+                
+                if (hasClockIn) {
                     bar.parentElement.style.borderBottom = '3px solid var(--color-primary)';
                     bar.style.backgroundColor = 'var(--color-primary)';
                     bar.classList.add('active');
