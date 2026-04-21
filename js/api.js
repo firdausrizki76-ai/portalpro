@@ -13,32 +13,39 @@ const api = {
 
     // ========== CORE REQUEST ==========
 
-    async request(action, data = {}) {
-        // Jika API_BASE_URL kosong, gunakan localStorage fallback
+    async request(action, data = {}, retries = 3) {
         if (!API_BASE_URL) {
             return this._localFallback(action, data);
         }
 
-        try {
-            const response = await fetch(API_BASE_URL, {
-                method: 'POST',
-                redirect: 'follow',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({ action, ...data })
-            });
-
-            const text = await response.text();
+        let lastError = null;
+        for (let i = 0; i < retries; i++) {
             try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action, ...data })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const text = await response.text();
                 return JSON.parse(text);
-            } catch (e) {
-                console.error('Failed to parse response:', text.substring(0, 200));
-                return { success: false, error: 'Invalid response from server' };
+            } catch (error) {
+                lastError = error;
+                console.warn(`API attempt ${i+1} failed for ${action}:`, error);
+                if (i < retries - 1) {
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
             }
-        } catch (error) {
-            console.error('API Error:', error);
-            // Fallback to localStorage on network error
-            return this._localFallback(action, data);
         }
+
+        console.error(`API Final Failure for ${action}:`, lastError);
+        return this._localFallback(action, data);
     },
 
     // ========== AUTH ==========

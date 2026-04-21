@@ -42,13 +42,29 @@ const cuti = {
         }
     },
 
-    fillProfileFields() {
-        const user = auth.getCurrentUser();
-        if (!user) return;
-
+    async fillProfileFields() {
         const nipEl = document.getElementById('leave-nip');
         const jabatanEl = document.getElementById('leave-jabatan');
         const masaKerjaEl = document.getElementById('leave-masa-kerja');
+        
+        let user = auth.getCurrentUser();
+        
+        // If data is very minimal (missing NIP/JoinDate) or we want to be sure, fetch from API
+        if (user && (!user.nip || !user.joinDate)) {
+            try {
+                const res = await api.getEmployeeProfile(user.id);
+                if (res.success && res.data) {
+                    user = res.data;
+                    // Update current user cache
+                    auth.currentUser = user;
+                    storage.set('user', user);
+                }
+            } catch (e) {
+                console.warn('Silent profile refresh failed', e);
+            }
+        }
+
+        if (!user) return;
 
         if (nipEl) nipEl.value = user.nip || '-';
         if (jabatanEl) jabatanEl.value = user.position || '-';
@@ -67,9 +83,15 @@ const cuti = {
             
             if (years > 0) {
                 masaKerjaEl.value = `${years} Tahun ${months} Bulan`;
-            } else {
+            } else if (months > 0) {
                 masaKerjaEl.value = `${months} Bulan`;
+            } else {
+                const diffTime = Math.abs(now - joinDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                masaKerjaEl.value = `${diffDays} Hari`;
             }
+        } else if (masaKerjaEl) {
+            masaKerjaEl.value = '-';
         }
     },
 
