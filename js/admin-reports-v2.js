@@ -395,7 +395,7 @@ const adminReports = {
                 <td class="text-center warning" style="color:#F59E0B; font-weight:700">${row.late}</td>
                 <td class="text-center danger" style="color:#EF4444; font-weight:700">${row.absent}</td>
                 <td class="text-center"><strong>${row.total}</strong></td>
-                <td><button class="btn-action view" onclick="adminReports.viewAttendanceDetail('${row.id}')"><i class="fas fa-eye"></i></button></td>
+                <td><button type="button" class="btn-action" data-action="view-attendance" data-id="${row.id}"><i class="fas fa-eye"></i></button></td>
             `;
             tbody.appendChild(tr);
 
@@ -419,7 +419,7 @@ const adminReports = {
                     <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px; text-align:center;">
                         📍 Lokasi Terakhir: <b>${row.location}</b>
                     </div>
-                    <button class="btn-full btn-sm" onclick="adminReports.viewAttendanceDetail('${row.id}')">Lihat Detail</button>
+                    <button type="button" class="btn-full btn-sm" data-action="view-attendance" data-id="${row.id}">Lihat Detail</button>
                 `;
                 mobileContainer.appendChild(card);
             }
@@ -450,14 +450,14 @@ const adminReports = {
                 <td>${row.employeeName}</td>
                 <td>${row.department}</td>
                 <td><div class="line-clamp-2">${row.tasks}</div></td>
-                <td>${row.photo ? `<img src="${normalizeImageUrl(row.photo)}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="adminReports.viewPhoto('${row.photo}')">` : '-'}</td>
+                <td>${row.photo ? `<img src="${normalizeImageUrl(row.photo)}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; cursor:pointer;" class="jurnal-img-preview" data-url="${row.photo}">` : '-'}</td>
                 <td><span class="status-badge ${row.status}">${statusLabels[row.status] || row.status.toUpperCase()}</span></td>
                 <td>
                     <div style="display:flex; gap:4px;" class="action-group">
-                        <button type="button" class="btn-action view" onclick="event.stopPropagation(); adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="btn-action" data-action="view-jurnal" data-user-id="${row.userId}" data-date="${row.date}"><i class="fas fa-eye"></i></button>
                         ${lowerStatus === 'pending' || lowerStatus === 'filled' ? `
-                            <button type="button" class="btn-action approve" onclick="event.stopPropagation(); adminReports.approveJurnalItem('${row.id}')" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
-                            <button type="button" class="btn-action reject" onclick="event.stopPropagation(); adminReports.rejectJurnalItem('${row.id}')" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
+                            <button type="button" class="btn-action approve" data-action="approve-jurnal" data-id="${row.id}" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
+                            <button type="button" class="btn-action reject" data-action="reject-jurnal" data-id="${row.id}" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
                         ` : ''}
                     </div>
                 </td>
@@ -475,10 +475,10 @@ const adminReports = {
                     <div style="font-weight:600; margin-bottom:4px;">${row.employeeName}</div>
                     <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${row.tasks}</div>
                     <div class="card-actions" style="display:grid; grid-template-columns: ${lowerStatus === 'pending' || lowerStatus === 'filled' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
-                        <button type="button" class="btn-full btn-sm" onclick="event.stopPropagation(); adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i> Detail</button>
+                        <button type="button" class="btn-full btn-sm" data-action="view-jurnal" data-user-id="${row.userId}" data-date="${row.date}"><i class="fas fa-eye"></i> Detail</button>
                         ${lowerStatus === 'pending' || lowerStatus === 'filled' ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="event.stopPropagation(); adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i> Approve</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="event.stopPropagation(); adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i> Reject</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" data-action="approve-jurnal" data-id="${row.id}"><i class="fas fa-check"></i> Approve</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" data-action="reject-jurnal" data-id="${row.id}"><i class="fas fa-times"></i> Reject</button>
                         ` : ''}
                     </div>
                 `;
@@ -515,10 +515,10 @@ const adminReports = {
                 <td><span class="status-badge ${row.status}">${statusLabels[row.status] || row.status}</span></td>
                 <td>
                     <div style="display:flex; gap:4px;" class="action-group">
-                        <button type="button" class="btn-action view" onclick="event.stopPropagation(); adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="btn-action" data-action="view-leave" data-user-id="${row.userId}" data-dates="${row.dates}"><i class="fas fa-eye"></i></button>
                         ${row.status === 'pending' ? `
-                            <button type="button" class="btn-action approve" onclick="event.stopPropagation(); adminReports.approveLeaveItem('${row.id}', '${row._source}')" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
-                            <button type="button" class="btn-action reject" onclick="event.stopPropagation(); adminReports.rejectLeaveItem('${row.id}', '${row._source}')" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
+                            <button type="button" class="btn-action approve" data-action="approve-leave" data-id="${row.id}" data-source="${row._source}" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
+                            <button type="button" class="btn-action reject" data-action="reject-leave" data-id="${row.id}" data-source="${row._source}" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
                         ` : ''}
                     </div>
                 </td>
@@ -537,10 +537,10 @@ const adminReports = {
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${row.dates} (${row.duration} hari)</div>
                     <div style="font-size:13px; margin-bottom:12px;">${row.reason || '-'}</div>
                     <div class="card-actions" style="display:grid; grid-template-columns: ${row.status === 'pending' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
-                        <button type="button" class="btn-full btn-sm" onclick="event.stopPropagation(); adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i> Detail</button>
+                        <button type="button" class="btn-full btn-sm" data-action="view-leave" data-user-id="${row.userId}" data-dates="${row.dates}"><i class="fas fa-eye"></i> Detail</button>
                         ${row.status === 'pending' ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="event.stopPropagation(); adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i> Setujui</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="event.stopPropagation(); adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i> Tolak</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" data-action="approve-leave" data-id="${row.id}" data-source="${row._source}"><i class="fas fa-check"></i> Setujui</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" data-action="reject-leave" data-id="${row.id}" data-source="${row._source}"><i class="fas fa-times"></i> Tolak</button>
                         ` : ''}
                     </div>
                 `;
@@ -572,6 +572,9 @@ const adminReports = {
         });
         this._bind('btn-export-attendance', 'click', () => this.exportToExcel('attendance'));
         this._bind('btn-print-attendance', 'click', () => this.downloadAttendancePDF());
+
+        this.setupActionDelegation('attendance-reports-body');
+        this.setupActionDelegation('attendance-mobile-cards');
     },
 
     bindJurnalEvents() {
@@ -591,7 +594,8 @@ const adminReports = {
         this._bind('btn-export-jurnal', 'click', () => this.exportToExcel('jurnal'));
         this._bind('btn-print-jurnal', 'click', () => this.downloadJournalPDF());
 
-        // Buttons now use direct onclick handlers in renderJurnalReports()
+        this.setupActionDelegation('jurnal-reports-body');
+        this.setupActionDelegation('jurnal-mobile-cards');
     },
 
     bindLeaveEvents() {
@@ -611,7 +615,46 @@ const adminReports = {
         this._bind('btn-export-leave', 'click', () => this.exportToExcel('leave'));
         this._bind('btn-print-leave', 'click', () => this.downloadLeavePDF());
 
-        // Buttons now use direct onclick handlers in renderLeaveReports()
+        this.setupActionDelegation('leave-reports-body');
+        this.setupActionDelegation('leave-mobile-cards');
+    },
+
+    setupActionDelegation(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (container.dataset.delegationBound) return;
+        container.dataset.delegationBound = 'true';
+
+        container.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (btn) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const action = btn.dataset.action;
+                const id = btn.dataset.id;
+                const source = btn.dataset.source;
+                const userId = btn.dataset.userId;
+                const date = btn.dataset.date || btn.dataset.dates;
+
+                console.log('[Reports] Action:', action, { id, userId, date });
+
+                if (action === 'view-attendance') this.viewAttendanceDetail(id);
+                else if (action === 'view-jurnal') this.viewJurnalDetail(userId, date);
+                else if (action === 'approve-jurnal') await this.approveJurnalItem(id);
+                else if (action === 'reject-jurnal') await this.rejectJurnalItem(id);
+                else if (action === 'view-leave') this.viewLeaveDetail(userId, date);
+                else if (action === 'approve-leave') await this.approveLeaveItem(id, source);
+                else if (action === 'reject-leave') await this.rejectLeaveItem(id, source);
+                return;
+            }
+
+            const img = e.target.closest('img.jurnal-img-preview');
+            if (img) {
+                e.stopPropagation();
+                this.viewPhoto(img.dataset.url);
+            }
+        });
     },
 
     /**
@@ -730,70 +773,198 @@ const adminReports = {
     },
 
     async approveLeaveItem(id, source) {
-        if (!confirm('Setujui pengajuan ini?')) return;
-        try {
-            const item = this.leaveData.find(l => String(l.id) === String(id));
-            const action = source === 'leave' ? 'approveLeave' : 'approveIzin';
-            const res = await api.request(action, { id });
-            if (res.success) {
-                toast.success('Pengajuan disetujui');
-                
-                // Notify Employee
-                if (item && item.userId) {
-                    const typeLabel = item.type || (source === 'leave' ? 'Cuti' : 'Izin');
-                    notifications.add(item.userId, 'Admin', `telah MENYETUJUI pengajuan ${typeLabel} Anda`, 'success');
-                }
+        console.log('[LeaveApproval] Initializing modal...', { id, source });
+        const item = this.leaveData.find(l => String(l.id) === String(id));
+        const typeLabel = item ? (item.type || (source === 'leave' ? 'Cuti' : 'Izin')) : 'Pengajuan';
 
-                await this.loadData(this.filters.leave.month, true);
-                this.renderLeaveReports();
-            } else { toast.error(res.error || 'Gagal menyetujui'); }
-        } catch (e) { toast.error('Kesalahan sistem'); }
+        modal.show(`Konfirmasi Persetujuan`, `
+            <div style="text-align:center; padding:10px;">
+                <div style="width:60px; height:60px; background:#ecfdf5; color:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:24px;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3 style="margin-bottom:10px; color:var(--text-primary);">Setujui ${typeLabel}?</h3>
+                <p style="color:var(--text-muted); margin-bottom:25px;">Tindakan ini akan mengubah status menjadi DISETUJUI dan mengurangi kuota cuti pegawai jika berlaku.</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-primary" id="btn-confirm-approve" style="background:#10b981; border-color:#10b981;">Ya, Setujui</button>
+                </div>
+            </div>
+        `);
+
+        document.getElementById('btn-confirm-approve').addEventListener('click', async () => {
+            modal.hide();
+            if (typeof loader !== 'undefined') loader.show('Memproses persetujuan...');
+            
+            try {
+                const action = source === 'leave' ? 'approveLeave' : 'approveIzin';
+                console.log('[LeaveApproval] Sending API request...', { action, id });
+                
+                const res = await api.request(action, { id });
+                console.log('[LeaveApproval] API Response:', res);
+
+                if (res.success) {
+                    toast.success('Pengajuan berhasil disetujui');
+                    
+                    // Notify Employee
+                    if (item && item.userId) {
+                        notifications.add(item.userId, 'Admin', `telah MENYETUJUI pengajuan ${typeLabel} Anda`, 'success');
+                    }
+
+                    await this.loadData(this.filters.leave.month, true);
+                    this.renderLeaveReports();
+                } else {
+                    console.error('[LeaveApproval] API failed:', res.error);
+                    toast.error(res.error || 'Gagal menyetujui pengajuan');
+                }
+            } catch (e) {
+                console.error('[LeaveApproval] System Error:', e);
+                toast.error('Terjadi kesalahan sistem saat menyetujui');
+            } finally {
+                if (typeof loader !== 'undefined') loader.hide();
+            }
+        });
     },
 
     async rejectLeaveItem(id, source) {
-        const reason = prompt('Masukkan alasan penolakan:');
-        if (reason === null) return;
-        try {
-            const item = this.leaveData.find(l => String(l.id) === String(id));
-            const action = source === 'leave' ? 'rejectLeave' : 'rejectIzin';
-            const res = await api.request(action, { id, reason });
-            if (res.success) {
-                toast.success('Pengajuan ditolak');
+        console.log('[LeaveRejection] Initializing modal...', { id, source });
+        const item = this.leaveData.find(l => String(l.id) === String(id));
+        const typeLabel = item ? (item.type || (source === 'leave' ? 'Cuti' : 'Izin')) : 'Pengajuan';
 
-                // Notify Employee
-                if (item && item.userId) {
-                    const typeLabel = item.type || (source === 'leave' ? 'Cuti' : 'Izin');
-                    notifications.add(item.userId, 'Admin', `telah MENOLAK pengajuan ${typeLabel} Anda. Alasan: ${reason}`, 'error');
+        modal.show(`Tolak ${typeLabel}`, `
+            <div style="padding:10px;">
+                <h3 style="margin-bottom:15px; color:var(--text-primary);">Alasan Penolakan</h3>
+                <textarea id="reject-reason" class="form-control" style="width:100%; min-height:100px; margin-bottom:20px; border-radius:8px;" placeholder="Tuliskan alasan mengapa pengajuan ini ditolak..."></textarea>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-primary" id="btn-confirm-reject" style="background:var(--danger); border-color:var(--danger);">Tolak Pengajuan</button>
+                </div>
+            </div>
+        `);
+
+        document.getElementById('btn-confirm-reject').addEventListener('click', async () => {
+            const reason = document.getElementById('reject-reason').value.trim();
+            if (!reason) {
+                toast.warning('Harap masukkan alasan penolakan');
+                return;
+            }
+
+            modal.hide();
+            if (typeof loader !== 'undefined') loader.show('Memproses penolakan...');
+
+            try {
+                const action = source === 'leave' ? 'rejectLeave' : 'rejectIzin';
+                console.log('[LeaveRejection] Sending API request...', { action, id, reason });
+                
+                const res = await api.request(action, { id, reason });
+                console.log('[LeaveRejection] API Response:', res);
+
+                if (res.success) {
+                    toast.success('Pengajuan berhasil ditolak');
+
+                    // Notify Employee
+                    if (item && item.userId) {
+                        notifications.add(item.userId, 'Admin', `telah MENOLAK pengajuan ${typeLabel} Anda. Alasan: ${reason}`, 'error');
+                    }
+
+                    await this.loadData(this.filters.leave.month, true);
+                    this.renderLeaveReports();
+                } else {
+                    console.error('[LeaveRejection] API failed:', res.error);
+                    toast.error(res.error || 'Gagal menolak pengajuan');
                 }
-
-                await this.loadData(this.filters.leave.month, true);
-                this.renderLeaveReports();
-            } else { toast.error(res.error || 'Gagal menolak'); }
-        } catch (e) { toast.error('Kesalahan sistem'); }
+            } catch (e) {
+                console.error('[LeaveRejection] System Error:', e);
+                toast.error('Terjadi kesalahan sistem saat menolak');
+            } finally {
+                if (typeof loader !== 'undefined') loader.hide();
+            }
+        });
     },
 
     async approveJurnalItem(id) {
-        if (!confirm('Setujui jurnal ini?')) return;
-        try {
-            const res = await api.request('approveJournal', { id });
-            if (res.success) {
-                toast.success('Jurnal disetujui');
-                await this.loadData(this.filters.jurnal.month, true);
-                this.renderJurnalReports();
-            } else { toast.error(res.error || 'Gagal menyetujui'); }
-        } catch (e) { toast.error('Kesalahan sistem'); }
+        console.log('[JurnalApproval] Initializing modal...', { id });
+        
+        modal.show(`Konfirmasi Jurnal`, `
+            <div style="text-align:center; padding:10px;">
+                <div style="width:60px; height:60px; background:#ecfdf5; color:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:24px;">
+                    <i class="fas fa-file-signature"></i>
+                </div>
+                <h3 style="margin-bottom:10px; color:var(--text-primary);">Setujui Jurnal Kinerja?</h3>
+                <p style="color:var(--text-muted); margin-bottom:25px;">Tindakan ini akan memvalidasi laporan pekerjaan harian pegawai tersebut.</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-primary" id="btn-confirm-jurnal-approve" style="background:#10b981; border-color:#10b981;">Ya, Setujui</button>
+                </div>
+            </div>
+        `);
+
+        document.getElementById('btn-confirm-jurnal-approve').addEventListener('click', async () => {
+            modal.hide();
+            if (typeof loader !== 'undefined') loader.show('Memproses jurnal...');
+
+            try {
+                console.log('[JurnalApproval] Sending API request...', { action: 'approveJournal', id });
+                const res = await api.request('approveJournal', { id });
+                console.log('[JurnalApproval] API Response:', res);
+
+                if (res.success) {
+                    toast.success('Jurnal berhasil disetujui');
+                    await this.loadData(this.filters.jurnal.month, true);
+                    this.renderJurnalReports();
+                } else {
+                    console.error('[JurnalApproval] API failed:', res.error);
+                    toast.error(res.error || 'Gagal menyetujui jurnal');
+                }
+            } catch (e) {
+                console.error('[JurnalApproval] System Error:', e);
+                toast.error('Terjadi kesalahan sistem');
+            } finally {
+                if (typeof loader !== 'undefined') loader.hide();
+            }
+        });
     },
 
     async rejectJurnalItem(id) {
-        if (!confirm('Tolak jurnal ini?')) return;
-        try {
-            const res = await api.request('rejectJournal', { id });
-            if (res.success) {
-                toast.success('Jurnal ditolak');
-                await this.loadData(this.filters.jurnal.month, true);
-                this.renderJurnalReports();
-            } else { toast.error(res.error || 'Gagal menolak'); }
-        } catch (e) { toast.error('Kesalahan sistem'); }
+        console.log('[JurnalRejection] Initializing modal...', { id });
+
+        modal.show(`Tolak Jurnal`, `
+            <div style="text-align:center; padding:10px;">
+                <div style="width:60px; height:60px; background:#fef2f2; color:var(--danger); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:24px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 style="margin-bottom:10px; color:var(--text-primary);">Tolak Jurnal Kinerja?</h3>
+                <p style="color:var(--text-muted); margin-bottom:25px;">Jurnal akan dikembalikan ke status tertunda/ditolak.</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-primary" id="btn-confirm-jurnal-reject" style="background:var(--danger); border-color:var(--danger);">Ya, Tolak</button>
+                </div>
+            </div>
+        `);
+
+        document.getElementById('btn-confirm-jurnal-reject').addEventListener('click', async () => {
+            modal.hide();
+            if (typeof loader !== 'undefined') loader.show('Memproses penolakan...');
+
+            try {
+                console.log('[JurnalRejection] Sending API request...', { action: 'rejectJournal', id });
+                const res = await api.request('rejectJournal', { id });
+                console.log('[JurnalRejection] API Response:', res);
+
+                if (res.success) {
+                    toast.success('Jurnal ditolak');
+                    await this.loadData(this.filters.jurnal.month, true);
+                    this.renderJurnalReports();
+                } else {
+                    console.error('[JurnalRejection] API failed:', res.error);
+                    toast.error(res.error || 'Gagal menolak jurnal');
+                }
+            } catch (e) {
+                console.error('[JurnalRejection] System Error:', e);
+                toast.error('Terjadi kesalahan sistem');
+            } finally {
+                if (typeof loader !== 'undefined') loader.hide();
+            }
+        });
     },
 
     /**
