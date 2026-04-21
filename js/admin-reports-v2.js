@@ -444,10 +444,16 @@ const adminReports = {
         data.forEach(row => {
             const statusLabels = { 'pending': 'Menunggu', 'approved': 'Disetujui', 'rejected': 'Ditolak', 'filled': 'Sudah Diisi' };
             const lowerStatus = (row.status || '').toLowerCase();
-            const approvalButtons = (lowerStatus === 'pending' || lowerStatus === 'filled') ? `
-                <button type="button" class="btn-action" style="background:#10B981; border:none; color:#fff; cursor:pointer;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i></button>
-                <button type="button" class="btn-action" style="background:#EF4444; border:none; color:#fff; cursor:pointer;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i></button>
-            ` : '';
+            let approvalButtons = '';
+            
+            if (!row.id) {
+                approvalButtons = `<span style="font-size:10px; color:#EF4444; width:100px; display:inline-block; line-height:1;">ID Hilang (Klik Sync)</span>`;
+            } else if (lowerStatus === 'pending' || lowerStatus === 'filled') {
+                approvalButtons = `
+                    <button type="button" class="btn-action" style="background:#10B981; border:none; color:#fff; cursor:pointer;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i></button>
+                    <button type="button" class="btn-action" style="background:#EF4444; border:none; color:#fff; cursor:pointer;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i></button>
+                `;
+            }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -476,12 +482,12 @@ const adminReports = {
                     </div>
                     <div style="font-weight:600; margin-bottom:4px;">${row.employeeName}</div>
                     <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${row.tasks}</div>
-                    <div class="card-actions" style="display:grid; grid-template-columns: ${approvalButtons ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
+                    <div class="card-actions" style="display:grid; grid-template-columns: ${approvalButtons.includes('btn-action') ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
                         <button class="btn-full btn-sm" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i> Detail</button>
-                        ${approvalButtons ? `
+                        ${approvalButtons.includes('btn-action') ? `
                             <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i> Approve</button>
                             <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i> Reject</button>
-                        ` : ''}
+                        ` : (approvalButtons || '')}
                     </div>
                 `;
                 mobileContainer.appendChild(card);
