@@ -444,17 +444,6 @@ const adminReports = {
         data.forEach(row => {
             const statusLabels = { 'pending': 'Menunggu', 'approved': 'Disetujui', 'rejected': 'Ditolak', 'filled': 'Sudah Diisi' };
             const lowerStatus = (row.status || '').toLowerCase();
-            let approvalButtons = '';
-            
-            if (!row.id) {
-                approvalButtons = `<span style="font-size:10px; color:#EF4444; width:100px; display:inline-block; line-height:1;">ID Hilang (Klik Sync)</span>`;
-            } else if (lowerStatus === 'pending' || lowerStatus === 'filled') {
-                approvalButtons = `
-                    <button type="button" class="btn-action" style="background:#10B981; border:none; color:#fff; cursor:pointer;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i></button>
-                    <button type="button" class="btn-action" style="background:#EF4444; border:none; color:#fff; cursor:pointer;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i></button>
-                `;
-            }
-
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${row.date || '-'}</td>
@@ -485,12 +474,12 @@ const adminReports = {
                     </div>
                     <div style="font-weight:600; margin-bottom:4px;">${row.employeeName}</div>
                     <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${row.tasks}</div>
-                    <div class="card-actions" style="display:grid; grid-template-columns: ${approvalButtons.includes('btn-action') ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
-                        <button class="btn-full btn-sm" onclick="adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i> Detail</button>
-                        ${approvalButtons.includes('btn-action') ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i> Approve</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i> Reject</button>
-                        ` : (approvalButtons || '')}
+                    <div class="card-actions" style="display:grid; grid-template-columns: ${lowerStatus === 'pending' || lowerStatus === 'filled' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
+                        <button type="button" class="btn-full btn-sm" data-id="${row.userId}" data-date="${row.date}" data-action="view-jurnal"><i class="fas fa-eye"></i> Detail</button>
+                        ${lowerStatus === 'pending' || lowerStatus === 'filled' ? `
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" data-id="${row.id}" data-action="approve-jurnal"><i class="fas fa-check"></i> Approve</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" data-id="${row.id}" data-action="reject-jurnal"><i class="fas fa-times"></i> Reject</button>
+                        ` : ''}
                     </div>
                 `;
                 mobileContainer.appendChild(card);
@@ -515,11 +504,6 @@ const adminReports = {
 
         data.forEach(row => {
             const statusLabels = { 'pending': 'Menunggu', 'approved': 'Disetujui', 'rejected': 'Ditolak' };
-            const approvalButtons = row.status === 'pending' ? `
-                <button type="button" class="btn-action" style="background:#10B981; border:none; color:#fff; cursor:pointer;" onclick="adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i></button>
-                <button type="button" class="btn-action" style="background:#EF4444; border:none; color:#fff; cursor:pointer;" onclick="adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i></button>
-            ` : '';
-
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${row.name}</td>
@@ -553,10 +537,10 @@ const adminReports = {
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${row.dates} (${row.duration} hari)</div>
                     <div style="font-size:13px; margin-bottom:12px;">${row.reason || '-'}</div>
                     <div class="card-actions" style="display:grid; grid-template-columns: ${row.status === 'pending' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
-                        <button class="btn-full btn-sm" onclick="adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i> Detail</button>
+                        <button type="button" class="btn-full btn-sm" data-id="${row.userId}" data-dates="${row.dates}" data-action="view-leave"><i class="fas fa-eye"></i> Detail</button>
                         ${row.status === 'pending' ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i> Setujui</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i> Tolak</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" data-id="${row.id}" data-source="${row._source}" data-action="approve-leave"><i class="fas fa-check"></i> Setujui</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" data-id="${row.id}" data-source="${row._source}" data-action="reject-leave"><i class="fas fa-times"></i> Tolak</button>
                         ` : ''}
                     </div>
                 `;
@@ -607,20 +591,31 @@ const adminReports = {
         this._bind('btn-export-jurnal', 'click', () => this.exportToExcel('jurnal'));
         this._bind('btn-print-jurnal', 'click', () => this.downloadJournalPDF());
 
-        // Event Delegation for Table Clicks
-        const tbody = document.getElementById('jurnal-reports-body');
-        if (tbody) {
-            tbody.addEventListener('click', (e) => {
-                const btn = e.target.closest('.btn-action');
+        // Event Delegation for Table Clicks (Desktop & Mobile)
+        const setupDelegation = (id, type) => {
+            const container = document.getElementById(id);
+            if (!container) return;
+            container.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-action, .btn-full');
                 if (!btn) return;
                 const action = btn.dataset.action;
                 const id = btn.dataset.id;
+                const source = btn.dataset.source;
                 
-                if (action === 'view-jurnal') this.viewJurnalDetail(id, btn.dataset.date);
-                if (action === 'approve-jurnal') this.approveJurnalItem(id);
-                if (action === 'reject-jurnal') this.rejectJurnalItem(id);
+                if (type === 'leave') {
+                    if (action === 'view-leave') this.viewLeaveDetail(id, btn.dataset.dates);
+                    if (action === 'approve-leave') this.approveLeaveItem(id, source);
+                    if (action === 'reject-leave') this.rejectLeaveItem(id, source);
+                } else if (type === 'jurnal') {
+                    if (action === 'view-jurnal') this.viewJurnalDetail(id, btn.dataset.date);
+                    if (action === 'approve-jurnal') this.approveJurnalItem(id);
+                    if (action === 'reject-jurnal') this.rejectJurnalItem(id);
+                }
             });
-        }
+        };
+
+        setupDelegation('jurnal-reports-body', 'jurnal');
+        setupDelegation('jurnal-mobile-cards', 'jurnal');
     },
 
     bindLeaveEvents() {
@@ -640,21 +635,27 @@ const adminReports = {
         this._bind('btn-export-leave', 'click', () => this.exportToExcel('leave'));
         this._bind('btn-print-leave', 'click', () => this.downloadLeavePDF());
 
-        // Event Delegation for Table Clicks
-        const tbody = document.getElementById('leave-reports-body');
-        if (tbody) {
-            tbody.addEventListener('click', (e) => {
-                const btn = e.target.closest('.btn-action');
+        // Setup delegation for Leave
+        const setupDelegation = (id, type) => {
+            const container = document.getElementById(id);
+            if (!container) return;
+            container.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-action, .btn-full');
                 if (!btn) return;
                 const action = btn.dataset.action;
                 const id = btn.dataset.id;
                 const source = btn.dataset.source;
                 
-                if (action === 'view-leave') this.viewLeaveDetail(id, btn.dataset.dates);
-                if (action === 'approve-leave') this.approveLeaveItem(id, source);
-                if (action === 'reject-leave') this.rejectLeaveItem(id, source);
+                if (type === 'leave') {
+                    if (action === 'view-leave') this.viewLeaveDetail(id, btn.dataset.dates);
+                    if (action === 'approve-leave') this.approveLeaveItem(id, source);
+                    if (action === 'reject-leave') this.rejectLeaveItem(id, source);
+                }
             });
-        }
+        };
+
+        setupDelegation('leave-reports-body', 'leave');
+        setupDelegation('leave-mobile-cards', 'leave');
     },
 
     /**
