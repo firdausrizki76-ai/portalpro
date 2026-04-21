@@ -22,6 +22,7 @@ const cuti = {
             this.initSlider();
             
             // Initial render with cached/default values
+            this.fillProfileFields();
             this.updateBalanceDisplay();
             this.updateStats();
             this.renderLeaveList();
@@ -29,6 +30,7 @@ const cuti = {
             // Priority 2: Load fresh data in background
             this.loadLeaves().then(() => {
                 // Re-render when data arrives
+                this.fillProfileFields();
                 this.updateBalanceDisplay();
                 this.updateStats();
                 this.renderLeaveList();
@@ -37,6 +39,37 @@ const cuti = {
             console.error('Cuti init error:', error);
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    fillProfileFields() {
+        const user = auth.getCurrentUser();
+        if (!user) return;
+
+        const nipEl = document.getElementById('leave-nip');
+        const jabatanEl = document.getElementById('leave-jabatan');
+        const masaKerjaEl = document.getElementById('leave-masa-kerja');
+
+        if (nipEl) nipEl.value = user.nip || '-';
+        if (jabatanEl) jabatanEl.value = user.position || '-';
+
+        if (masaKerjaEl && user.joinDate) {
+            const joinDate = new Date(user.joinDate);
+            const now = new Date();
+            
+            let years = now.getFullYear() - joinDate.getFullYear();
+            let months = now.getMonth() - joinDate.getMonth();
+            
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+            
+            if (years > 0) {
+                masaKerjaEl.value = `${years} Tahun ${months} Bulan`;
+            } else {
+                masaKerjaEl.value = `${months} Bulan`;
+            }
         }
     },
 
