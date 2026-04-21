@@ -454,10 +454,10 @@ const adminReports = {
                 <td><span class="status-badge ${row.status}">${statusLabels[row.status] || row.status.toUpperCase()}</span></td>
                 <td>
                     <div style="display:flex; gap:4px;" class="action-group">
-                        <button type="button" class="btn-action view" data-id="${row.userId}" data-date="${row.date}" data-action="view-jurnal"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="btn-action view" onclick="event.stopPropagation(); adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i></button>
                         ${lowerStatus === 'pending' || lowerStatus === 'filled' ? `
-                            <button type="button" class="btn-action approve" data-id="${row.id}" data-action="approve-jurnal" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
-                            <button type="button" class="btn-action reject" data-id="${row.id}" data-action="reject-jurnal" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
+                            <button type="button" class="btn-action approve" onclick="event.stopPropagation(); adminReports.approveJurnalItem('${row.id}')" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
+                            <button type="button" class="btn-action reject" onclick="event.stopPropagation(); adminReports.rejectJurnalItem('${row.id}')" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
                         ` : ''}
                     </div>
                 </td>
@@ -475,10 +475,10 @@ const adminReports = {
                     <div style="font-weight:600; margin-bottom:4px;">${row.employeeName}</div>
                     <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${row.tasks}</div>
                     <div class="card-actions" style="display:grid; grid-template-columns: ${lowerStatus === 'pending' || lowerStatus === 'filled' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
-                        <button type="button" class="btn-full btn-sm" data-id="${row.userId}" data-date="${row.date}" data-action="view-jurnal"><i class="fas fa-eye"></i> Detail</button>
+                        <button type="button" class="btn-full btn-sm" onclick="event.stopPropagation(); adminReports.viewJurnalDetail('${row.userId}', '${row.date}')"><i class="fas fa-eye"></i> Detail</button>
                         ${lowerStatus === 'pending' || lowerStatus === 'filled' ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" data-id="${row.id}" data-action="approve-jurnal"><i class="fas fa-check"></i> Approve</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" data-id="${row.id}" data-action="reject-jurnal"><i class="fas fa-times"></i> Reject</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="event.stopPropagation(); adminReports.approveJurnalItem('${row.id}')"><i class="fas fa-check"></i> Approve</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="event.stopPropagation(); adminReports.rejectJurnalItem('${row.id}')"><i class="fas fa-times"></i> Reject</button>
                         ` : ''}
                     </div>
                 `;
@@ -515,10 +515,10 @@ const adminReports = {
                 <td><span class="status-badge ${row.status}">${statusLabels[row.status] || row.status}</span></td>
                 <td>
                     <div style="display:flex; gap:4px;" class="action-group">
-                        <button type="button" class="btn-action view" data-id="${row.userId}" data-dates="${row.dates}" data-action="view-leave"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="btn-action view" onclick="event.stopPropagation(); adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i></button>
                         ${row.status === 'pending' ? `
-                            <button type="button" class="btn-action approve" data-id="${row.id}" data-source="${row._source}" data-action="approve-leave" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
-                            <button type="button" class="btn-action reject" data-id="${row.id}" data-source="${row._source}" data-action="reject-leave" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
+                            <button type="button" class="btn-action approve" onclick="event.stopPropagation(); adminReports.approveLeaveItem('${row.id}', '${row._source}')" style="background:#10B981; color:#fff;"><i class="fas fa-check"></i></button>
+                            <button type="button" class="btn-action reject" onclick="event.stopPropagation(); adminReports.rejectLeaveItem('${row.id}', '${row._source}')" style="background:#EF4444; color:#fff;"><i class="fas fa-times"></i></button>
                         ` : ''}
                     </div>
                 </td>
@@ -537,10 +537,10 @@ const adminReports = {
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">${row.dates} (${row.duration} hari)</div>
                     <div style="font-size:13px; margin-bottom:12px;">${row.reason || '-'}</div>
                     <div class="card-actions" style="display:grid; grid-template-columns: ${row.status === 'pending' ? '1fr 1fr 1fr' : '1fr'}; gap:8px;">
-                        <button type="button" class="btn-full btn-sm" data-id="${row.userId}" data-dates="${row.dates}" data-action="view-leave"><i class="fas fa-eye"></i> Detail</button>
+                        <button type="button" class="btn-full btn-sm" onclick="event.stopPropagation(); adminReports.viewLeaveDetail('${row.userId}', '${row.dates}')"><i class="fas fa-eye"></i> Detail</button>
                         ${row.status === 'pending' ? `
-                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" data-id="${row.id}" data-source="${row._source}" data-action="approve-leave"><i class="fas fa-check"></i> Setujui</button>
-                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" data-id="${row.id}" data-source="${row._source}" data-action="reject-leave"><i class="fas fa-times"></i> Tolak</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#10B981; color:#fff;" onclick="event.stopPropagation(); adminReports.approveLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-check"></i> Setujui</button>
+                            <button type="button" class="btn-full btn-sm" style="background:#EF4444; color:#fff;" onclick="event.stopPropagation(); adminReports.rejectLeaveItem('${row.id}', '${row._source}')"><i class="fas fa-times"></i> Tolak</button>
                         ` : ''}
                     </div>
                 `;
@@ -591,36 +591,7 @@ const adminReports = {
         this._bind('btn-export-jurnal', 'click', () => this.exportToExcel('jurnal'));
         this._bind('btn-print-jurnal', 'click', () => this.downloadJournalPDF());
 
-        // Event Delegation for Table Clicks (Desktop & Mobile)
-        const setupDelegation = (id, type) => {
-            const container = document.getElementById(id);
-            if (!container) return;
-            container.addEventListener('click', (e) => {
-                const btn = e.target.closest('.btn-action, .btn-full');
-                if (!btn) return;
-                
-                // CRITICAL: Stop propagation to prevent row click listener from firing
-                e.stopPropagation();
-                e.preventDefault();
-                
-                const action = btn.dataset.action;
-                const id = btn.dataset.id;
-                const source = btn.dataset.source;
-                
-                if (type === 'leave') {
-                    if (action === 'view-leave') this.viewLeaveDetail(id, btn.dataset.dates);
-                    if (action === 'approve-leave') this.approveLeaveItem(id, source);
-                    if (action === 'reject-leave') this.rejectLeaveItem(id, source);
-                } else if (type === 'jurnal') {
-                    if (action === 'view-jurnal') this.viewJurnalDetail(id, btn.dataset.date);
-                    if (action === 'approve-jurnal') this.approveJurnalItem(id);
-                    if (action === 'reject-jurnal') this.rejectJurnalItem(id);
-                }
-            });
-        };
-
-        setupDelegation('jurnal-reports-body', 'jurnal');
-        setupDelegation('jurnal-mobile-cards', 'jurnal');
+        // Buttons now use direct onclick handlers in renderJurnalReports()
     },
 
     bindLeaveEvents() {
@@ -640,32 +611,7 @@ const adminReports = {
         this._bind('btn-export-leave', 'click', () => this.exportToExcel('leave'));
         this._bind('btn-print-leave', 'click', () => this.downloadLeavePDF());
 
-        // Setup delegation for Leave
-        const setupDelegation = (id, type) => {
-            const container = document.getElementById(id);
-            if (!container) return;
-            container.addEventListener('click', (e) => {
-                const btn = e.target.closest('.btn-action, .btn-full');
-                if (!btn) return;
-                
-                // CRITICAL: Stop propagation to prevent row click listener from firing
-                e.stopPropagation();
-                e.preventDefault();
-                
-                const action = btn.dataset.action;
-                const id = btn.dataset.id;
-                const source = btn.dataset.source;
-                
-                if (type === 'leave') {
-                    if (action === 'view-leave') this.viewLeaveDetail(id, btn.dataset.dates);
-                    if (action === 'approve-leave') this.approveLeaveItem(id, source);
-                    if (action === 'reject-leave') this.rejectLeaveItem(id, source);
-                }
-            });
-        };
-
-        setupDelegation('leave-reports-body', 'leave');
-        setupDelegation('leave-mobile-cards', 'leave');
+        // Buttons now use direct onclick handlers in renderLeaveReports()
     },
 
     /**
