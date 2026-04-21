@@ -785,14 +785,14 @@ const adminReports = {
                 <h3 style="margin-bottom:10px; color:var(--text-primary);">Setujui ${typeLabel}?</h3>
                 <p style="color:var(--text-muted); margin-bottom:25px;">Tindakan ini akan mengubah status menjadi DISETUJUI dan mengurangi kuota cuti pegawai jika berlaku.</p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-secondary" onclick="modal.close()">Batal</button>
                     <button class="btn-primary" id="btn-confirm-approve" style="background:#10b981; border-color:#10b981;">Ya, Setujui</button>
                 </div>
             </div>
         `);
 
         document.getElementById('btn-confirm-approve').addEventListener('click', async () => {
-            modal.hide();
+            modal.close();
             if (typeof loader !== 'undefined') loader.show('Memproses persetujuan...');
             
             try {
@@ -835,7 +835,7 @@ const adminReports = {
                 <h3 style="margin-bottom:15px; color:var(--text-primary);">Alasan Penolakan</h3>
                 <textarea id="reject-reason" class="form-control" style="width:100%; min-height:100px; margin-bottom:20px; border-radius:8px;" placeholder="Tuliskan alasan mengapa pengajuan ini ditolak..."></textarea>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-secondary" onclick="modal.close()">Batal</button>
                     <button class="btn-primary" id="btn-confirm-reject" style="background:var(--danger); border-color:var(--danger);">Tolak Pengajuan</button>
                 </div>
             </div>
@@ -848,7 +848,7 @@ const adminReports = {
                 return;
             }
 
-            modal.hide();
+            modal.close();
             if (typeof loader !== 'undefined') loader.show('Memproses penolakan...');
 
             try {
@@ -892,14 +892,14 @@ const adminReports = {
                 <h3 style="margin-bottom:10px; color:var(--text-primary);">Setujui Jurnal Kinerja?</h3>
                 <p style="color:var(--text-muted); margin-bottom:25px;">Tindakan ini akan memvalidasi laporan pekerjaan harian pegawai tersebut.</p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-secondary" onclick="modal.close()">Batal</button>
                     <button class="btn-primary" id="btn-confirm-jurnal-approve" style="background:#10b981; border-color:#10b981;">Ya, Setujui</button>
                 </div>
             </div>
         `);
 
         document.getElementById('btn-confirm-jurnal-approve').addEventListener('click', async () => {
-            modal.hide();
+            modal.close();
             if (typeof loader !== 'undefined') loader.show('Memproses jurnal...');
 
             try {
@@ -935,14 +935,14 @@ const adminReports = {
                 <h3 style="margin-bottom:10px; color:var(--text-primary);">Tolak Jurnal Kinerja?</h3>
                 <p style="color:var(--text-muted); margin-bottom:25px;">Jurnal akan dikembalikan ke status tertunda/ditolak.</p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                    <button class="btn-secondary" onclick="modal.hide()">Batal</button>
+                    <button class="btn-secondary" onclick="modal.close()">Batal</button>
                     <button class="btn-primary" id="btn-confirm-jurnal-reject" style="background:var(--danger); border-color:var(--danger);">Ya, Tolak</button>
                 </div>
             </div>
         `);
 
         document.getElementById('btn-confirm-jurnal-reject').addEventListener('click', async () => {
-            modal.hide();
+            modal.close();
             if (typeof loader !== 'undefined') loader.show('Memproses penolakan...');
 
             try {
