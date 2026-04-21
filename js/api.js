@@ -462,8 +462,8 @@ window.normalizeImageUrl = function (url) {
     const match = url.match(driveRegex);
     
     if (match && match[1]) {
-        // Use the most compatible export=view format
-        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        // Use the thumbnail format which is more stable for <img> tags
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
     }
     
     return url;
