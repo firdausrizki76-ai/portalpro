@@ -1635,3 +1635,75 @@ img {
         transform-origin: top center;
     }
 }
+/* Leave Balance Slider */
+.leave-balance-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+    width: 100%;
+    max-width: 400px;
+}
+
+.leave-balance-slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: var(--spacing);
+    padding: var(--spacing-xs);
+    scrollbar-width: none; /* Hide scrollbar for Firefox */
+    flex: 1;
+}
+
+.leave-balance-slider::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari */
+}
+
+.leave-balance-slider .balance-card {
+    min-width: 100%;
+    scroll-snap-align: center;
+    margin: 0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--color-white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease;
+}
+
+.slider-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-white);
+    box-shadow: var(--shadow);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    z-index: 5;
+}
+
+.slider-btn:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+    transform: scale(1.1);
+}
+
+.slider-btn:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 576px) {
+    .leave-balance-container {
+        max-width: 100%;
+    }
+}

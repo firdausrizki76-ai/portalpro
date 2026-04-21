@@ -101,6 +101,11 @@ const auth = {
                     avatar: result.data.avatar || '',
                     faceData: result.data.faceData || null,
                     facePhotoId: result.data.facePhotoId || null,
+                    leave_annual_used: result.data.leave_annual_used || 0,
+                    leave_sick_used: result.data.leave_sick_used || 0,
+                    leave_maternity_used: result.data.leave_maternity_used || 0,
+                    leave_large_used: result.data.leave_large_used || 0,
+                    leave_important_used: result.data.leave_important_used || 0,
                     loginTime: new Date().toISOString()
                 };
             } else if (result.success && !result.data && !API_BASE_URL) {
@@ -395,7 +400,12 @@ const auth = {
                     shift: result.data.shift || '',
                     avatar: result.data.avatar || '',
                     faceData: result.data.faceData || null,
-                    facePhotoId: result.data.facePhotoId || null
+                    facePhotoId: result.data.facePhotoId || null,
+                    leave_annual_used: result.data.leave_annual_used || 0,
+                    leave_sick_used: result.data.leave_sick_used || 0,
+                    leave_maternity_used: result.data.leave_maternity_used || 0,
+                    leave_large_used: result.data.leave_large_used || 0,
+                    leave_important_used: result.data.leave_important_used || 0
                 };
                 
                 this.currentUser = updatedUser;

@@ -5,7 +5,13 @@
 
 const cuti = {
     leaves: [],
-    leaveBalance: 12,
+    quotas: {
+        annual: 12,
+        sick: 14,
+        maternity: 90,
+        large: 90,
+        important: 60
+    },
     filterStatus: '',
 
     async init() {
@@ -13,6 +19,7 @@ const cuti = {
             // Priority 1: Init UI immediately so page is responsive
             this.initForm();
             this.initFilters();
+            this.initSlider();
             
             // Initial render with cached/default values
             this.updateBalanceDisplay();
@@ -30,6 +37,21 @@ const cuti = {
             console.error('Cuti init error:', error);
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    initSlider() {
+        const slider = document.getElementById('quota-slider');
+        const prev = document.getElementById('quota-prev');
+        const next = document.getElementById('quota-next');
+
+        if (slider && prev && next) {
+            prev.addEventListener('click', () => {
+                slider.scrollBy({ left: -slider.offsetWidth, behavior: 'smooth' });
+            });
+            next.addEventListener('click', () => {
+                slider.scrollBy({ left: slider.offsetWidth, behavior: 'smooth' });
+            });
         }
     },
 
@@ -54,12 +76,6 @@ const cuti = {
         } catch (error) {
             console.error('Error loading leaves:', error);
             this.leaves = storage.get(cacheKey, []);
-        }
-
-        // Load balance from storage or use default
-        const savedBalance = storage.get('leaveBalance');
-        if (savedBalance !== null) {
-            this.leaveBalance = savedBalance;
         }
     },
 
@@ -130,17 +146,23 @@ const cuti = {
             return;
         }
 
-        // Check balance for annual leave
-        if (type.value === 'annual' && diffDays > this.leaveBalance) {
-            toast.error('Sisa cuti tidak mencukupi!');
+        // Check balance for specific leave type
+        const user = auth.getCurrentUser();
+        const used = Number(user[`leave_${type.value}_used`] || 0);
+        const quota = this.quotas[type.value] || 0;
+        const remaining = quota - used;
+
+        if (type.value !== 'other' && diffDays > remaining) {
+            toast.error(`Sisa kuota ${this.getLeaveTypeLabel(type.value)} tidak mencukupi! (Sisa: ${remaining} hari)`);
             return;
         }
 
         const typeLabels = {
             annual: 'Cuti Tahunan',
             sick: 'Cuti Sakit',
-            important: 'Cuti Penting',
+            important: 'Cuti Alasan Penting',
             maternity: 'Cuti Melahirkan',
+            large: 'Cuti Besar',
             other: 'Lainnya'
         };
 
@@ -160,14 +182,6 @@ const cuti = {
             const result = await api.submitLeave(leaveData);
             if (result.success) {
                 this.leaves.unshift(result.data);
-
-                // Deduct balance for annual leave
-                if (type.value === 'annual') {
-                    this.leaveBalance -= diffDays;
-                    storage.set('leaveBalance', this.leaveBalance);
-                    this.updateBalanceDisplay();
-                }
-
                 toast.success('Pengajuan cuti berhasil dikirim!');
             } else {
                 toast.error(result.error || 'Gagal mengajukan cuti');
@@ -196,10 +210,31 @@ const cuti = {
     },
 
     updateBalanceDisplay() {
-        const balanceEl = document.querySelector('.balance-value');
-        if (balanceEl) {
-            balanceEl.textContent = this.leaveBalance;
-        }
+        const user = auth.getCurrentUser();
+        if (!user) return;
+
+        const quotaTypes = ['annual', 'sick', 'maternity', 'large', 'important'];
+        
+        quotaTypes.forEach(type => {
+            const used = Number(user[`leave_${type}_used`] || 0);
+            const total = this.quotas[type];
+            const el = document.getElementById(`quota-${type}`);
+            if (el) {
+                el.textContent = `${used}/${total}`;
+            }
+        });
+    },
+
+    getLeaveTypeLabel(type) {
+        const labels = {
+            annual: 'Cuti Tahunan',
+            sick: 'Cuti Sakit',
+            important: 'Cuti Alasan Penting',
+            maternity: 'Cuti Melahirkan',
+            large: 'Cuti Besar',
+            other: 'Lainnya'
+        };
+        return labels[type] || type;
     },
 
     updateStats() {
@@ -327,9 +362,8 @@ const cuti = {
 
                 // Return balance for annual leave
                 if (leave.type === 'annual') {
-                    this.leaveBalance += leave.duration;
-                    storage.set('leaveBalance', this.leaveBalance);
-                    this.updateBalanceDisplay();
+                    // Refresh profile in background to get updated quota
+                    auth.refreshProfile();
                 }
             }
             this.renderLeaveList();
@@ -337,6 +371,28 @@ const cuti = {
             toast.info('Pengajuan cuti ditolak!');
         } catch (error) {
             console.error('Error rejecting leave:', error);
+        }
+    },
+
+    async approveLeave(id) {
+        if (!auth.isAdmin()) {
+            toast.error('Anda tidak memiliki akses!');
+            return;
+        }
+
+        try {
+            await api.approveLeave(id);
+            const leave = this.leaves.find(l => l.id === id);
+            if (leave) { 
+                leave.status = 'approved'; 
+                // Refresh profile to get updated quota if admin is also testing their own
+                auth.refreshProfile();
+            }
+            this.renderLeaveList();
+            this.updateStats();
+            toast.success('Pengajuan cuti disetujui!');
+        } catch (error) {
+            console.error('Error approving leave:', error);
         }
     }
 };

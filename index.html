@@ -977,12 +977,46 @@
                                 <h2>Pengajuan Cuti</h2>
                                 <p>Ajukan cuti Anda dan lihat status pengajuan</p>
                             </div>
-                            <div class="leave-balance">
-                                <div class="balance-card">
-                                    <div class="balance-icon"><i class="fas fa-umbrella-beach"></i></div>
-                                    <div class="balance-content"><span class="balance-value">12</span><span
-                                            class="balance-label">Sisa Cuti (hari)</span></div>
+                            <div class="leave-balance-container">
+                                <button type="button" class="slider-btn prev" id="quota-prev"><i class="fas fa-chevron-left"></i></button>
+                                <div class="leave-balance-slider" id="quota-slider">
+                                    <div class="balance-card active" data-type="annual">
+                                        <div class="balance-icon"><i class="fas fa-umbrella-beach"></i></div>
+                                        <div class="balance-content">
+                                            <span class="balance-value" id="quota-annual">0/12</span>
+                                            <span class="balance-label">Cuti Tahunan</span>
+                                        </div>
+                                    </div>
+                                    <div class="balance-card" data-type="sick">
+                                        <div class="balance-icon"><i class="fas fa-heartbeat"></i></div>
+                                        <div class="balance-content">
+                                            <span class="balance-value" id="quota-sick">0/14</span>
+                                            <span class="balance-label">Cuti Sakit</span>
+                                        </div>
+                                    </div>
+                                    <div class="balance-card" data-type="maternity">
+                                        <div class="balance-icon"><i class="fas fa-baby"></i></div>
+                                        <div class="balance-content">
+                                            <span class="balance-value" id="quota-maternity">0/90</span>
+                                            <span class="balance-label">Cuti Melahirkan</span>
+                                        </div>
+                                    </div>
+                                    <div class="balance-card" data-type="large">
+                                        <div class="balance-icon"><i class="fas fa-calendar-alt"></i></div>
+                                        <div class="balance-content">
+                                            <span class="balance-value" id="quota-large">0/90</span>
+                                            <span class="balance-label">Cuti Besar</span>
+                                        </div>
+                                    </div>
+                                    <div class="balance-card" data-type="important">
+                                        <div class="balance-icon"><i class="fas fa-home"></i></div>
+                                        <div class="balance-content">
+                                            <span class="balance-value" id="quota-important">0/60</span>
+                                            <span class="balance-label">Cuti Penting</span>
+                                        </div>
+                                    </div>
                                 </div>
+                                <button type="button" class="slider-btn next" id="quota-next"><i class="fas fa-chevron-right"></i></button>
                             </div>
                         </div>
                         <div class="cuti-grid">
