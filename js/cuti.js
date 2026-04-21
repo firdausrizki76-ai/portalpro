@@ -49,18 +49,18 @@ const cuti = {
         
         let user = auth.getCurrentUser();
         
-        // If data is very minimal (missing NIP/JoinDate) or we want to be sure, fetch from API
-        if (user && (!user.nip || !user.joinDate)) {
+        // Force refresh from server to ensure we have NIP and JoinDate if they are missing or if we just entered the page
+        if (user && user.id) {
             try {
                 const res = await api.getEmployeeProfile(user.id);
                 if (res.success && res.data) {
                     user = res.data;
-                    // Update current user cache
+                    // Update global state and storage
                     auth.currentUser = user;
                     storage.set('user', user);
                 }
             } catch (e) {
-                console.warn('Silent profile refresh failed', e);
+                console.warn('Profile refresh failed, using cached data', e);
             }
         }
 

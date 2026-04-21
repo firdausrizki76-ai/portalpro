@@ -33,13 +33,21 @@ const api = {
                 }
 
                 const text = await response.text();
-                return JSON.parse(text);
+                // Ensure text is valid JSON before parsing
+                try {
+                    return JSON.parse(text);
+                } catch (jsonErr) {
+                    throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+                }
             } catch (error) {
                 lastError = error;
                 console.warn(`API attempt ${i+1} failed for ${action}:`, error);
+                
                 if (i < retries - 1) {
-                    // Wait before retry
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                    // Backoff: 1s, 3s, 5s...
+                    const delay = (i === 0) ? 1000 : (i === 1 ? 3000 : 5000);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    console.log(`Retrying ${action} after ${delay}ms...`);
                 }
             }
         }

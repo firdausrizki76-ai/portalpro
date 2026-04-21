@@ -598,6 +598,11 @@ const adminReports = {
             container.addEventListener('click', (e) => {
                 const btn = e.target.closest('.btn-action, .btn-full');
                 if (!btn) return;
+                
+                // CRITICAL: Stop propagation to prevent row click listener from firing
+                e.stopPropagation();
+                e.preventDefault();
+                
                 const action = btn.dataset.action;
                 const id = btn.dataset.id;
                 const source = btn.dataset.source;
@@ -642,6 +647,11 @@ const adminReports = {
             container.addEventListener('click', (e) => {
                 const btn = e.target.closest('.btn-action, .btn-full');
                 if (!btn) return;
+                
+                // CRITICAL: Stop propagation to prevent row click listener from firing
+                e.stopPropagation();
+                e.preventDefault();
+                
                 const action = btn.dataset.action;
                 const id = btn.dataset.id;
                 const source = btn.dataset.source;
