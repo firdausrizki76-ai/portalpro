@@ -327,7 +327,7 @@ var dateTime = {
         if (format === 'full') {
             return `${dayName}, ${day} ${month} ${year}`;
         } else if (format === 'short') {
-            return `${day} ${months[d.getMonth()].substring(0, 3)} ${year}`;
+            return `${day} ${month.substring(0, 3)} ${year}`;
         } else if (format === 'day') {
             return dayName;
         }
