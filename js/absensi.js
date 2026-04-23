@@ -618,25 +618,75 @@ const absensi = {
         }
     },
 
+    checkTooEarlyStatus(shiftName) {
+        if (!shiftName || shiftName === 'Libur') return false;
+        
+        const now = new Date();
+        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+        
+        let shiftStartTimeStr = "08:00"; 
+        let shiftEndTimeStr = "17:00";
+        const shifts = storage.get('shifts', []);
+        const userShift = shifts.find(s => String(s.name) === String(shiftName));
+        
+        if (userShift && userShift.startTime) {
+            shiftStartTimeStr = userShift.startTime.replace('.', ':');
+        }
+        if (userShift && userShift.endTime) {
+            shiftEndTimeStr = userShift.endTime.replace('.', ':');
+        }
+        
+        const [sH, sM] = shiftStartTimeStr.split(':').map(Number);
+        const shiftStartInMinutes = (sH || 0) * 60 + (sM || 0);
+
+        const [eH, eM] = shiftEndTimeStr.split(':').map(Number);
+        const shiftEndInMinutes = (eH || 0) * 60 + (eM || 0);
+        
+        const isCrossMidnight = shiftStartInMinutes > shiftEndInMinutes;
+        
+        if (isCrossMidnight) {
+            return currentTimeInMinutes > shiftEndInMinutes && currentTimeInMinutes < (shiftStartInMinutes - 60);
+        } else {
+            return currentTimeInMinutes < (shiftStartInMinutes - 60);
+        }
+    },
+
     checkAlfaStatus(shiftName) {
         if (!shiftName || shiftName === 'Libur') return false;
 
         const now = new Date();
         const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // Get shift end time
-        let shiftEndTimeStr = "17:00"; // fallback
+        let shiftStartTimeStr = "08:00"; 
+        let shiftEndTimeStr = "17:00"; 
         const shifts = storage.get('shifts', []);
         const userShift = shifts.find(s => String(s.name) === String(shiftName));
         
+        if (userShift && userShift.startTime) {
+            shiftStartTimeStr = userShift.startTime.replace('.', ':');
+        }
         if (userShift && userShift.endTime) {
             shiftEndTimeStr = userShift.endTime.replace('.', ':');
         }
         
+        const [sH, sM] = shiftStartTimeStr.split(':').map(Number);
+        const shiftStartInMinutes = (sH || 0) * 60 + (sM || 0);
+
         const [eH, eM] = shiftEndTimeStr.split(':').map(Number);
         const shiftEndInMinutes = (eH || 0) * 60 + (eM || 0);
 
-        return currentTimeInMinutes > shiftEndInMinutes;
+        const isCrossMidnight = shiftStartInMinutes > shiftEndInMinutes;
+
+        if (isCrossMidnight) {
+            // For cross-midnight, Alfa is only if we are past shiftEnd but before shiftStart-60
+            // But actually, past shiftEnd means we missed it.
+            // If it is 07:00, we missed it (Alfa). If it's 20:00, it's just Too Early for the next shift.
+            // So we can differentiate by time of day. 
+            // Let's say if we are between shiftEndInMinutes and 12:00 PM, it's Alfa.
+            return currentTimeInMinutes > shiftEndInMinutes && currentTimeInMinutes < 720;
+        } else {
+            return currentTimeInMinutes > shiftEndInMinutes;
+        }
     },
 
     updateUI() {
@@ -714,8 +764,9 @@ const absensi = {
             const isClockedIn = this.attendanceData.clockIn !== null && this.attendanceData.clockIn !== undefined;
             const isAlfa = this.currentState === 'alfa';
             const isLibur = this.currentState === 'libur';
+            const isTooEarly = this.checkTooEarlyStatus(this.attendanceData.shift);
 
-            btnClockIn.disabled = isClockedIn || isLibur || isAlfa;
+            btnClockIn.disabled = isClockedIn || isLibur || isAlfa || isTooEarly;
 
             if (isClockedIn) {
                 btnClockIn.classList.add('completed');
@@ -723,8 +774,11 @@ const absensi = {
                 if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
             } else if (isLibur) {
                 btnClockIn.classList.add('completed');
+            } else if (isTooEarly) {
+                btnClockIn.innerHTML = '<i class="fas fa-clock"></i><span>Belum Waktunya</span>';
             } else {
                 btnClockIn.classList.remove('completed');
+                btnClockIn.innerHTML = '<i class="fas fa-sign-in-alt"></i><span>Clock In</span>';
             }
         }
 
