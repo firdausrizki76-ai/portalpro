@@ -24,6 +24,7 @@ const absensi = {
             // PRIORITY 1: Initialize visual elements and render with cache immediately
             this.initLiveClock();
             this.initButtons();
+            this.populateLocationDropdown();
             
             // Initial render with cached/default data
             this.updateUI(); 
@@ -48,6 +49,67 @@ const absensi = {
             if (typeof loader !== 'undefined') loader.hide();
             this.updateUI();
         }
+    },
+
+    // All registered office locations (must match IDs used in Settings: office_lat, office_lat_2, etc.)
+    locationMap: {
+        '1': 'Kecamatan Cinere',
+        '2': 'Kelurahan Cinere',
+        '3': 'Kelurahan Pangkalan Jati',
+        '4': 'Kelurahan Pangkalan Jati Baru',
+        '5': 'Kelurahan Gandul'
+    },
+
+    populateLocationDropdown() {
+        const selectEl = document.getElementById('absensi-select-location');
+        if (!selectEl) return;
+
+        const currentUser = auth.getCurrentUser();
+        const userDepartment = (currentUser?.department || '').trim();
+
+        // Start with empty default
+        let html = '<option value="">-- Pilih Lokasi Absen --</option>';
+
+        // Find the matching location for this employee's department
+        let hasAssignedLocation = false;
+        Object.entries(this.locationMap).forEach(([id, name]) => {
+            if (userDepartment && name.toLowerCase() === userDepartment.toLowerCase()) {
+                html += `<option value="${id}">${name}</option>`;
+                hasAssignedLocation = true;
+            }
+        });
+
+        // If no match found by exact name, try partial match (department contains location name or vice versa)
+        if (!hasAssignedLocation && userDepartment) {
+            Object.entries(this.locationMap).forEach(([id, name]) => {
+                if (name.toLowerCase().includes(userDepartment.toLowerCase()) ||
+                    userDepartment.toLowerCase().includes(name.toLowerCase())) {
+                    html += `<option value="${id}">${name}</option>`;
+                    hasAssignedLocation = true;
+                }
+            });
+        }
+
+        // Always add WFH / WFA / Perjalanan Dinas options (universal - available to everyone)
+        html += '<option value="wfh">WFH (Work From Home)</option>';
+        html += '<option value="wfa">WFA (Work From Anywhere)</option>';
+        html += '<option value="dinas">Perjalanan Dinas</option>';
+
+        selectEl.innerHTML = html;
+
+        // If employee has only one assigned location, auto-select it
+        if (hasAssignedLocation) {
+            const assignedOptions = Array.from(selectEl.options).filter(opt => 
+                opt.value && opt.value !== '' && !['wfh', 'wfa', 'dinas'].includes(opt.value)
+            );
+            if (assignedOptions.length === 1) {
+                selectEl.value = assignedOptions[0].value;
+                // Trigger change event to enable clock-in button
+                selectEl.dispatchEvent(new Event('change'));
+            }
+        }
+
+        console.log('Location dropdown populated for department:', userDepartment, '| Has assigned:', hasAssignedLocation);
     },
 
     async loadTodayAttendance() {
@@ -214,11 +276,33 @@ const absensi = {
         }
 
         tbody.innerHTML = historyData.slice(0, 10).map(record => {
-            // Calculate duration and status using robust utilities
-            const duration = dateTime.calculateDuration(record.clockIn, record.clockOut);
-            const statusInfo = dateTime.calculateAttendanceStatus(record);
-            
-            const statusBadge = `<span class="badge-status ${statusInfo.class}">${statusInfo.label}</span>`;
+            // Calculate duration if clocked out
+            let duration = '--';
+            if (record.clockIn && record.clockOut) {
+                const [inH, inM] = record.clockIn.split(':').map(Number);
+                const [outH, outM] = record.clockOut.split(':').map(Number);
+                let diffInMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+
+                if (diffInMinutes > 0) {
+                    const h = Math.floor(diffInMinutes / 60);
+                    const m = diffInMinutes % 60;
+                    duration = `${h}j ${m}m`;
+                }
+
+                if (diffInMinutes > 0) {
+                    const h = Math.floor(diffInMinutes / 60);
+                    const m = diffInMinutes % 60;
+                    duration = `${h}j ${m}m`;
+                }
+            }
+
+            // Status Badge
+            let statusBadge = '<span class="badge-status">Waiting</span>';
+            if (record.status.toLowerCase() === 'ontime') {
+                statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
+            } else if (record.status.toLowerCase() === 'terlambat' || record.status.toLowerCase() === 'late') {
+                statusBadge = '<span class="badge-status warning">Terlambat</span>';
+            }
 
             // Format date to local standard UI string
             const [y, m, d] = record.date.split('-');
@@ -450,7 +534,6 @@ const absensi = {
         if (action === 'clock-in') {
             this.attendanceData.verificationIn = {
                 timestamp: verificationData.timestamp,
-                locationId: verificationData.locationId,
                 location: verificationData.location,
                 photo: verificationData.photo
             };
@@ -477,11 +560,6 @@ const absensi = {
             const recipientId = 'admin';
             const actionLabel = action === 'clock-in' ? 'Clock In' : (action === 'clock-out' ? 'Clock Out' : 'Lembur');
             notifications.add(recipientId, currentUser.name, `melakukan ${actionLabel}`, 'info');
-            
-            // Success navigation
-            setTimeout(() => {
-                router.navigate('absensi');
-            }, 800);
         } else {
             // Handle error (e.g. Alfa rejected by server)
             const errorMsg = (result && result.error) ? result.error : 'Gagal menyimpan absensi';
@@ -667,19 +745,17 @@ const absensi = {
                         // Show Thumbnail & Location
                         const ver = this.attendanceData.verificationIn;
                         if (ver && ver.photo) {
-                            // CLEAN UP: Remove if already exists to prevent duplication
-                            const existing = item.querySelector('.timeline-verification');
-                            if (existing) existing.remove();
-
-                            const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
-                            html += `<img src="${photoUrl}" class="verification-thumbnail" onerror="console.error('Timeline Image Load Failed:', this.src)">`;
+                            html += `<img src="${ver.photo}" class="verification-thumbnail">`;
                             html += `<div class="verification-info">
                                 <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
                             </div></div>`;
                             
-                            item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
+                            // Only add if not already present
+                            if (!item.querySelector('.timeline-verification')) {
+                                item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
+                            }
                         }
                     }
                     break;
@@ -693,19 +769,17 @@ const absensi = {
                         // Show Thumbnail & Location for Clock Out
                         const ver = this.attendanceData.verificationOut;
                         if (ver && ver.photo) {
-                            // CLEAN UP: Remove if already exists to prevent duplication
-                            const existing = item.querySelector('.timeline-verification');
-                            if (existing) existing.remove();
-
-                            const photoUrl = normalizeImageUrl(ver.photo);
                             let html = `<div class="timeline-verification">`;
-                            html += `<img src="${photoUrl}" class="verification-thumbnail" onerror="console.error('Timeline Image Load Failed:', this.src)">`;
+                            html += `<img src="${ver.photo}" class="verification-thumbnail">`;
                             html += `<div class="verification-info">
                                 <span class="verification-loc"><i class="fas fa-map-marker-alt"></i> ${ver.location ? (typeof ver.location.latitude === 'number' ? ver.location.latitude.toFixed(4) : ver.location.latitude) + ', ' + (typeof ver.location.longitude === 'number' ? ver.location.longitude.toFixed(4) : ver.location.longitude) : 'Lokasi tidak ada'}</span>
                                 <span style="font-size:10px; color:#94a3b8">Verifikasi AI Berhasil</span>
                             </div></div>`;
                             
-                            item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
+                            // Only add if not already present
+                            if (!item.querySelector('.timeline-verification')) {
+                                item.querySelector('.timeline-content').insertAdjacentHTML('afterend', html);
+                            }
                         }
                     }
                     break;

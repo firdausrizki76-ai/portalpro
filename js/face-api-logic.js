@@ -27,31 +27,6 @@ const faceRecognition = {
         this.position = null;
         this.isRegistering = (action === 'register-face');
 
-        // FORCE CAMERA REFRESH - Clear previous capture and restore video element
-        const preview = document.getElementById('camera-preview');
-        if (preview) {
-            preview.innerHTML = `
-                <video id="camera-video" autoplay playsinline></video>
-                <canvas id="camera-canvas" style="display: none;"></canvas>
-                <div class="face-overlay" id="face-overlay" style="pointer-events: none;">
-                    <div class="face-frame">
-                        <div class="face-corner top-left"></div>
-                        <div class="face-corner top-right"></div>
-                        <div class="face-corner bottom-left"></div>
-                        <div class="face-corner bottom-right"></div>
-                    </div>
-                    <div class="face-guide"><i class="fas fa-user"></i>
-                        <p>Posisikan wajah di dalam frame</p>
-                    </div>
-                </div>
-                <div class="scanning-line" id="scanning-line" style="display: none;"></div>
-                <div class="verification-status" id="verification-status">
-                    <div class="status-icon"><i class="fas fa-check-circle"></i></div>
-                    <p>Wajah Terverifikasi</p>
-                </div>
-            `;
-        }
-
         // Update UI
         this.updateActionTitle(action);
         
@@ -276,58 +251,20 @@ const faceRecognition = {
                         return;
                     }
 
+                    // Skip geolocation check for WFH, WFA, and Perjalanan Dinas
+                    const remoteLocations = ['wfh', 'wfa', 'dinas'];
                     const pointId = selectedPoint.id;
-                    const isSpecialMode = ['wfh', 'wfa', 'dinas'].includes(pointId);
                     
-                    let targetLat, targetLng, targetName;
-                    let customMaxDistance = maxDistance;
-
-                    if (isSpecialMode) {
-                        const clockInData = window.absensi ? window.absensi.attendanceData.verificationIn : null;
-
-                        if (this.currentAction === 'clock-in') {
-                            console.log(`Special Mode (${pointId}) Clock In: Skipping distance check.`);
-                            // Allow Clock In from anywhere
-                        } else if (this.currentAction === 'clock-out') {
-                            // MODE CONSISTENCY CHECK
-                            const clockInId = clockInData ? clockInData.locationId : null;
-                            if (clockInId !== pointId) {
-                                let clockInModeName = "Mode Kantor";
-                                if (clockInId === 'wfh') clockInModeName = 'WFH';
-                                else if (clockInId === 'wfa') clockInModeName = 'WFA';
-                                else if (clockInId === 'dinas') clockInModeName = 'Dinas Kerja';
-
-                                toast.error(`Mode pulang harus sama dengan mode masuk. Tadi Anda masuk menggunakan: ${clockInModeName}`);
-                                return;
-                            }
-
-                            // Clock Out: Compare with Clock In Location
-                            const clockInLoc = clockInData ? clockInData.location : null;
-                            if (clockInLoc && clockInLoc.latitude && clockInLoc.longitude) {
-                                targetLat = clockInLoc.latitude;
-                                targetLng = clockInLoc.longitude;
-                                targetName = 'Titik Clock In';
-                                customMaxDistance = maxDistance; // Sync with global radius as requested
-                                console.log('Special Mode Clock Out: Comparing with Clock In Location');
-                            } else {
-                                // Fallback if clock in loc not found
-                                console.warn('Special Mode: Clock In location not found. Allowing any location.');
-                            }
-                        }
-                    } else {
-                        // Normal Office Mode
+                    if (!remoteLocations.includes(pointId)) {
+                        // Fixed location - verify GPS distance
                         const latKey = pointId === '1' ? 'office_lat' : `office_lat_${pointId}`;
                         const lngKey = pointId === '1' ? 'office_lng' : `office_lng_${pointId}`;
 
-                        targetLat = parseFloat(allSettings[latKey]);
-                        targetLng = parseFloat(allSettings[lngKey]);
-                        targetName = selectedPoint.name;
-                    }
+                        const targetLat = parseFloat(allSettings[latKey]);
+                        const targetLng = parseFloat(allSettings[lngKey]);
 
-                    // Proceed with check only if target is defined (Normal or Special-ClockOut)
-                    if (targetLat && targetLng) {
-                        // Check if admin has set the coordinates for normal mode
-                        if (!isSpecialMode && (isNaN(targetLat) || isNaN(targetLng) || targetLat === 0)) {
+                        // Check if admin has set the coordinates
+                        if (isNaN(targetLat) || isNaN(targetLng) || targetLat === 0) {
                             modal.show(
                                 'Lokasi Belum Diset',
                                 `<div style="text-align:center; padding: 20px;">
@@ -342,52 +279,55 @@ const faceRecognition = {
                             return;
                         }
 
-                        if (!this.position) {
-                            toast.error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.');
-                            return;
-                        }
-
-                        const userLat = this.position.coords.latitude;
-                        const userLng = this.position.coords.longitude;
-                        
-                        let withinRange = false;
-                        let minDistance = Infinity;
-                        let closestPoint = null;
-
                         const points = [
-                            { name: targetName, lat: targetLat, lng: targetLng }
+                            { name: selectedPoint.name, lat: targetLat, lng: targetLng }
                         ];
 
-                        points.forEach(p => {
-                            const d = this.calculateDistance(userLat, userLng, p.lat, p.lng);
-                            console.log(`Distance to ${p.name}: ${d.toFixed(1)}m`);
-                            if (d <= customMaxDistance) {
-                                withinRange = true;
+                        if (points.length > 0) {
+                            if (!this.position) {
+                                toast.error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.');
+                                return;
                             }
-                            if (d < minDistance) {
-                                minDistance = d;
-                                closestPoint = p;
-                            }
-                        });
 
-                        if (!withinRange) {
-                            modal.show(
-                                'Di Luar Jangkauan',
-                                `<div style="text-align:center; padding: 20px;">
-                                    <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
-                                    <p>Anda berada di luar radius yang diizinkan.</p>
-                                    <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                                        Radius maksimal: <b>${customMaxDistance}m</b><br>
-                                        Paling dekat ke: <b>${closestPoint.name}</b> (${minDistance.toFixed(0)}m)
-                                    </p>
-                                </div>`,
-                                [{ label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }]
-                            );
-                            return;
+                            const userLat = this.position.coords.latitude;
+                            const userLng = this.position.coords.longitude;
+                            
+                            let withinRange = false;
+                            let minDistance = Infinity;
+                            let closestPoint = null;
+
+                            points.forEach(p => {
+                                const d = this.calculateDistance(userLat, userLng, p.lat, p.lng);
+                                console.log(`Distance to ${p.name}: ${d.toFixed(1)}m`);
+                                if (d <= maxDistance) {
+                                    withinRange = true;
+                                }
+                                if (d < minDistance) {
+                                    minDistance = d;
+                                    closestPoint = p;
+                                }
+                            });
+
+                            if (!withinRange) {
+                                modal.show(
+                                    'Di Luar Jangkauan',
+                                    `<div style="text-align:center; padding: 20px;">
+                                        <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
+                                        <p>Anda berada di luar radius absen yang diizinkan.</p>
+                                        <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                                            Radius maksimal: <b>${maxDistance}m</b><br>
+                                            Paling dekat ke: <b>${closestPoint.name}</b> (${minDistance.toFixed(0)}m)
+                                        </p>
+                                    </div>`,
+                                    [{ label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }]
+                                );
+                                return;
+                            }
+                        } else {
+                            console.warn('Location tracking enabled but no office coordinates set.');
                         }
-                    } else if (isSpecialMode && this.currentAction === 'clock-in') {
-                        // Explicitly set withinRange for skip case
-                        console.log('Distance check bypassed for special mode Clock In');
+                    } else {
+                        console.log(`Location tracking skipped for remote mode: ${selectedPoint.name}`);
                     }
                 } else {
                     console.log('Location tracking skipped (disabled in settings)');
@@ -516,7 +456,6 @@ const faceRecognition = {
         const attendanceData = {
             action: this.currentAction,
             timestamp: new Date().toISOString(),
-            locationId: selectedPoint ? selectedPoint.id : '',
             locationName: selectedPoint ? selectedPoint.name : '',
             location: this.position ? {
                 latitude: this.position.coords.latitude,
@@ -528,11 +467,15 @@ const faceRecognition = {
         storage.set('temp_attendance', attendanceData);
         toast.success('Verifikasi wajah berhasil!');
 
+        // Stop camera before navigating
+        this.stopCamera();
+
         if (this.currentAction === 'izin') {
             await window.izin.submitWithVerification(attendanceData);
             router.navigate('izin');
         } else {
             await window.absensi.processWithVerification(this.currentAction, attendanceData);
+            // Navigate immediately back to absensi page
             router.navigate('absensi');
         }
     },
@@ -625,6 +568,9 @@ const faceRecognition = {
 
     initLocation() {
         const statusEl = document.getElementById('location-status');
+        const mapPlaceholder = document.querySelector('#location-map .map-placeholder');
+        const locationInfoEl = document.getElementById('location-info');
+        
         if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mencari sinyal GPS...';
 
         navigator.geolocation.getCurrentPosition(
@@ -633,7 +579,19 @@ const faceRecognition = {
                 this.locationVerified = true; 
                 this.checkCanSubmit(); 
                 if (statusEl) {
-                    statusEl.innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--color-success)"></i> Lokasi Terdeteksi (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`;
+                    statusEl.innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--color-success)"></i> Lokasi Terdeteksi`;
+                }
+                // Hide the "Meminta akses lokasi..." placeholder
+                if (mapPlaceholder) mapPlaceholder.style.display = 'none';
+                // Show coordinate info section
+                if (locationInfoEl) {
+                    locationInfoEl.style.display = 'block';
+                    const coordsEl = document.getElementById('location-coords');
+                    const timeEl = document.getElementById('location-time');
+                    const accuracyEl = document.getElementById('location-accuracy');
+                    if (coordsEl) coordsEl.textContent = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+                    if (timeEl) timeEl.textContent = new Date().toLocaleTimeString('id-ID');
+                    if (accuracyEl) accuracyEl.textContent = `±${Math.round(pos.coords.accuracy)}m`;
                 }
             },
             (err) => { 
@@ -643,8 +601,12 @@ const faceRecognition = {
                 if (statusEl) {
                     statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i> GPS tidak ditemukan (Izin?)';
                 }
+                // Update placeholder to show error state
+                if (mapPlaceholder) {
+                    mapPlaceholder.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i><p>Lokasi tidak tersedia</p>';
+                }
             },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     },
 

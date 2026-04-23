@@ -55,12 +55,11 @@ const dashboard = {
             const currentUser = auth.getCurrentUser();
             if (currentUser && currentUser.id) {
                 // Run multiple requests in parallel
-                const [attResult, settingsRes, teamRes, profileRes, shiftsRes] = await Promise.allSettled([
+                const [attResult, settingsRes, teamRes, profileRes] = await Promise.allSettled([
                     api.getAttendance(currentUser.id),
                     api.getSettings(),
                     api.getEmployees(), // For team presence
-                    auth.refreshProfile(), // Ensure session is fresh
-                    api.getShifts() // Fetch master shifts for time info
+                    auth.refreshProfile() // Ensure session is fresh
                 ]);
 
                 // Immediately update Welcome card if profile was refreshed 
@@ -99,11 +98,6 @@ const dashboard = {
                 // 3. Process Team Data
                 if (teamRes.status === 'fulfilled' && teamRes.value.success) {
                     storage.set('admin_employees', teamRes.value.data || []);
-                }
-
-                // 4. Process Master Shifts
-                if (shiftsRes.status === 'fulfilled' && shiftsRes.value.success) {
-                    storage.set('shifts', shiftsRes.value.data || []);
                 }
             }
         } catch (error) {
@@ -194,75 +188,29 @@ const dashboard = {
     },
 
     updateStats() {
-        const attendance = this.attendanceData || [];
-        
-        // Get current date info
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth(); 
-        const monthStr = (month + 1).toString().padStart(2, '0');
-        const yearMonthPrefix = `${year}-${monthStr}`;
-
-        // Filter attendance for current month only
-        const thisMonthAttendance = attendance.filter(a => a.date && a.date.startsWith(yearMonthPrefix));
-
-        // Use fixed 20 working days as denominator per user request
-        const totalDaysInMonth = 20;
+        const attendance = this.attendanceData;
 
         // Calculate stats
-        // PRESENT: Any record that has a clock-in time and is for this month
-        const presentRecords = thisMonthAttendance.filter(a => a.clockIn && a.clockIn !== '--:--');
-        const presentCount = presentRecords.length;
-        
-        // Split statuses for the detailed legend
-        const ontimeCount = presentRecords.filter(a => !String(a.status || '').toLowerCase().includes('terlambat')).length;
-        const lateCount = presentRecords.filter(a => String(a.status || '').toLowerCase().includes('terlambat')).length;
-        
-        // ABSENT: Remaining days in the month (approximate based on days passed minus present)
-        // But for statistics display, let's keep it simple
-        const absentCount = 0; // Will be calculated dynamically if needed
+        const total = Math.max(26, attendance.length); // Assuming min 26 working days base
+        const present = attendance.filter(a => a.status === 'ontime').length;
+        const late = attendance.filter(a => a.status === 'late').length;
+        const absent = attendance.filter(a => a.status === 'absent').length;
 
-        // Update donut chart based on (Total Attendance / Days in Month)
-        const progressPercent = totalDaysInMonth > 0 ? (presentCount / totalDaysInMonth) : 0;
-        const totalCircumference = 251; // Length of the circle border
+        // Update donut chart values
+        const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
 
-        // Update center text display (e.g., 1/30)
+        // Update center text
         const donutValue = document.querySelector('.donut-value');
         if (donutValue) {
-            donutValue.textContent = `${presentCount}/${totalDaysInMonth}`;
-        }
-        
-        // Update SVG paths dynamically
-        const presentPath = document.querySelector('.donut-fill.present'); // Hijau (Ontime)
-        const latePath = document.querySelector('.donut-fill.late');       // Biru (Late)
-        const absentPath = document.querySelector('.donut-fill.absent');
-
-        if (presentPath && latePath) {
-            // 1. Calculate Dash for Ontime (Green)
-            const ontimePercent = totalDaysInMonth > 0 ? (ontimeCount / totalDaysInMonth) : 0;
-            const ontimeDash = ontimePercent * totalCircumference;
-            presentPath.style.strokeDasharray = `${ontimeDash} ${totalCircumference}`;
-            presentPath.style.display = ontimeCount > 0 ? 'block' : 'none';
-
-            // 2. Calculate Dash for Late (Blue)
-            const latePercent = totalDaysInMonth > 0 ? (lateCount / totalDaysInMonth) : 0;
-            const lateDash = latePercent * totalCircumference;
-            latePath.style.strokeDasharray = `${lateDash} ${totalCircumference}`;
-            
-            // Start the blue line exactly where the green line ends
-            latePath.style.strokeDashoffset = -ontimeDash;
-            latePath.style.display = lateCount > 0 ? 'block' : 'none';
-            
-            // Hide absent segment as we move to a 1/20 progressive scale
-            if (absentPath) absentPath.style.display = 'none';
+            donutValue.textContent = `${presentPercent}%`;
         }
 
         // Update legend
         const legendValues = document.querySelectorAll('.legend-value');
         if (legendValues.length >= 3) {
-            legendValues[0].textContent = `${ontimeCount} hari`;
-            legendValues[1].textContent = `${lateCount} hari`;
-            legendValues[2].textContent = `-`; // Absent count logic can be added later
+            legendValues[0].textContent = `${present} hari`;
+            legendValues[1].textContent = `${late} hari`;
+            legendValues[2].textContent = `${absent} hari`;
         }
     },
 
@@ -275,6 +223,7 @@ const dashboard = {
         const clockInEl = document.getElementById('dashboard-clock-in');
         const clockOutEl = document.getElementById('dashboard-clock-out');
         const durationEl = document.getElementById('dashboard-duration');
+        const latenessEl = document.getElementById('dashboard-lateness');
 
         if (clockInEl) clockInEl.textContent = '--:--';
         if (clockOutEl) clockOutEl.textContent = '--:--';
@@ -285,16 +234,61 @@ const dashboard = {
             if (clockOutEl) clockOutEl.textContent = todayAttendance.clockOut || '--:--';
 
             if (todayAttendance.clockIn && todayAttendance.clockOut && durationEl) {
-                const duration = dateTime.calculateDuration(
+                durationEl.textContent = dateTime.calculateDuration(
                     todayAttendance.clockIn,
                     todayAttendance.clockOut
                 );
-                console.log('Dashboard Duration Debug:', {
-                    in: todayAttendance.clockIn,
-                    out: todayAttendance.clockOut,
-                    result: duration
-                });
-                durationEl.textContent = duration;
+            }
+        }
+
+        // Calculate accumulated lateness for the current month
+        if (latenessEl) {
+            let totalLateMinutes = 0;
+            const currentMonth = today.substring(0, 7); // "YYYY-MM"
+            const monthAttendance = attendance.filter(a => a.date && a.date.startsWith(currentMonth));
+
+            // Get shift data for lateness calculation
+            const shifts = storage.get('shifts', []);
+            const currentUser = auth.getCurrentUser();
+            let defaultShiftName = currentUser?.shift || 'Pagi';
+
+            monthAttendance.forEach(att => {
+                if (!att.clockIn) return;
+
+                // Determine the shift for this record
+                const shiftName = att.shift || defaultShiftName;
+                const shift = shifts.find(s => String(s.name) === String(shiftName));
+                
+                let shiftStartMin = 8 * 60; // default 08:00
+                if (shift && shift.startTime) {
+                    const [sH, sM] = String(shift.startTime).replace('.', ':').split(':').map(Number);
+                    shiftStartMin = (sH || 0) * 60 + (sM || 0);
+                }
+
+                // Parse clock-in time
+                const safeClockIn = String(att.clockIn).replace('.', ':');
+                const [inH, inM] = safeClockIn.split(':').map(Number);
+                const clockInMin = (inH || 0) * 60 + (inM || 0);
+
+                // Calculate lateness (no tolerance - show raw lateness)
+                const lateBy = clockInMin - shiftStartMin;
+                if (lateBy > 0) {
+                    totalLateMinutes += lateBy;
+                }
+            });
+
+            if (totalLateMinutes > 0) {
+                const lateHours = Math.floor(totalLateMinutes / 60);
+                const lateRemainder = totalLateMinutes % 60;
+                if (lateHours > 0) {
+                    latenessEl.textContent = `${lateHours}j ${lateRemainder}m`;
+                } else {
+                    latenessEl.textContent = `${totalLateMinutes} menit`;
+                }
+                latenessEl.style.color = '#EF4444';
+            } else {
+                latenessEl.textContent = '0 menit';
+                latenessEl.style.color = 'var(--color-success)';
             }
         }
     },
@@ -382,69 +376,38 @@ const dashboard = {
         `).join('') + (others.length > 6 ? `<div class="avatar-more">+${others.length - 6}</div>` : '');
     },
 
-    updateWeeklyAttendanceChart(attendance = []) {
+    updateWeeklyAttendanceChart() {
+        const attendance = this.attendanceData;
+        const days = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'];
         const today = new Date();
         
+        // Loop through last 7 days
         for (let i = 0; i < 7; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
             const iso = date.toISOString().split('T')[0];
-            const dayIndex = date.getDay();
+            const dayName = days[date.getDay()];
             
-            // Skip weekend in processing
-            if (dayIndex === 0 || dayIndex === 6) continue;
-            
-            const dayName = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'][dayIndex];
+            const record = attendance.find(a => a.date === iso);
             const bar = document.getElementById(`bar-${dayName}`);
             
             if (bar) {
-                const label = bar.parentElement.querySelector('.bar-label');
-                
-                // Normalisasi dan Pencocokan Tanggal (Robust Matching)
-                const record = (attendance || []).find(a => {
-                    if (!a.date) return false;
-                    const recDate = String(a.date).split('T')[0];
-                    return recDate === iso;
-                });
-
-                const hasClockIn = record && record.clockIn && record.clockIn !== '--:--';
-
-                if (hasClockIn) {
-                    // GAYA AKTIF (BIRU TERANG)
-                    // Hitung durasi manual jika totalMinutes tidak ada
-                    let totalMin = record.totalMinutes;
-                    if (!totalMin && record.clockIn && record.clockOut && record.clockOut !== '--:--') {
-                        const [h1, m1] = record.clockIn.split('.').map(Number);
-                        const [h2, m2] = record.clockOut.split('.').map(Number);
-                        totalMin = (h2 * 60 + m2) - (h1 * 60 + m1);
-                    }
+                if (record && record.clockIn) {
+                    const status = dateTime.calculateAttendanceStatus(record);
+                    let height = 80;
+                    if (status.class === 'danger') height = 30;
+                    if (status.class === 'warning') height = 50;
                     
-                    const height = Math.max(20, Math.min(100, ((totalMin || 30) / 480) * 100));
-                    bar.style.setProperty('height', `${height}%`, 'important');
-                    bar.style.setProperty('background-color', '#3B82F6', 'important'); // Electric Blue
+                    bar.style.height = `${height}%`;
                     bar.classList.add('active');
-
-                    if (label) {
-                        label.style.setProperty('color', '#3B82F6', 'important');
-                        label.style.setProperty('font-weight', '900', 'important');
-                        label.style.setProperty('font-size', '14px', 'important');
-                        label.style.setProperty('border-bottom', '3px solid #3B82F6', 'important');
-                        label.style.setProperty('padding-bottom', '4px', 'important');
-                        label.style.setProperty('text-shadow', '0 0 5px rgba(59, 130, 246, 0.4)', 'important');
-                    }
                 } else {
-                    // GAYA NON-AKTIF (ABU-ABU)
                     bar.style.height = '10%';
-                    bar.style.backgroundColor = 'var(--color-gray-200)';
                     bar.classList.remove('active');
-
-                    if (label) {
-                        label.style.color = 'var(--text-muted)';
-                        label.style.fontWeight = '400';
-                        label.style.fontSize = '12px';
-                        label.style.borderBottom = 'none';
-                        label.style.textShadow = 'none';
-                    }
+                }
+                
+                // Today indicator
+                if (i === 0) {
+                    bar.parentElement.style.borderBottom = '2px solid var(--color-primary)';
                 }
             }
         }
