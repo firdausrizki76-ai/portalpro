@@ -210,7 +210,10 @@ const adminReports = {
         this.attendanceData = this.rawEmployees.map(emp => {
             const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
             let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
-            let lastLocation = '-';
+            
+            // PRIORITY: Use assigned location from spreadsheet Column H (emp.lokasiKerja)
+            let assignedLocation = emp.lokasiKerja || emp.lokasikerja || '-';
+            let lastRecordedLocation = '';
 
             empAtt.forEach(a => {
                 const cIn = a.clockIn;
@@ -223,10 +226,10 @@ const adminReports = {
                 // HEURISTIC: If locationName looks like a status, Swap them
                 if (locVal.toLowerCase() === 'terlambat' || locVal.toLowerCase() === 'ontime') {
                     statusVal = locVal.toLowerCase();
-                    locVal = '-';
+                    locVal = '';
                 }
 
-                if (locVal) lastLocation = locVal;
+                if (locVal) lastRecordedLocation = locVal;
 
                 if (cIn && cOut) {
                     present++;
@@ -238,6 +241,9 @@ const adminReports = {
                 }
             });
 
+            // Final location display logic: prefer assigned location, fallback to last recorded if assigned is '-'
+            const displayLocation = (assignedLocation !== '-') ? assignedLocation : (lastRecordedLocation || '-');
+
             const empLeaves = leaves.filter(l => String(l.userId) === String(emp.id) && l.status === 'approved');
             const empIzin = izinList.filter(i => String(i.userId) === String(emp.id) && i.status === 'approved');
 
@@ -248,7 +254,7 @@ const adminReports = {
             return {
                 id: emp.id, name: emp.name, department: emp.department || '-',
                 avatar: emp.avatar, present, late, noClockOut, noClockIn, absent: absentCount,
-                location: lastLocation,
+                location: displayLocation,
                 total: present + late + noClockOut + noClockIn + absentCount
             };
         });
