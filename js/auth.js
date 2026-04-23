@@ -240,7 +240,7 @@ const auth = {
 
             // Initialize mobile
             if (window.mobile) {
-                window.mobile.handleResize();
+                window.mobile.init();
             }
         }
     },

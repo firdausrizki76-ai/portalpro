@@ -44,12 +44,7 @@ const mobile = {
         }
         
         // Toggle bottom nav
-        const bottomNav = document.getElementById('bottom-nav');
-        if (bottomNav) {
-            bottomNav.style.display = this.isMobile ? 'flex' : 'none';
-        }
-        
-        // Update tables to cards on mobile
+        this.initBottomNav();
         this.updateTableViews();
     },
     
@@ -59,35 +54,42 @@ const mobile = {
         const overlay = document.getElementById('sidebar-overlay');
         const sidebarToggle = document.getElementById('sidebar-toggle');
         
-        // Mobile menu toggle
+        console.log('[Mobile] Setting up sidebar listeners', { menuToggle, sidebarToggle });
+
+        // Mobile menu toggle (Top Left)
         if (menuToggle) {
-            menuToggle.addEventListener('click', () => this.toggleSidebar());
+            // Remove old listener if any and add new one
+            menuToggle.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Mobile] Menu toggle clicked');
+                this.toggleSidebar();
+            };
         }
         
-        // Sidebar toggle button (collapse/expand on desktop)
+        // Sidebar toggle button (collapse/expand on desktop, close on mobile)
         if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
+            sidebarToggle.onclick = (e) => {
                 if (this.isMobile) {
                     this.closeSidebar();
                 } else {
                     sidebar?.classList.toggle('collapsed');
                 }
-            });
+            };
         }
         
         // Close sidebar when clicking overlay
         if (overlay) {
-            overlay.addEventListener('click', () => this.closeSidebar());
+            overlay.onclick = () => this.closeSidebar();
         }
         
         // Close sidebar when clicking nav items on mobile
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.onclick = () => {
                 if (this.isMobile) {
                     this.closeSidebar();
                 }
-            });
+            };
         });
     },
     
@@ -95,30 +97,37 @@ const mobile = {
         const bottomNav = document.getElementById('bottom-nav');
         if (!bottomNav) return;
         
-        const userRole = (auth.currentUser && auth.currentUser.role === 'admin') ? 'admin' : 'employee';
+        // Get role from auth or fallback to employee
+        const userRole = (window.auth && window.auth.currentUser && window.auth.currentUser.role === 'admin') ? 'admin' : 'employee';
+        console.log('[Mobile] Initializing bottom nav for role:', userRole);
+
         const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
         
         navItems.forEach(item => {
             // Role-based filtering
             const itemRole = item.dataset.role || 'employee';
             if (itemRole !== userRole) {
-                item.style.display = 'none';
+                item.style.setProperty('display', 'none', 'important');
             } else {
-                item.style.display = 'flex';
+                item.style.setProperty('display', 'flex', 'important');
             }
 
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
+            // Click listener
+            item.onclick = (e) => {
                 const page = item.dataset.page;
                 if (page) {
+                    e.preventDefault();
                     // Update active state
                     navItems.forEach(n => n.classList.remove('active'));
                     item.classList.add('active');
                     
                     // Navigate
-                    router.navigate(page);
+                    if (window.router) window.router.navigate(page);
+                } else if (item.onclick && !item.dataset.page) {
+                    // This handles logout which has inline onclick
+                    return true; 
                 }
-            });
+            };
         });
     },
     
@@ -127,6 +136,7 @@ const mobile = {
         const overlay = document.getElementById('sidebar-overlay');
         
         this.sidebarOpen = !this.sidebarOpen;
+        console.log('[Mobile] Toggling sidebar. New state:', this.sidebarOpen);
         
         if (this.sidebarOpen) {
             sidebar?.classList.add('open');

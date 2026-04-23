@@ -372,6 +372,7 @@
     
     .page-title {
         font-size: var(--font-size-lg);
+        pointer-events: none;
     }
     
     /* Mobile menu toggle button */
