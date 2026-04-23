@@ -97,6 +97,7 @@ const auth = {
                     department: result.data.department || '',
                     position: result.data.position || '',
                     shift: result.data.shift || '',
+                    lokasiKerja: result.data.lokasiKerja || '',
                     avatar: result.data.avatar || '',
                     faceData: result.data.faceData || null,
                     facePhotoId: result.data.facePhotoId || null,
@@ -391,6 +392,7 @@ const auth = {
                     department: result.data.department || '',
                     position: result.data.position || '',
                     shift: result.data.shift || '',
+                    lokasiKerja: result.data.lokasiKerja || '',
                     avatar: result.data.avatar || '',
                     faceData: result.data.faceData || null,
                     facePhotoId: result.data.facePhotoId || null
