@@ -758,9 +758,10 @@ img {
 
 .donut-value {
     display: block;
-    font-size: var(--font-size-2xl);
+    font-size: 1.4rem;
     font-weight: 700;
     color: var(--text-primary);
+    line-height: 1.1;
 }
 
 .donut-label {
