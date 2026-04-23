@@ -7,7 +7,16 @@ const izin = {
     izinData: [],
     filterStatus: '',
 
+    initialized: false,
+    
     async init() {
+        if (this.initialized) {
+            await this.loadIzinData();
+            this.renderIzinList();
+            this.updateStats();
+            return;
+        }
+        
         try {
             // Priority 1: Initialize form and UI elements immediately
             this.initForm();
@@ -31,6 +40,7 @@ const izin = {
             this.renderIzinList();
             this.updateStats();
             this.loadActivePermits();
+            this.initialized = true;
         } catch (error) {
             console.error('Izin init error:', error);
         } finally {

@@ -8,7 +8,18 @@ const cuti = {
     leaveBalance: 12,
     filterStatus: '',
 
+    initialized: false,
+
     async init() {
+        if (this.initialized) {
+            this.loadLeaves().then(() => {
+                this.updateBalanceDisplay();
+                this.updateStats();
+                this.renderLeaveList();
+            });
+            return;
+        }
+
         try {
             // Priority 1: Init UI immediately so page is responsive
             this.initForm();
@@ -20,12 +31,13 @@ const cuti = {
             this.renderLeaveList();
 
             // Priority 2: Load fresh data in background
-            this.loadLeaves().then(() => {
-                // Re-render when data arrives
-                this.updateBalanceDisplay();
-                this.updateStats();
-                this.renderLeaveList();
-            });
+            await this.loadLeaves();
+            
+            // Re-render when data arrives
+            this.updateBalanceDisplay();
+            this.updateStats();
+            this.renderLeaveList();
+            this.initialized = true;
         } catch (error) {
             console.error('Cuti init error:', error);
         } finally {
@@ -110,6 +122,12 @@ const cuti = {
     async handleSubmit(e) {
         e.preventDefault();
 
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Mengirim...</span>';
+        }
+
         const type = document.getElementById('leave-type');
         const startDate = document.getElementById('leave-start');
         const endDate = document.getElementById('leave-end');
@@ -117,6 +135,10 @@ const cuti = {
 
         if (!type.value || !startDate.value || !endDate.value || !reason.value) {
             toast.error('Semua field harus diisi!');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Ajukan Cuti';
+            }
             return;
         }
 
@@ -127,12 +149,20 @@ const cuti = {
 
         if (diffDays <= 0) {
             toast.error('Tanggal selesai harus setelah tanggal mulai!');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Ajukan Cuti';
+            }
             return;
         }
 
         // Check balance for annual leave
         if (type.value === 'annual' && diffDays > this.leaveBalance) {
             toast.error('Sisa cuti tidak mencukupi!');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Ajukan Cuti';
+            }
             return;
         }
 
@@ -169,17 +199,22 @@ const cuti = {
                 }
 
                 toast.success('Pengajuan cuti berhasil dikirim!');
+                
+                // Reset form
+                e.target.reset();
+                document.getElementById('leave-duration').value = '';
             } else {
                 toast.error(result.error || 'Gagal mengajukan cuti');
             }
         } catch (error) {
             console.error('Error submitting leave:', error);
             toast.error('Terjadi kesalahan');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Ajukan Cuti';
+            }
         }
-
-        // Reset form
-        e.target.reset();
-        document.getElementById('leave-duration').value = '';
 
         this.renderLeaveList();
         this.updateStats();

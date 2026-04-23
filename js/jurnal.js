@@ -10,7 +10,17 @@ const jurnal = {
     sort: 'newest',
     currentPhoto: null,
 
+    initialized: false,
+
     async init() {
+        if (this.initialized) {
+            this.loadJurnals().then(() => {
+                this.updateUI();
+                this.renderJurnalList();
+            });
+            return;
+        }
+
         try {
             // Priority 1: Init UI immediately
             this.initDateSelector();
@@ -21,11 +31,12 @@ const jurnal = {
             this.renderJurnalList();
 
             // Priority 2: Load data in background
-            this.loadJurnals().then(() => {
-                // Re-render with fresh data
-                this.updateUI();
-                this.renderJurnalList();
-            });
+            await this.loadJurnals();
+            
+            // Re-render with fresh data
+            this.updateUI();
+            this.renderJurnalList();
+            this.initialized = true;
         } catch (error) {
             console.error('Jurnal init error:', error);
         } finally {
@@ -183,6 +194,12 @@ const jurnal = {
     async handleSubmit(e) {
         e.preventDefault();
 
+        const submitBtn = document.querySelector('#jurnal-form button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Menyimpan...</span>';
+        }
+
         const dateStr = this.currentDate.toISOString().split('T')[0];
         const tasks = document.getElementById('jurnal-tasks').value;
         const achievements = document.getElementById('jurnal-achievements').value;
@@ -217,6 +234,11 @@ const jurnal = {
         } catch (error) {
             console.error('Error saving journal:', error);
             toast.error('Gagal menyimpan jurnal');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Simpan Jurnal';
+            }
         }
 
         // Reset photo after save
