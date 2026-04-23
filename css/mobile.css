@@ -377,13 +377,23 @@
     /* Mobile menu toggle button */
     .mobile-menu-toggle {
         display: flex !important;
-        width: 40px;
-        height: 40px;
+        width: 44px; /* Slightly larger for touch */
+        height: 44px;
         align-items: center;
         justify-content: center;
         background: var(--color-gray-100);
         border-radius: var(--border-radius);
         margin-right: var(--spacing);
+        position: relative;
+        z-index: 1100; /* Above sidebar */
+        cursor: pointer;
+        pointer-events: auto !important;
+        border: none;
+    }
+    
+    .mobile-menu-toggle i {
+        pointer-events: none;
+        font-size: 20px;
     }
     
     /* Page content padding */

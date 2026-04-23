@@ -67,7 +67,9 @@ const mobile = {
         // Sidebar toggle button (collapse/expand on desktop)
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', () => {
-                if (!this.isMobile) {
+                if (this.isMobile) {
+                    this.closeSidebar();
+                } else {
                     sidebar?.classList.toggle('collapsed');
                 }
             });
@@ -218,9 +220,18 @@ function handleTouchMove(evt) {
 }
 
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-    mobile.init();
-});
+// Initialize using the helper if available, otherwise DOMContentLoaded
+if (typeof onDOMReady === 'function') {
+    onDOMReady(() => {
+        console.log('[Mobile] Initializing via onDOMReady');
+        mobile.init();
+    });
+} else {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('[Mobile] Initializing via DOMContentLoaded');
+        mobile.init();
+    });
+}
 
 // Expose
 window.mobile = mobile;
