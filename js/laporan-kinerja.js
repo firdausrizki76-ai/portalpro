@@ -12,26 +12,16 @@ const jurnal = {
 
     async init() {
         try {
-            // Priority 1: Init UI immediately so page is responsive
+            await this.loadJurnals();
             this.initDateSelector();
             this.initForm();
             this.initFilters();
             this.initPhotoUpload();
-            
-            // Initial render with current state (cache/today)
-            this.updateUI();
             this.renderJurnalList();
-            
-            // Recalculate summary with current data
-            this.updateSummary();
-
-            // Priority 2: Load fresh data in the background
-            await this.loadJurnals();
-            
-            // Final render with fresh data
             this.updateUI();
-            this.renderJurnalList();
-            this.updateSummary();
+            
+            // Initial summary recalculation
+            setTimeout(() => this.updateSummary(), 1000);
         } catch (error) {
             console.error('Jurnal init error:', error);
         } finally {
@@ -388,6 +378,9 @@ const jurnal = {
                         <button class="btn-icon-sm" title="Edit" onclick="jurnal.editJurnal('${jurnal.date}')">
                             <i class="fas fa-edit"></i>
                         </button>
+                        <button class="btn-icon-sm btn-delete" title="Hapus" onclick="jurnal.deleteJurnal('${jurnal.date}', '${jurnal.id}')" style="color: #EF4444;">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -473,6 +466,31 @@ const jurnal = {
         
         const missed = Math.max(0, workingDaysPassed - monthJurnals.length);
         if (missedEl) missedEl.textContent = missed;
+
+        let streak = 0;
+        let d = new Date();
+        const journalDates = this.jurnals
+            .map(j => {
+                const pd = this.parseDate(j.date);
+                return pd ? pd.toISOString().split('T')[0] : null;
+            })
+            .filter(d => d !== null);
+        
+        while (true) {
+            const iso = d.toISOString().split('T')[0];
+            if (journalDates.includes(iso)) {
+                streak++;
+                d.setDate(d.getDate() - 1);
+            } else {
+                if (d.getDay() === 0 || d.getDay() === 6) {
+                    d.setDate(d.getDate() - 1);
+                    continue;
+                }
+                break;
+            }
+        }
+        const streakEl = document.getElementById('jurnal-streak-days');
+        if (streakEl) streakEl.textContent = streak;
     },
 
     parseDate(dateStr) {

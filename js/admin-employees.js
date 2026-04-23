@@ -17,33 +17,6 @@ const adminEmployees = {
     isSubmitting: false,
     initialized: false,
 
-    calculateWorkPeriod(joinDate) {
-        if (!joinDate) return '-';
-        const start = new Date(joinDate);
-        const now = new Date();
-        
-        let years = now.getFullYear() - start.getFullYear();
-        let months = now.getMonth() - start.getMonth();
-        
-        if (months < 0) {
-            years--;
-            months += 12;
-        }
-        
-        if (years < 0) return '0 Bulan'; // In case join date is in the future
-        
-        if (years === 0 && months === 0) {
-            const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24));
-            return `${diffDays > 0 ? diffDays : 0} Hari`;
-        }
-        
-        let result = [];
-        if (years > 0) result.push(`${years} Tahun`);
-        if (months > 0) result.push(`${months} Bulan`);
-        
-        return result.length > 0 ? result.join(' ') : '0 Bulan';
-    },
-
     async init() {
         if (typeof loader !== 'undefined') loader.show('Memuat data pegawai...');
         
@@ -265,10 +238,9 @@ const adminEmployees = {
                         </div>
                     </div>
                 </td>
-                <td>${emp.nip || '-'}</td>
+                <td>EMP${String(emp.id).padStart(3, '0')}</td>
                 <td>${emp.department}</td>
                 <td>${emp.position}</td>
-                <td>${this.calculateWorkPeriod(emp.joinDate)}</td>
                 <td>${emp.shift}</td>
                 <td>
                     <span class="status-badge ${emp.status}">
@@ -315,8 +287,8 @@ const adminEmployees = {
                     <span class="status-badge ${emp.status}">${this.getStatusLabel(emp.status)}</span>
                 </div>
                 <div class="mobile-card-row">
-                    <span class="mobile-card-label">NIP</span>
-                    <span class="mobile-card-value">${emp.nip || '-'}</span>
+                    <span class="mobile-card-label">ID</span>
+                    <span class="mobile-card-value">EMP${String(emp.id).padStart(3, '0')}</span>
                 </div>
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">Departemen</span>
@@ -325,10 +297,6 @@ const adminEmployees = {
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">Jabatan</span>
                     <span class="mobile-card-value">${emp.position}</span>
-                </div>
-                <div class="mobile-card-row">
-                    <span class="mobile-card-label">Masa Kerja</span>
-                    <span class="mobile-card-value">${this.calculateWorkPeriod(emp.joinDate)}</span>
                 </div>
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">Shift</span>
@@ -457,16 +425,16 @@ const adminEmployees = {
         const position = document.getElementById('emp-position').value;
         const shift = document.getElementById('emp-shift').value;
         const status = document.getElementById('emp-status').value;
+        const lokasiKerja = document.getElementById('emp-lokasi-kerja')?.value || '';
         const joinDate = document.getElementById('emp-join-date').value;
-        const nip = document.getElementById('emp-nip').value;
 
         const employeeData = {
             name,
             email,
-            nip,
             department,
             position,
             shift,
+            lokasiKerja,
             status,
             joinDate
         };
@@ -562,7 +530,7 @@ const adminEmployees = {
                     <img src="${getAvatarUrl(emp)}" alt="${emp.name}" class="profile-avatar-large">
                     <div class="profile-main-info">
                         <h4>${emp.name}</h4>
-                        <p class="profile-id">NIP: ${emp.nip || '-'}</p>
+                        <p class="profile-id">ID: EMP${String(emp.id).padStart(3, '0')}</p>
                         <span class="status-badge ${emp.status}">${this.getStatusLabel(emp.status)}</span>
                     </div>
                 </div>
@@ -572,16 +540,12 @@ const adminEmployees = {
                         <p>${emp.email || '-'}</p>
                     </div>
                     <div class="detail-item">
-                        <label>NIP</label>
-                        <p>${emp.nip || '-'}</p>
-                    </div>
-                    <div class="detail-item">
-                        <label>Masa Kerja</label>
-                        <p>${this.calculateWorkPeriod(emp.joinDate)}</p>
-                    </div>
-                    <div class="detail-item">
-                        <label>Departemen</label>
+                        <label>Departemen/Bidang</label>
                         <p>${emp.department || '-'}</p>
+                    </div>
+                    <div class="detail-item">
+                        <label>Lokasi Kerja</label>
+                        <p>${emp.lokasiKerja || '-'}</p>
                     </div>
                     <div class="detail-item">
                         <label>Jabatan</label>
@@ -624,14 +588,14 @@ const adminEmployees = {
         document.getElementById('emp-shift').value = emp.shift;
         document.getElementById('emp-status').value = emp.status;
         
+        const lokasiKerjaInput = document.getElementById('emp-lokasi-kerja');
+        if (lokasiKerjaInput) {
+            lokasiKerjaInput.value = emp.lokasiKerja || '';
+        }
+        
         const joinDateInput = document.getElementById('emp-join-date');
         if (joinDateInput) {
             joinDateInput.value = emp.joinDate;
-        }
-
-        const nipInput = document.getElementById('emp-nip');
-        if (nipInput) {
-            nipInput.value = emp.nip || '';
         }
 
         this.showAddModal(true);

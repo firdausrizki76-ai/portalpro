@@ -310,24 +310,20 @@ var notifications = {
 // Date & Time Utilities
 var dateTime = {
     formatDate(date, format = 'full') {
-        if (!date) return '-';
         const d = new Date(date);
-        if (isNaN(d.getTime())) return '-';
-        
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-        const dayName = days[d.getDay()] || '-';
+        const dayName = days[d.getDay()];
         const day = d.getDate();
-        const monthIndex = d.getMonth();
-        const month = months[monthIndex] || '-';
+        const month = months[d.getMonth()];
         const year = d.getFullYear();
 
         if (format === 'full') {
             return `${dayName}, ${day} ${month} ${year}`;
         } else if (format === 'short') {
-            return `${day} ${month.substring(0, 3)} ${year}`;
+            return `${day} ${months[d.getMonth()].substring(0, 3)} ${year}`;
         } else if (format === 'day') {
             return dayName;
         }

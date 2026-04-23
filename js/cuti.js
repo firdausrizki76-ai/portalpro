@@ -5,13 +5,7 @@
 
 const cuti = {
     leaves: [],
-    quotas: {
-        annual: 12,
-        sick: 14,
-        maternity: 90,
-        large: 90,
-        important: 60
-    },
+    leaveBalance: 12,
     filterStatus: '',
 
     async init() {
@@ -19,10 +13,8 @@ const cuti = {
             // Priority 1: Init UI immediately so page is responsive
             this.initForm();
             this.initFilters();
-            this.initSlider();
             
             // Initial render with cached/default values
-            this.fillProfileFields();
             this.updateBalanceDisplay();
             this.updateStats();
             this.renderLeaveList();
@@ -30,7 +22,6 @@ const cuti = {
             // Priority 2: Load fresh data in background
             this.loadLeaves().then(() => {
                 // Re-render when data arrives
-                this.fillProfileFields();
                 this.updateBalanceDisplay();
                 this.updateStats();
                 this.renderLeaveList();
@@ -39,74 +30,6 @@ const cuti = {
             console.error('Cuti init error:', error);
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
-        }
-    },
-
-    async fillProfileFields() {
-        const nipEl = document.getElementById('leave-nip');
-        const jabatanEl = document.getElementById('leave-jabatan');
-        const masaKerjaEl = document.getElementById('leave-masa-kerja');
-        
-        let user = auth.getCurrentUser();
-        
-        // Force refresh from server to ensure we have NIP and JoinDate if they are missing or if we just entered the page
-        if (user && user.id) {
-            try {
-                const res = await api.getEmployeeProfile(user.id);
-                if (res.success && res.data) {
-                    user = res.data;
-                    // Update global state and storage
-                    auth.currentUser = user;
-                    storage.set('user', user);
-                }
-            } catch (e) {
-                console.warn('Profile refresh failed, using cached data', e);
-            }
-        }
-
-        if (!user) return;
-
-        if (nipEl) nipEl.value = user.nip || '-';
-        if (jabatanEl) jabatanEl.value = user.position || '-';
-
-        if (masaKerjaEl && user.joinDate) {
-            const joinDate = new Date(user.joinDate);
-            const now = new Date();
-            
-            let years = now.getFullYear() - joinDate.getFullYear();
-            let months = now.getMonth() - joinDate.getMonth();
-            
-            if (months < 0) {
-                years--;
-                months += 12;
-            }
-            
-            if (years > 0) {
-                masaKerjaEl.value = `${years} Tahun ${months} Bulan`;
-            } else if (months > 0) {
-                masaKerjaEl.value = `${months} Bulan`;
-            } else {
-                const diffTime = Math.abs(now - joinDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                masaKerjaEl.value = `${diffDays} Hari`;
-            }
-        } else if (masaKerjaEl) {
-            masaKerjaEl.value = '-';
-        }
-    },
-
-    initSlider() {
-        const slider = document.getElementById('quota-slider');
-        const prev = document.getElementById('quota-prev');
-        const next = document.getElementById('quota-next');
-
-        if (slider && prev && next) {
-            prev.addEventListener('click', () => {
-                slider.scrollBy({ left: -slider.offsetWidth, behavior: 'smooth' });
-            });
-            next.addEventListener('click', () => {
-                slider.scrollBy({ left: slider.offsetWidth, behavior: 'smooth' });
-            });
         }
     },
 
@@ -131,6 +54,12 @@ const cuti = {
         } catch (error) {
             console.error('Error loading leaves:', error);
             this.leaves = storage.get(cacheKey, []);
+        }
+
+        // Load balance from storage or use default
+        const savedBalance = storage.get('leaveBalance');
+        if (savedBalance !== null) {
+            this.leaveBalance = savedBalance;
         }
     },
 
@@ -201,23 +130,17 @@ const cuti = {
             return;
         }
 
-        // Check balance for specific leave type
-        const user = auth.getCurrentUser();
-        const used = Number(user[`leave_${type.value}_used`] || 0);
-        const quota = this.quotas[type.value] || 0;
-        const remaining = quota - used;
-
-        if (type.value !== 'other' && diffDays > remaining) {
-            toast.error(`Sisa kuota ${this.getLeaveTypeLabel(type.value)} tidak mencukupi! (Sisa: ${remaining} hari)`);
+        // Check balance for annual leave
+        if (type.value === 'annual' && diffDays > this.leaveBalance) {
+            toast.error('Sisa cuti tidak mencukupi!');
             return;
         }
 
         const typeLabels = {
             annual: 'Cuti Tahunan',
             sick: 'Cuti Sakit',
-            important: 'Cuti Alasan Penting',
+            important: 'Cuti Penting',
             maternity: 'Cuti Melahirkan',
-            large: 'Cuti Besar',
             other: 'Lainnya'
         };
 
@@ -237,6 +160,14 @@ const cuti = {
             const result = await api.submitLeave(leaveData);
             if (result.success) {
                 this.leaves.unshift(result.data);
+
+                // Deduct balance for annual leave
+                if (type.value === 'annual') {
+                    this.leaveBalance -= diffDays;
+                    storage.set('leaveBalance', this.leaveBalance);
+                    this.updateBalanceDisplay();
+                }
+
                 toast.success('Pengajuan cuti berhasil dikirim!');
             } else {
                 toast.error(result.error || 'Gagal mengajukan cuti');
@@ -265,31 +196,10 @@ const cuti = {
     },
 
     updateBalanceDisplay() {
-        const user = auth.getCurrentUser();
-        if (!user) return;
-
-        const quotaTypes = ['annual', 'sick', 'maternity', 'large', 'important'];
-        
-        quotaTypes.forEach(type => {
-            const used = Number(user[`leave_${type}_used`] || 0);
-            const total = this.quotas[type];
-            const el = document.getElementById(`quota-${type}`);
-            if (el) {
-                el.textContent = `${used}/${total}`;
-            }
-        });
-    },
-
-    getLeaveTypeLabel(type) {
-        const labels = {
-            annual: 'Cuti Tahunan',
-            sick: 'Cuti Sakit',
-            important: 'Cuti Alasan Penting',
-            maternity: 'Cuti Melahirkan',
-            large: 'Cuti Besar',
-            other: 'Lainnya'
-        };
-        return labels[type] || type;
+        const balanceEl = document.querySelector('.balance-value');
+        if (balanceEl) {
+            balanceEl.textContent = this.leaveBalance;
+        }
     },
 
     updateStats() {
@@ -417,8 +327,9 @@ const cuti = {
 
                 // Return balance for annual leave
                 if (leave.type === 'annual') {
-                    // Refresh profile in background to get updated quota
-                    auth.refreshProfile();
+                    this.leaveBalance += leave.duration;
+                    storage.set('leaveBalance', this.leaveBalance);
+                    this.updateBalanceDisplay();
                 }
             }
             this.renderLeaveList();
@@ -426,28 +337,6 @@ const cuti = {
             toast.info('Pengajuan cuti ditolak!');
         } catch (error) {
             console.error('Error rejecting leave:', error);
-        }
-    },
-
-    async approveLeave(id) {
-        if (!auth.isAdmin()) {
-            toast.error('Anda tidak memiliki akses!');
-            return;
-        }
-
-        try {
-            await api.approveLeave(id);
-            const leave = this.leaves.find(l => l.id === id);
-            if (leave) { 
-                leave.status = 'approved'; 
-                // Refresh profile to get updated quota if admin is also testing their own
-                auth.refreshProfile();
-            }
-            this.renderLeaveList();
-            this.updateStats();
-            toast.success('Pengajuan cuti disetujui!');
-        } catch (error) {
-            console.error('Error approving leave:', error);
         }
     }
 };

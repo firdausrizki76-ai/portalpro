@@ -79,6 +79,7 @@ const router = {
         const titles = {
             dashboard: 'Dashboard',
             absensi: 'Absensi',
+            izin: 'Izin WFH/WFA',
             jurnal: 'Jurnal Kerja',
             cuti: 'Pengajuan Cuti',
             'attendance-reports': 'Rekap Absensi',

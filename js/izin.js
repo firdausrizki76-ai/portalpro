@@ -1,25 +1,24 @@
 /**
- * Portal Karyawan - Izin/Sakit
- * Leave permission functionality with face recognition
+ * Portal Karyawan - Izin WFH/WFA/Dinas
+ * Remote work permission request with token-based approval
  */
 
 const izin = {
     izinData: [],
-    currentFile: null,
-    verifiedData: null,
     filterStatus: '',
 
     async init() {
         try {
-            // Priority 1: Initialize form and UI elements immediately so page is responsive
+            // Priority 1: Initialize form and UI elements immediately
             this.initForm();
             this.initFilters();
-            
-            // Set default date to today
-            const dateInput = document.getElementById('izin-date');
-            if (dateInput) {
-                dateInput.valueAsDate = new Date();
-            }
+
+            // Set default dates
+            const startDate = document.getElementById('izin-start-date');
+            const endDate = document.getElementById('izin-end-date');
+            if (startDate) startDate.valueAsDate = new Date();
+            if (endDate) endDate.valueAsDate = new Date();
+            this.calculateDuration();
 
             // Render with cached data if available
             this.renderIzinList();
@@ -31,9 +30,9 @@ const izin = {
             // Final render with fresh data
             this.renderIzinList();
             this.updateStats();
+            this.loadActivePermits();
         } catch (error) {
             console.error('Izin init error:', error);
-            // toast.error('Gagal memuat data izin');
         } finally {
             if (typeof loader !== 'undefined') loader.hide();
         }
@@ -79,63 +78,60 @@ const izin = {
 
     initForm() {
         const form = document.getElementById('izin-form');
-        const verifyBtn = document.getElementById('btn-verify-izin');
-        const fileInput = document.getElementById('izin-document');
-        const fileUpload = document.getElementById('file-upload');
-
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                this.startVerification();
+                this.submitIzin();
             });
         }
 
-        if (verifyBtn) {
-            verifyBtn.addEventListener('click', () => this.startVerification());
-        }
-
-        // File upload handling
-        if (fileUpload && fileInput) {
-            fileUpload.addEventListener('click', () => fileInput.click());
-
-            fileUpload.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                fileUpload.classList.add('dragover');
-            });
-
-            fileUpload.addEventListener('dragleave', () => {
-                fileUpload.classList.remove('dragover');
-            });
-
-            fileUpload.addEventListener('drop', (e) => {
-                e.preventDefault();
-                fileUpload.classList.remove('dragover');
-                if (e.dataTransfer.files.length) {
-                    this.handleFile(e.dataTransfer.files[0]);
+        // Auto-calculate duration when dates change
+        const startDate = document.getElementById('izin-start-date');
+        const endDate = document.getElementById('izin-end-date');
+        
+        if (startDate) {
+            startDate.addEventListener('change', () => {
+                // Ensure end date is >= start date
+                if (endDate && startDate.value && (!endDate.value || endDate.value < startDate.value)) {
+                    endDate.value = startDate.value;
                 }
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length) {
-                    this.handleFile(e.target.files[0]);
-                }
+                this.calculateDuration();
             });
         }
-
-        // Remove file button
-        const removeBtn = document.querySelector('.btn-remove-file');
-        if (removeBtn) {
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.removeFile();
+        if (endDate) {
+            endDate.addEventListener('change', () => {
+                // Ensure end date is >= start date
+                if (startDate && endDate.value && startDate.value && endDate.value < startDate.value) {
+                    endDate.value = startDate.value;
+                }
+                this.calculateDuration();
             });
         }
 
         this.initFilters();
     },
 
+    calculateDuration() {
+        const startDate = document.getElementById('izin-start-date')?.value;
+        const endDate = document.getElementById('izin-end-date')?.value;
+        const durationDisplay = document.getElementById('izin-duration-display');
+        const durationHidden = document.getElementById('izin-duration');
+
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const diffTime = end.getTime() - start.getTime();
+            const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            
+            if (durationDisplay) durationDisplay.value = `${diffDays} hari`;
+            if (durationHidden) durationHidden.value = diffDays;
+        } else {
+            if (durationDisplay) durationDisplay.value = '-- hari';
+            if (durationHidden) durationHidden.value = '1';
+        }
+    },
+
     initFilters() {
-        // Status filter for izin history
         const statusFilter = document.querySelector('.izin-history-card .select-filter');
         if (statusFilter) {
             statusFilter.addEventListener('change', (e) => {
@@ -145,122 +141,117 @@ const izin = {
         }
     },
 
-    handleFile(file) {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-
-        if (file.size > maxSize) {
-            toast.error('File terlalu besar. Maksimum 5MB');
-            return;
-        }
-
-        if (!allowedTypes.includes(file.type)) {
-            toast.error('Format file tidak didukung. Gunakan PDF, JPG, atau PNG');
-            return;
-        }
-
-        this.currentFile = file;
-
-        // Update UI
-        const uploadArea = document.querySelector('.upload-area');
-        const filePreview = document.getElementById('file-preview');
-        const filename = filePreview?.querySelector('.filename');
-
-        if (uploadArea) uploadArea.style.display = 'none';
-        if (filePreview) filePreview.style.display = 'flex';
-        if (filename) filename.textContent = file.name;
-    },
-
-    removeFile() {
-        this.currentFile = null;
-
-        const uploadArea = document.querySelector('.upload-area');
-        const filePreview = document.getElementById('file-preview');
-        const fileInput = document.getElementById('izin-document');
-
-        if (uploadArea) uploadArea.style.display = 'block';
-        if (filePreview) filePreview.style.display = 'none';
-        if (fileInput) fileInput.value = '';
-    },
-
-    startVerification() {
-        // Validate form first
+    async submitIzin() {
         const type = document.getElementById('izin-type')?.value;
-        const date = document.getElementById('izin-date')?.value;
+        const startDate = document.getElementById('izin-start-date')?.value;
+        const endDate = document.getElementById('izin-end-date')?.value;
         const duration = document.getElementById('izin-duration')?.value;
         const reason = document.getElementById('izin-reason')?.value;
 
-        if (!type || !date || !duration || !reason) {
+        if (!type || !startDate || !endDate || !reason) {
             toast.error('Harap isi semua field yang wajib diisi!');
             return;
         }
 
-        // Save form data temporarily
-        this.tempFormData = { type, date, duration, reason };
-        storage.set('temp_izin_form', this.tempFormData);
-
-        // Navigate to face recognition
-        router.navigate('face-recognition');
-
-        // Initialize with izin action
-        setTimeout(() => {
-            if (window.faceRecognition) {
-                window.faceRecognition.init('izin');
-            }
-        }, 100);
-    },
-
-    async submitWithVerification(verificationData) {
-        const formData = storage.get('temp_izin_form');
-        if (!formData) {
-            toast.error('Data form tidak ditemukan');
-            return;
-        }
-
         const typeLabels = {
-            'sick': 'Sakit',
-            'permission': 'Izin Penting',
-            'emergency': 'Keadaan Darurat'
+            'wfh': 'WFH (Work From Home)',
+            'wfa': 'WFA (Work From Anywhere)',
+            'dinas': 'Perjalanan Dinas'
         };
 
         const currentUser = auth.getCurrentUser();
 
         const izinEntry = {
             userId: currentUser?.id || 'demo-user',
-            type: formData.type,
-            typeLabel: typeLabels[formData.type] || formData.type,
-            date: formData.date,
-            duration: parseInt(formData.duration),
-            reason: formData.reason,
-            hasAttachment: !!this.currentFile,
-            verificationPhoto: verificationData.photo || '',
-            verificationLocation: verificationData.location || '',
-            verificationTimestamp: verificationData.timestamp || ''
+            employeeName: currentUser?.name || '',
+            nip: currentUser?.nip || '',
+            jabatan: currentUser?.position || '',
+            type: type,
+            typeLabel: typeLabels[type] || type,
+            startDate: startDate,
+            endDate: endDate,
+            duration: parseInt(duration),
+            reason: reason,
+            status: 'pending'
         };
+
+        // Disable submit button
+        const submitBtn = document.querySelector('#izin-form button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Mengirim...</span>';
+        }
 
         try {
             const result = await api.submitIzin(izinEntry);
             if (result.success) {
                 this.izinData.unshift(result.data);
+                toast.success('Pengajuan berhasil dikirim! Menunggu persetujuan admin.');
+
+                // Notify admin
+                const recipientId = 'admin';
+                notifications.add(recipientId, currentUser.name, `mengajukan izin ${typeLabels[type]}`, 'info');
+
+                // Reset form
+                const form = document.getElementById('izin-form');
+                if (form) form.reset();
+                const startEl = document.getElementById('izin-start-date');
+                const endEl = document.getElementById('izin-end-date');
+                if (startEl) startEl.valueAsDate = new Date();
+                if (endEl) endEl.valueAsDate = new Date();
+                this.calculateDuration();
+
+                this.renderIzinList();
+                this.updateStats();
+            } else {
+                toast.error(result.error || 'Gagal mengirim pengajuan');
             }
         } catch (error) {
             console.error('Error submitting izin:', error);
+            toast.error('Terjadi kesalahan saat mengirim pengajuan');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> <span>Ajukan Izin</span>';
+            }
         }
+    },
 
-        // Clear temp data
-        storage.remove('temp_izin_form');
-        storage.remove('temp_attendance');
-        this.currentFile = null;
+    // This is still needed for face-recognition flow compatibility (izin action)
+    async submitWithVerification(verificationData) {
+        // For WFH/WFA, we don't use face verification for the request itself
+        // Just submit the form data directly
+        await this.submitIzin();
+    },
 
-        toast.success('Pengajuan izin berhasil dikirim!');
+    async loadActivePermits() {
+        const currentUser = auth.getCurrentUser();
+        if (!currentUser || auth.isAdmin()) return;
 
-        // Reset form
-        const form = document.getElementById('izin-form');
-        if (form) form.reset();
-        this.removeFile();
+        try {
+            const result = await api.getActiveWfhPermit(currentUser.id);
+            if (result.success && result.data) {
+                const { unlocked, permits } = result.data;
+                const statusEl = document.getElementById('active-permit-status');
+                const listEl = document.getElementById('active-permit-list');
 
-        this.renderIzinList();
-        this.updateStats();
+                const activeTypes = [];
+                if (unlocked.wfh) activeTypes.push('WFH');
+                if (unlocked.wfa) activeTypes.push('WFA');
+                if (unlocked.dinas) activeTypes.push('Perjalanan Dinas');
+
+                if (activeTypes.length > 0 && statusEl && listEl) {
+                    statusEl.style.display = 'block';
+                    listEl.innerHTML = activeTypes.map(t => 
+                        `<div style="padding:4px 0;"><i class="fas fa-check-circle" style="margin-right:6px;"></i>${t}</div>`
+                    ).join('');
+                } else if (statusEl) {
+                    statusEl.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load active permits:', e);
+        }
     },
 
     updateStats() {
@@ -281,7 +272,6 @@ const izin = {
         const list = document.getElementById('izin-list');
         if (!list) return;
 
-        // Filter izin data
         let filteredData = this.izinData.filter(i => {
             if (!this.filterStatus) return true;
             if (this.filterStatus === 'menunggu') return i.status === 'pending';
@@ -294,50 +284,50 @@ const izin = {
             list.innerHTML = `
                 <div class="empty-state" style="text-align: center; padding: var(--spacing-xl); color: var(--text-muted);">
                     <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: var(--spacing);"></i>
-                    <p>${this.filterStatus ? 'Tidak ada pengajuan yang sesuai' : 'Belum ada pengajuan izin'}</p>
+                    <p>${this.filterStatus ? 'Tidak ada pengajuan yang sesuai' : 'Belum ada pengajuan izin WFH/WFA'}</p>
                 </div>
             `;
             return;
         }
 
-        // Sort by date descending
         const sortedData = filteredData.sort((a, b) =>
             new Date(b.appliedAt) - new Date(a.appliedAt)
         );
 
-        list.innerHTML = sortedData.map(izin => {
-            const date = new Date(izin.date);
-            const dateFormatted = dateTime.formatDate(date, 'short');
+        list.innerHTML = sortedData.map(item => {
+            const startDate = item.startDate || item.date || '';
+            const endDate = item.endDate || startDate;
+            const startFormatted = startDate ? dateTime.formatDate(new Date(startDate), 'short') : '-';
+            const endFormatted = endDate ? dateTime.formatDate(new Date(endDate), 'short') : '-';
 
             const icons = {
+                'wfh': 'fa-home',
+                'wfa': 'fa-globe',
+                'dinas': 'fa-briefcase',
                 'sick': 'fa-heartbeat',
                 'permission': 'fa-hand-paper',
                 'emergency': 'fa-exclamation-triangle'
             };
 
+            const typeLabel = item.typeLabel || item.type || '-';
+
             return `
                 <div class="izin-item">
-                    <div class="izin-icon ${izin.type}">
-                        <i class="fas ${icons[izin.type] || 'fa-file'}"></i>
+                    <div class="izin-icon ${item.type}">
+                        <i class="fas ${icons[item.type] || 'fa-file'}"></i>
                     </div>
                     <div class="izin-content">
                         <div class="izin-header-row">
-                            <h4 class="izin-type">${izin.typeLabel}</h4>
-                            <span class="izin-status ${izin.status}">${this.getStatusLabel(izin.status)}</span>
+                            <h4 class="izin-type">${typeLabel}</h4>
+                            <span class="izin-status ${item.status}">${this.getStatusLabel(item.status)}</span>
                         </div>
                         <div class="izin-details">
                             <span class="izin-date">
                                 <i class="fas fa-calendar"></i>
-                                ${dateFormatted} (${izin.duration} hari)
+                                ${startFormatted} - ${endFormatted} (${item.duration || 1} hari)
                             </span>
                         </div>
-                        <p class="izin-reason">${izin.reason}</p>
-                        ${izin.hasAttachment ? `
-                            <span class="izin-attachment">
-                                <i class="fas fa-paperclip"></i>
-                                Lampiran tersedia
-                            </span>
-                        ` : ''}
+                        <p class="izin-reason">${item.reason || '-'}</p>
                     </div>
                 </div>
             `;
@@ -348,7 +338,8 @@ const izin = {
         const labels = {
             'pending': 'Menunggu',
             'approved': 'Disetujui',
-            'rejected': 'Ditolak'
+            'rejected': 'Ditolak',
+            'batal': 'Dibatalkan'
         };
         return labels[status] || status;
     },
@@ -359,8 +350,8 @@ const izin = {
 
         try {
             await api.approveIzin(id);
-            const izin = this.izinData.find(i => i.id === id);
-            if (izin) { izin.status = 'approved'; }
+            const item = this.izinData.find(i => String(i.id) === String(id));
+            if (item) { item.status = 'approved'; }
             this.renderIzinList();
             this.updateStats();
             toast.success('Pengajuan izin disetujui');
@@ -374,8 +365,8 @@ const izin = {
 
         try {
             await api.rejectIzin(id);
-            const izin = this.izinData.find(i => i.id === id);
-            if (izin) { izin.status = 'rejected'; }
+            const item = this.izinData.find(i => String(i.id) === String(id));
+            if (item) { item.status = 'rejected'; }
             this.renderIzinList();
             this.updateStats();
             toast.info('Pengajuan izin ditolak');

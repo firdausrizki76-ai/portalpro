@@ -66,8 +66,6 @@
 .stat-icon.late { background: linear-gradient(135deg, #003399 0%, #3366CC 100%); }
 .stat-icon.on-leave { background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); }
 .stat-icon.pending { background: linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%); }
-.stat-icon.no-clock-in { background: linear-gradient(135deg, #F59E0B 0%, #fbbf24 100%); }
-.stat-icon.no-clock-out { background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%); }
 
 .stat-details {
     display: flex;
@@ -281,7 +279,6 @@
     gap: var(--spacing-xs);
     flex: 1;
     min-width: 200px;
-    position: relative; /* Fixed: Ensure icon is positioned relative to the group */
 }
 
 .filter-group label {
@@ -303,15 +300,7 @@
 .filter-group i {
     position: absolute;
     left: var(--spacing);
-    top: 50%; /* Center vertically if no label */
-    transform: translateY(-50%);
     color: var(--text-muted);
-    pointer-events: none;
-}
-
-/* Adjust input padding when icon is present */
-.filter-group:has(i) input {
-    padding-left: calc(var(--spacing) * 2.5);
 }
 
 /* Tables */
@@ -724,92 +713,4 @@
     max-height: 70vh;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
-}
-
-/* ========================================================= */
-/* Mobile Overrides for Admin Portal (Reports & Shift)         */
-/* ========================================================= */
-
-@media (max-width: 768px) {
-    /* Mobile Report Cards Styling (Rekap Absensi, Cuti, Jurnal) */
-    .report-card {
-        background: var(--bg-secondary, #ffffff);
-        border: 1px solid var(--border-color, #e5e7eb);
-        border-radius: var(--border-radius, 12px);
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1));
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .report-card .btn-full {
-        width: 100%;
-        margin-top: 8px;
-    }
-
-    /* Fix Shift Schedule touching the screen edge on mobile */
-    .shift-schedule-table-wrapper {
-        margin: 0 -8px; /* Offset the parent padding if needed */
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-        width: calc(100% + 16px);
-    }
-    
-    .shift-schedule-container {
-        padding-left: 8px;
-        padding-right: 8px;
-    }
-    
-    /* Extra breathing room for admin cards list wrappers */
-    #attendance-mobile-cards,
-    #jurnal-mobile-cards,
-    #leave-mobile-cards {
-        padding: 0 4px;
-        margin-top: 12px;
-    }
-    
-    .report-table th, 
-    .report-table td {
-        padding: 10px 6px;
-        font-size: 13px;
-    }
-
-    .jurnal-detail-view {
-        padding: 16px;
-    }
-}
-
-/* ========================================================= */
-/* Print overrides for Modals (Cetak Rincian Absensi)        */
-/* ========================================================= */
-@media print {
-    #app-container {
-        display: none !important;
-    }
-    #global-modal {
-        position: relative !important;
-        background: none !important;
-    }
-    .modal-overlay {
-        background: none !important;
-        position: static !important;
-        padding: 0 !important;
-        align-items: flex-start !important;
-    }
-    .modal-container {
-        box-shadow: none !important;
-        max-height: none !important;
-        width: 100% !important;
-        max-width: none !important;
-        border: none !important;
-        border-radius: 0 !important;
-    }
-    /* Hide the print/download buttons when printing */
-    .modal-container .btn-action,
-    .modal-container button,
-    .btn-close-modal {
-        display: none !important;
-    }
 }

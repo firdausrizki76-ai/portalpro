@@ -15,6 +15,8 @@ const absensi = {
         if (this.initialized) {
             // Background refresh without showing loader
             this.loadTodayAttendance().then(() => this.updateUI());
+            // Re-populate location dropdown to check for new permits
+            this.populateLocationDropdown();
             return;
         }
 
@@ -24,7 +26,6 @@ const absensi = {
             // PRIORITY 1: Initialize visual elements and render with cache immediately
             this.initLiveClock();
             this.initButtons();
-            this.populateLocationDropdown();
             
             // Initial render with cached/default data
             this.updateUI(); 
@@ -33,15 +34,16 @@ const absensi = {
             // PRIORITY 2: Hide loader as soon as the first render is visible
             if (typeof loader !== 'undefined') loader.hide();
 
-            // PRIORITY 3: Background load fresh data
+            // PRIORITY 3: Background load fresh data + populate location dropdown
             await Promise.allSettled([
                 this.loadTodayAttendance(),
-                this.loadAttendanceHistory()
+                this.loadAttendanceHistory(),
+                this.populateLocationDropdown()
             ]);
             
             // Final render with fresh data
             this.updateUI();
-            this.renderTimeline(); // Re-render timeline with fresh data
+            this.renderTimeline();
             
             this.initialized = true;
         } catch (error) {
@@ -60,56 +62,82 @@ const absensi = {
         '5': 'Kelurahan Gandul'
     },
 
-    populateLocationDropdown() {
+    // Cache for active WFH permits
+    _activePermits: null,
+
+    async populateLocationDropdown() {
         const selectEl = document.getElementById('absensi-select-location');
         if (!selectEl) return;
 
         const currentUser = auth.getCurrentUser();
-        const userDepartment = (currentUser?.department || '').trim();
+        // Use lokasiKerja first, fallback to department
+        const userLocation = (currentUser?.lokasiKerja || currentUser?.department || '').trim();
 
         // Start with empty default
         let html = '<option value="">-- Pilih Lokasi Absen --</option>';
 
-        // Find the matching location for this employee's department
+        // Find the matching location for this employee
         let hasAssignedLocation = false;
         Object.entries(this.locationMap).forEach(([id, name]) => {
-            if (userDepartment && name.toLowerCase() === userDepartment.toLowerCase()) {
+            if (userLocation && name.toLowerCase() === userLocation.toLowerCase()) {
                 html += `<option value="${id}">${name}</option>`;
                 hasAssignedLocation = true;
             }
         });
 
-        // If no match found by exact name, try partial match (department contains location name or vice versa)
-        if (!hasAssignedLocation && userDepartment) {
+        // If no match found by exact name, try partial match
+        if (!hasAssignedLocation && userLocation) {
             Object.entries(this.locationMap).forEach(([id, name]) => {
-                if (name.toLowerCase().includes(userDepartment.toLowerCase()) ||
-                    userDepartment.toLowerCase().includes(name.toLowerCase())) {
+                if (name.toLowerCase().includes(userLocation.toLowerCase()) ||
+                    userLocation.toLowerCase().includes(name.toLowerCase())) {
                     html += `<option value="${id}">${name}</option>`;
                     hasAssignedLocation = true;
                 }
             });
         }
 
-        // Always add WFH / WFA / Perjalanan Dinas options (universal - available to everyone)
-        html += '<option value="wfh">WFH (Work From Home)</option>';
-        html += '<option value="wfa">WFA (Work From Anywhere)</option>';
-        html += '<option value="dinas">Perjalanan Dinas</option>';
+        // Fetch active WFH/WFA/Dinas permits for this user
+        let unlocked = { wfh: false, wfa: false, dinas: false };
+        try {
+            const userId = currentUser?.id || 'demo-user';
+            const result = await api.getActiveWfhPermit(userId);
+            if (result.success && result.data) {
+                unlocked = result.data.unlocked || unlocked;
+                this._activePermits = result.data;
+            }
+        } catch (e) {
+            console.warn('Failed to check WFH permits:', e);
+        }
+
+        // Add WFH / WFA / Dinas options - LOCKED unless approved
+        const remoteOptions = [
+            { value: 'wfh', label: 'WFH (Work From Home)', key: 'wfh' },
+            { value: 'wfa', label: 'WFA (Work From Anywhere)', key: 'wfa' },
+            { value: 'dinas', label: 'Perjalanan Dinas', key: 'dinas' }
+        ];
+
+        remoteOptions.forEach(opt => {
+            if (unlocked[opt.key]) {
+                html += `<option value="${opt.value}">✅ ${opt.label}</option>`;
+            } else {
+                html += `<option value="${opt.value}" disabled style="color:#999;">🔒 ${opt.label} (Perlu izin)</option>`;
+            }
+        });
 
         selectEl.innerHTML = html;
 
-        // If employee has only one assigned location, auto-select it
+        // If employee has only one assigned office location, auto-select it
         if (hasAssignedLocation) {
             const assignedOptions = Array.from(selectEl.options).filter(opt => 
                 opt.value && opt.value !== '' && !['wfh', 'wfa', 'dinas'].includes(opt.value)
             );
             if (assignedOptions.length === 1) {
                 selectEl.value = assignedOptions[0].value;
-                // Trigger change event to enable clock-in button
                 selectEl.dispatchEvent(new Event('change'));
             }
         }
 
-        console.log('Location dropdown populated for department:', userDepartment, '| Has assigned:', hasAssignedLocation);
+        console.log('Location dropdown populated | Location:', userLocation, '| Unlocked:', unlocked);
     },
 
     async loadTodayAttendance() {

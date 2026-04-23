@@ -16,11 +16,9 @@
 
 .login-left {
     flex: 1;
-    background-color: var(--color-white);
-    background-image: url('../picture/backgroundapp.png?v=2');
+    background: url('../picture/backgroundapp.png');
     background-size: cover;
     background-position: center;
-    background-repeat: no-repeat;
     display: flex;
     flex-direction: column; /* Stack logo and text vertically */
     align-items: center;

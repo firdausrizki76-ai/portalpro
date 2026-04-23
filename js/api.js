@@ -7,53 +7,38 @@
  * - Jika API_BASE_URL diisi → semua request dikirim ke Google Apps Script
  */
 
-const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzxVpRbd0BJNmv4TC5ZlhKs2s-d9J_VdwDc8vyIpHIz_yKY0UlVAZHxhuDcNkkXw4-H/exec'; // Kosongkan untuk mode localStorage, isi dengan URL Web App GAS
+const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwWfN84WXxHN2OL-35JQ2t0IqVJF9fUVvdqoRWJ-JkVqrw44VWb4LnYzEQsWyIppiOD/exec'; // Kosongkan untuk mode localStorage, isi dengan URL Web App GAS
 
 const api = {
 
     // ========== CORE REQUEST ==========
 
-    async request(action, data = {}, retries = 3) {
+    async request(action, data = {}) {
+        // Jika API_BASE_URL kosong, gunakan localStorage fallback
         if (!API_BASE_URL) {
             return this._localFallback(action, data);
         }
 
-        let lastError = null;
-        for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action, ...data })
+            });
+
+            const text = await response.text();
             try {
-                const response = await fetch(API_BASE_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ action, ...data })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const text = await response.text();
-                // Ensure text is valid JSON before parsing
-                try {
-                    return JSON.parse(text);
-                } catch (jsonErr) {
-                    throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
-                }
-            } catch (error) {
-                lastError = error;
-                console.warn(`API attempt ${i+1} failed for ${action}:`, error);
-                
-                if (i < retries - 1) {
-                    // Backoff: 1s, 3s, 5s...
-                    const delay = (i === 0) ? 1000 : (i === 1 ? 3000 : 5000);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    console.log(`Retrying ${action} after ${delay}ms...`);
-                }
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse response:', text.substring(0, 200));
+                return { success: false, error: 'Invalid response from server' };
             }
+        } catch (error) {
+            console.error('API Error:', error);
+            // Fallback to localStorage on network error
+            return this._localFallback(action, data);
         }
-
-        console.error(`API Final Failure for ${action}:`, lastError);
-        return this._localFallback(action, data);
     },
 
     // ========== AUTH ==========
@@ -286,10 +271,28 @@ const api = {
     async getAllIzin(month) {
         if (!API_BASE_URL) {
             let all = storage.get('izin', []);
-            if (month) all = all.filter(i => i.date && i.date.startsWith(month));
+            if (month) all = all.filter(i => (i.startDate && i.startDate.startsWith(month)) || (i.date && i.date.startsWith(month)));
             return { success: true, data: all };
         }
         return this.request('getAllIzin', { month });
+    },
+
+    async getActiveWfhPermit(userId) {
+        if (!API_BASE_URL) {
+            const today = dateTime.getLocalDate();
+            const all = storage.get('izin', []);
+            const active = all.filter(i => {
+                if (i.status !== 'approved') return false;
+                if (!['wfh', 'wfa', 'dinas'].includes(i.type)) return false;
+                const start = i.startDate || i.date || '';
+                const end = i.endDate || start;
+                return today >= start && today <= end;
+            });
+            const unlocked = { wfh: false, wfa: false, dinas: false };
+            active.forEach(p => { if (unlocked.hasOwnProperty(p.type)) unlocked[p.type] = true; });
+            return { success: true, data: { unlocked, permits: active } };
+        }
+        return this.request('getActiveWfhPermit', { userId });
     },
 
     // ========== EMPLOYEES ==========
@@ -473,12 +476,12 @@ window.normalizeImageUrl = function (url) {
     if (url.startsWith('data:image')) return url;
     
     // Detect Google Drive URLs and convert to direct link format
-    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=)|docs\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=))([a-zA-Z0-9_-]{25,})/;
+    const driveRegex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=)|docs\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[a-zA-Z0-9=&]*&)?id=))([a-zA-Z0-9_-]+)/;
     const match = url.match(driveRegex);
     
     if (match && match[1]) {
-        // Use the thumbnail format which is more stable for <img> tags
-        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
+        // Returns the most reliable direct view format for Google Drive
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
     }
     
     return url;

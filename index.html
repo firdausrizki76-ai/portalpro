@@ -212,8 +212,8 @@
                         </li>
                         <li class="nav-item" data-page="izin">
                             <a href="#" class="nav-link">
-                                <i class="fas fa-user-clock"></i>
-                                <span>Izin / Sakit</span>
+                                <i class="fas fa-laptop-house"></i>
+                                <span>Izin WFH/WFA</span>
                             </a>
                         </li>
                         <li class="nav-item" data-page="jurnal">
@@ -726,83 +726,48 @@
                     </div>
                 </div>
 
-                <!-- Izin/Sakit Page -->
+                <!-- Izin WFH/WFA Page -->
                 <div class="page" id="page-izin">
                     <div class="izin-container">
                         <div class="izin-header">
                             <div class="izin-info">
-                                <h2>Pengajuan Izin / Sakit</h2>
-                                <p>Ajukan izin tidak masuk kerja dengan verifikasi wajah</p>
+                                <h2>Pengajuan Izin WFH / WFA / Dinas</h2>
+                                <p>Ajukan izin kerja remote atau perjalanan dinas untuk membuka akses absensi</p>
                             </div>
                         </div>
                         <div class="izin-grid">
                             <div class="izin-form-card">
                                 <div class="card-header">
-                                    <h3>Form Pengajuan Izin</h3>
+                                    <h3>Form Pengajuan</h3>
                                 </div>
                                 <form id="izin-form" class="izin-form">
-                                    <div class="form-row two-col">
-                                        <div class="form-group">
-                                            <label for="izin-type">Jenis Izin</label>
-                                            <select id="izin-type" required>
-                                                <option value="">Pilih Jenis Izin</option>
-                                                <option value="sick">Sakit</option>
-                                                <option value="permission">Izin Penting</option>
-                                                <option value="emergency">Keadaan Darurat</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="izin-nip">NIP</label>
-                                            <input type="text" id="izin-nip" readonly placeholder="-">
-                                        </div>
+                                    <div class="form-group">
+                                        <label for="izin-type">Jenis Pengajuan</label>
+                                        <select id="izin-type" required>
+                                            <option value="">Pilih Jenis</option>
+                                            <option value="wfh">WFH (Work From Home)</option>
+                                            <option value="wfa">WFA (Work From Anywhere)</option>
+                                            <option value="dinas">Perjalanan Dinas</option>
+                                        </select>
                                     </div>
                                     <div class="form-row two-col">
                                         <div class="form-group">
-                                            <label for="izin-jabatan">Jabatan</label>
-                                            <input type="text" id="izin-jabatan" readonly placeholder="-">
+                                            <label for="izin-start-date">Tanggal Mulai</label>
+                                            <input type="date" id="izin-start-date" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="izin-masa-kerja">Masa Kerja</label>
-                                            <input type="text" id="izin-masa-kerja" readonly placeholder="-">
-                                        </div>
-                                    </div>
-                                    <div class="form-row two-col">
-                                        <div class="form-group">
-                                            <label for="izin-date">Tanggal</label>
-                                            <input type="date" id="izin-date" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="izin-duration">Durasi (hari)</label>
-                                            <input type="number" id="izin-duration" min="1" max="30" value="1" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-row two-col">
-                                        <div class="form-group">
-                                            <label for="izin-alamat">Alamat Selama Izin</label>
-                                            <textarea id="izin-alamat" rows="2" placeholder="Alamat lengkap..." required></textarea>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="izin-telp">No. Telepon</label>
-                                            <input type="text" id="izin-telp" placeholder="Contoh: 0812..." required>
+                                            <label for="izin-end-date">Tanggal Selesai</label>
+                                            <input type="date" id="izin-end-date" required>
                                         </div>
                                     </div>
                                     <div class="form-group">
-                                        <label for="izin-reason">Alasan</label>
-                                        <textarea id="izin-reason" rows="3" placeholder="Jelaskan alasan izin Anda..." required></textarea>
+                                        <label>Durasi</label>
+                                        <input type="text" id="izin-duration-display" readonly placeholder="-- hari" style="background:#f1f5f9;cursor:not-allowed;">
+                                        <input type="hidden" id="izin-duration" value="1">
                                     </div>
                                     <div class="form-group">
-                                        <label>Surat Keterangan (Opsional)</label>
-                                        <div class="file-upload" id="file-upload">
-                                            <input type="file" id="izin-document" accept=".pdf,.jpg,.jpeg,.png" hidden>
-                                            <div class="upload-area"><i class="fas fa-cloud-upload-alt"></i>
-                                                <p>Klik atau drag file ke sini</p><span class="file-types">PDF, JPG, PNG
-                                                    (Max 5MB)</span>
-                                            </div>
-                                            <div class="file-preview" id="file-preview" style="display: none;"><i
-                                                    class="fas fa-file"></i><span class="filename"></span><button
-                                                    type="button" class="btn-remove-file"><i
-                                                        class="fas fa-times"></i></button></div>
-                                        </div>
+                                        <label for="izin-reason">Alasan / Keterangan</label>
+                                        <textarea id="izin-reason" rows="3" placeholder="Jelaskan alasan pengajuan Anda..." required></textarea>
                                     </div>
                                     <div class="form-actions">
                                         <button type="submit" class="btn-primary">
@@ -814,7 +779,7 @@
                             </div>
                             <div class="izin-summary-card">
                                 <div class="card-header">
-                                    <h3>Ringkasan Izin</h3>
+                                    <h3>Status Pengajuan</h3>
                                 </div>
                                 <div class="izin-stats">
                                     <div class="izin-stat-item">
@@ -836,11 +801,15 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div id="active-permit-status" style="margin-top:16px;padding:12px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;display:none;">
+                                    <h4 style="font-size:13px;color:#166534;margin-bottom:8px;"><i class="fas fa-unlock" style="margin-right:6px;"></i>Izin Aktif Hari Ini</h4>
+                                    <div id="active-permit-list" style="font-size:13px;color:#15803d;"></div>
+                                </div>
                             </div>
                         </div>
                         <div class="izin-history-card">
                             <div class="card-header">
-                                <h3>Riwayat Pengajuan Izin</h3>
+                                <h3>Riwayat Pengajuan</h3>
                             </div>
                             <div class="izin-list" id="izin-list"></div>
                         </div>
@@ -1735,7 +1704,7 @@
                 <i class="fas fa-clock"></i><span>Absen</span>
             </a>
             <a href="#" class="bottom-nav-item" data-page="izin" data-role="employee">
-                <i class="fas fa-user-clock"></i><span>Izin</span>
+                <i class="fas fa-laptop-house"></i><span>WFH/WFA</span>
             </a>
             <a href="#" class="bottom-nav-item" data-page="jurnal" data-role="employee">
                 <i class="fas fa-book"></i><span>Laporan Kinerja</span>
@@ -1831,9 +1800,22 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="emp-join-date">Tanggal Bergabung</label>
-                    <input type="date" id="emp-join-date" required>
+                <div class="form-row two-col">
+                    <div class="form-group">
+                        <label for="emp-lokasi-kerja">Lokasi Kerja</label>
+                        <select id="emp-lokasi-kerja">
+                            <option value="">-- Pilih Lokasi --</option>
+                            <option value="Kecamatan Cinere">Kecamatan Cinere</option>
+                            <option value="Kelurahan Cinere">Kelurahan Cinere</option>
+                            <option value="Kelurahan Pangkalan Jati">Kelurahan Pangkalan Jati</option>
+                            <option value="Kelurahan Pangkalan Jati Baru">Kelurahan Pangkalan Jati Baru</option>
+                            <option value="Kelurahan Gandul">Kelurahan Gandul</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp-join-date">Tanggal Bergabung</label>
+                        <input type="date" id="emp-join-date" required>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" id="btn-cancel-add">Batal</button>
