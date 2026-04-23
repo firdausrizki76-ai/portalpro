@@ -118,7 +118,80 @@ const izin = {
             });
         }
 
+        this.initMapPicker();
         this.initFilters();
+    },
+
+    map: null,
+    marker: null,
+
+    initMapPicker() {
+        const typeSelect = document.getElementById('izin-type');
+        const container = document.getElementById('izin-location-container');
+        if (!typeSelect || !container) return;
+
+        typeSelect.addEventListener('change', () => {
+            const val = typeSelect.value;
+            // Show for WFA and Dinas, and optionally WFH if needed
+            if (val === 'wfa' || val === 'dinas' || val === 'wfh') {
+                container.style.display = 'block';
+                this.refreshMap();
+            } else {
+                container.style.display = 'none';
+            }
+        });
+
+        // Default location (Depok area as requested previously)
+        const defaultLat = -6.3400;
+        const defaultLng = 106.7700;
+
+        try {
+            if (!this.map && document.getElementById('izin-map-picker')) {
+                this.map = L.map('izin-map-picker').setView([defaultLat, defaultLng], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(this.map);
+
+                this.marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(this.map);
+
+                this.marker.on('dragend', () => {
+                    const pos = this.marker.getLatLng();
+                    this.updateAddressFromCoords(pos.lat, pos.lng);
+                });
+
+                this.map.on('click', (e) => {
+                    this.marker.setLatLng(e.latlng);
+                    this.updateAddressFromCoords(e.latlng.lat, e.latlng.lng);
+                });
+            }
+        } catch (e) {
+            console.error('Error initializing map:', e);
+        }
+    },
+
+    refreshMap() {
+        if (this.map) {
+            setTimeout(() => {
+                this.map.invalidateSize();
+            }, 100);
+        }
+    },
+
+    async updateAddressFromCoords(lat, lng) {
+        const addressInput = document.getElementById('izin-address');
+        if (addressInput) {
+            addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)} (Mencari alamat...)`;
+            try {
+                // Use nominatim for reverse geocoding
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
+                if (data.display_name) {
+                    addressInput.value = data.display_name;
+                }
+            } catch (e) {
+                addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            }
+        }
     },
 
     calculateDuration() {
@@ -157,9 +230,16 @@ const izin = {
         const endDate = document.getElementById('izin-end-date')?.value;
         const duration = document.getElementById('izin-duration')?.value;
         const reason = document.getElementById('izin-reason')?.value;
+        const address = document.getElementById('izin-address')?.value || '';
 
         if (!type || !startDate || !endDate || !reason) {
             toast.error('Harap isi semua field yang wajib diisi!');
+            return;
+        }
+
+        // Validate address for WFA/Dinas
+        if ((type === 'wfa' || type === 'dinas' || type === 'wfh') && !address) {
+            toast.error('Harap tentukan lokasi/alamat pelaksanaan!');
             return;
         }
 
@@ -182,6 +262,7 @@ const izin = {
             endDate: endDate,
             duration: parseInt(duration),
             reason: reason,
+            alamatIzin: address,
             status: 'pending'
         };
 
@@ -320,6 +401,12 @@ const izin = {
             };
 
             const typeLabel = item.typeLabel || item.type || '-';
+            const addressHtml = item.alamatIzin ? `
+                <div class="izin-location-info" style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; align-items: flex-start; gap: 4px;">
+                    <i class="fas fa-map-marker-alt" style="margin-top: 2px;"></i>
+                    <span>${item.alamatIzin}</span>
+                </div>
+            ` : '';
 
             return `
                 <div class="izin-item">
@@ -337,7 +424,8 @@ const izin = {
                                 ${startFormatted} - ${endFormatted} (${item.duration || 1} hari)
                             </span>
                         </div>
-                        <p class="izin-reason">${item.reason || '-'}</p>
+                        ${addressHtml}
+                        <p class="izin-reason" style="margin-top: 6px;">${item.reason || '-'}</p>
                     </div>
                 </div>
             `;
