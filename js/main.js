@@ -199,13 +199,14 @@ var notifications = {
 
         this.render();
         this.setupEventListeners();
-        
-        // NOTE: repairDatabase removed from here - it was causing slow page loads
-        // Run it only when user clicks Sync button or on admin settings page
     },
 
     setList(newList) {
-        this.list = newList.slice(0, 20);
+        // Preserve employee notifications when admin dashboard syncs its events
+        const employeeNotifs = this.list.filter(n => n.targetUserId && n.targetUserId !== 'admin' && n.targetUserId !== 'all');
+        const adminNotifs = newList.map(n => ({...n, targetUserId: 'admin'})).slice(0, 30);
+        
+        this.list = [...adminNotifs, ...employeeNotifs];
         storage.set('notifications', this.list);
         this.render();
     },
@@ -216,24 +217,24 @@ var notifications = {
         const btnClose = document.getElementById('btn-close-notifications');
 
         if (btnToggle) {
-            btnToggle.addEventListener('click', (e) => {
+            btnToggle.onclick = (e) => {
                 e.stopPropagation();
                 this.toggle();
-            });
+            };
         }
 
         if (btnClear) {
-            btnClear.addEventListener('click', () => this.clearAll());
+            btnClear.onclick = () => this.clearAll();
         }
 
         if (btnClose) {
-            btnClose.addEventListener('click', () => this.toggle(false));
+            btnClose.onclick = () => this.toggle(false);
         }
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (this.dropdown && !this.dropdown.classList.contains('hidden')) {
-                if (!this.dropdown.contains(e.target)) {
+                if (!this.dropdown.contains(e.target) && (!btnToggle || !btnToggle.contains(e.target))) {
                     this.toggle(false);
                 }
             }
@@ -250,34 +251,67 @@ var notifications = {
             this.dropdown.classList.add('hidden');
         } else {
             this.dropdown.classList.remove('hidden');
+            this.render(); // Re-render to ensure filtering applies
         }
     },
 
-    add(user, action, time, avatar) {
+    add(targetUserId, user, action, timeOrAvatar, avatar) {
+        let notifTarget = targetUserId;
+        let notifUser = user;
+        let notifAction = action;
+        let notifTime = timeOrAvatar;
+        let notifAvatar = avatar;
+
+        // Detect old signature (user, action, time, avatar)
+        // If targetUserId is clearly not an ID/role but a name
+        if (!timeOrAvatar || !avatar) {
+            // Probably new signature like add(recipientId, senderName, action, type)
+            if (timeOrAvatar === 'info' || timeOrAvatar === 'success' || timeOrAvatar === 'error' || timeOrAvatar === 'warning') {
+                notifTime = 'Baru saja';
+                notifAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user)}&background=003399&color=fff`;
+            }
+        }
+
         const newNotif = {
             id: Date.now(),
-            user,
-            action,
-            time: time || 'Baru saja',
-            avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user)}&background=003399&color=fff`
+            targetUserId: notifTarget || 'admin', // Default to admin if none specified
+            user: notifUser,
+            action: notifAction,
+            time: notifTime || 'Baru saja',
+            avatar: notifAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(notifUser)}&background=003399&color=fff`
         };
 
         this.list.unshift(newNotif);
-        if (this.list.length > 20) this.list.pop(); // Keep only last 20
+        if (this.list.length > 100) this.list.pop();
 
         storage.set('notifications', this.list);
         this.render();
 
-        // Optional: show toast for new notifications if not just added during init
-        if (time === 'Baru saja') {
-            toast.info(`${user} ${action}`, 'Aktivitas Baru');
+        // Show toast if relevant to current user
+        const currentUser = window.auth && window.auth.currentUser ? window.auth.currentUser : null;
+        if (currentUser) {
+            if (currentUser.role === 'admin' && (notifTarget === 'admin' || notifTarget === 'all' || !notifTarget)) {
+                toast.info(`${notifUser} ${notifAction}`, 'Aktivitas Baru');
+            } else if (currentUser.id === notifTarget || currentUser.email === notifTarget) {
+                toast.info(`${notifUser} ${notifAction}`, 'Notifikasi Baru');
+            }
         }
     },
 
     clearAll() {
         if (confirm('Hapus semua notifikasi?')) {
-            this.list = [];
-            storage.set('notifications', []);
+            const currentUser = window.auth && window.auth.currentUser ? window.auth.currentUser : null;
+            if (currentUser && currentUser.role === 'admin') {
+                 // Admin deletes admin notifications
+                 this.list = this.list.filter(n => n.targetUserId && n.targetUserId !== 'admin' && n.targetUserId !== 'all');
+            } else if (currentUser) {
+                 // Employee deletes their own notifications
+                 this.list = this.list.filter(n => n.targetUserId !== currentUser.id && n.targetUserId !== currentUser.email);
+            } else {
+                 this.list = [];
+            }
+            
+            storage.set('notifications', this.list);
             this.render();
             toast.success('Notifikasi dihapus');
         }
@@ -289,11 +323,25 @@ var notifications = {
 
         if (!container) return;
 
-        if (this.list.length === 0) {
+        const currentUser = window.auth && window.auth.currentUser ? window.auth.currentUser : null;
+        let visibleNotifs = [];
+
+        if (currentUser) {
+            if (currentUser.role === 'admin') {
+                visibleNotifs = this.list.filter(n => !n.targetUserId || n.targetUserId === 'admin' || n.targetUserId === 'all');
+            } else {
+                visibleNotifs = this.list.filter(n => n.targetUserId === currentUser.id || n.targetUserId === currentUser.email);
+            }
+        }
+
+        if (visibleNotifs.length === 0) {
             container.innerHTML = '<div class="notification-empty">Tidak ada notifikasi baru</div>';
-            if (badge) badge.textContent = '0';
+            if (badge) {
+                badge.textContent = '0';
+                badge.style.display = 'none';
+            }
         } else {
-            container.innerHTML = this.list.map(notif => `
+            container.innerHTML = visibleNotifs.map(notif => `
                 <div class="notification-item">
                     <img src="${notif.avatar}" alt="${notif.user}" class="notif-avatar">
                     <div class="notif-content">
@@ -302,7 +350,10 @@ var notifications = {
                     </div>
                 </div>
             `).join('');
-            if (badge) badge.textContent = this.list.length;
+            if (badge) {
+                badge.textContent = visibleNotifs.length;
+                badge.style.display = 'flex';
+            }
         }
     }
 };

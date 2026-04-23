@@ -326,6 +326,7 @@
 @media (max-width: 768px) {
     /* Hide sidebar on mobile */
     .sidebar {
+        display: flex !important;
         position: fixed;
         left: 0;
         top: 0;
@@ -337,7 +338,7 @@
     }
     
     .sidebar.open {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
     
     /* Overlay when sidebar is open */
