@@ -737,7 +737,7 @@ img {
 }
 
 .donut-fill.late {
-    stroke: var(--color-warning);
+    stroke: var(--color-info);
     stroke-dasharray: 25 251;
     stroke-dashoffset: -185;
 }
@@ -786,7 +786,7 @@ img {
 }
 
 .legend-dot.present { background: var(--color-success); }
-.legend-dot.late { background: var(--color-warning); }
+.legend-dot.late { background: var(--color-info); }
 .legend-dot.absent { background: var(--color-danger); }
 
 .legend-label {

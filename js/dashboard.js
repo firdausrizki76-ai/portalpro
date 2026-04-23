@@ -190,8 +190,8 @@ const dashboard = {
     updateStats() {
         const attendance = this.attendanceData;
 
-        // Calculate stats
-        const total = Math.max(26, attendance.length); // Assuming min 26 working days base
+        // Calculate stats based on 20 working days as per request
+        const baseDays = 20; 
         let present = 0;
         let late = 0;
         let absent = 0;
@@ -207,13 +207,39 @@ const dashboard = {
             }
         });
 
-        // Update donut chart values
-        const presentPercent = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
-
-        // Update center text
+        // Update center text to "Total Hadir / 20"
         const donutValue = document.querySelector('.donut-value');
         if (donutValue) {
-            donutValue.textContent = `${presentPercent}%`;
+            donutValue.textContent = `${present + late} / ${baseDays}`;
+        }
+
+        // SVG Donut Logic
+        const circumference = 251.3; // 2 * pi * 40
+        const presentLen = (present / baseDays) * circumference;
+        const lateLen = (late / baseDays) * circumference;
+        const absentLen = (absent / baseDays) * circumference;
+
+        const circlePresent = document.querySelector('.donut-fill.present');
+        const circleLate = document.querySelector('.donut-fill.late');
+        const circleAbsent = document.querySelector('.donut-fill.absent');
+
+        if (circlePresent) {
+            circlePresent.style.strokeDasharray = `${presentLen} ${circumference}`;
+            circlePresent.style.strokeDashoffset = '0';
+        }
+
+        if (circleLate) {
+            // Stack after present
+            circleLate.style.strokeDasharray = `${lateLen} ${circumference}`;
+            circleLate.style.strokeDashoffset = `-${presentLen}`;
+            // Use blue for late as requested (info color)
+            circleLate.style.stroke = 'var(--color-info)';
+        }
+
+        if (circleAbsent) {
+            // Stack after present + late
+            circleAbsent.style.strokeDasharray = `${absentLen} ${circumference}`;
+            circleAbsent.style.strokeDashoffset = `-${presentLen + lateLen}`;
         }
 
         // Update legend
@@ -223,6 +249,10 @@ const dashboard = {
             legendValues[1].textContent = `${late} hari`;
             legendValues[2].textContent = `${absent} hari`;
         }
+
+        // Update legend dots colors if needed
+        const lateDot = document.querySelector('.legend-dot.late');
+        if (lateDot) lateDot.style.backgroundColor = 'var(--color-info)';
     },
 
     updateSessionInfo() {
