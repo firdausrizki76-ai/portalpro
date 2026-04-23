@@ -113,21 +113,20 @@ const mobile = {
             }
 
             // Click listener
-            item.onclick = (e) => {
-                const page = item.dataset.page;
-                if (page) {
+            const page = item.dataset.page;
+            if (page) {
+                item.onclick = (e) => {
                     e.preventDefault();
                     // Update active state
-                    navItems.forEach(n => n.classList.remove('active'));
+                    navItems.forEach(n => {
+                        if (n.dataset.page) n.classList.remove('active');
+                    });
                     item.classList.add('active');
                     
                     // Navigate
                     if (window.router) window.router.navigate(page);
-                } else if (item.onclick && !item.dataset.page) {
-                    // This handles logout which has inline onclick
-                    return true; 
-                }
-            };
+                };
+            }
         });
     },
     
@@ -236,11 +235,14 @@ if (typeof onDOMReady === 'function') {
         console.log('[Mobile] Initializing via onDOMReady');
         mobile.init();
     });
-} else {
+} else if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         console.log('[Mobile] Initializing via DOMContentLoaded');
         mobile.init();
     });
+} else {
+    console.log('[Mobile] Initializing immediately (DOM already ready)');
+    mobile.init();
 }
 
 // Expose
