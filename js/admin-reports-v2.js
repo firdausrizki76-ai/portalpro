@@ -303,10 +303,15 @@ const adminReports = {
             }),
             ...izinList.map(i => {
                 const emp = this.getEmployeeInfo(i.userId);
-                const dateStr = window.dateTime ? window.dateTime.formatDate(i.date, 'short') : i.date;
+                // Fallback to i.date for old data, but prefer startDate and endDate
+                const sDate = i.startDate || i.date;
+                const eDate = i.endDate || i.date;
+                const startDateStr = window.dateTime && sDate ? window.dateTime.formatDate(sDate, 'short') : sDate;
+                const endDateStr = window.dateTime && eDate ? window.dateTime.formatDate(eDate, 'short') : eDate;
+                const dateStr = sDate === eDate ? startDateStr : `${startDateStr} - ${endDateStr}`;
                 return {
                     ...i, _source: 'izin', name: emp.name, department: emp.department,
-                    type: 'Izin', dates: dateStr, duration: i.duration, 
+                    type: i.type || 'Izin WFH/WFA', dates: dateStr, duration: i.duration, 
                     status: (i.status || 'pending').toLowerCase(), reason: i.reason
                 };
             })
