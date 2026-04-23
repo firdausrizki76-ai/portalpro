@@ -163,9 +163,41 @@ const izin = {
                     this.marker.setLatLng(e.latlng);
                     this.updateAddressFromCoords(e.latlng.lat, e.latlng.lng);
                 });
+
+                // Add search capability for manual input
+                const addressInput = document.getElementById('izin-address');
+                if (addressInput) {
+                    addressInput.addEventListener('change', () => {
+                        const query = addressInput.value;
+                        if (query && query.length > 3) {
+                            this.searchAddress(query);
+                        }
+                    });
+                }
             }
         } catch (e) {
             console.error('Error initializing map:', e);
+        }
+    },
+
+    async searchAddress(query) {
+        try {
+            // Use Nominatim forward geocoding
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                
+                if (this.map && this.marker) {
+                    this.map.setView([lat, lon], 15);
+                    this.marker.setLatLng([lat, lon]);
+                    // Don't call updateAddressFromCoords here to avoid overwriting user input with formatted OSM address
+                }
+            }
+        } catch (error) {
+            console.warn('Geocoding search failed:', error);
         }
     },
 
