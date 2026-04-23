@@ -238,7 +238,7 @@ const adminEmployees = {
                         </div>
                     </div>
                 </td>
-                <td>EMP${String(emp.id).padStart(3, '0')}</td>
+                <td>${emp.nip || '-'}</td>
                 <td>${emp.department}</td>
                 <td>${emp.position}</td>
                 <td>${emp.shift}</td>
@@ -287,8 +287,8 @@ const adminEmployees = {
                     <span class="status-badge ${emp.status}">${this.getStatusLabel(emp.status)}</span>
                 </div>
                 <div class="mobile-card-row">
-                    <span class="mobile-card-label">ID</span>
-                    <span class="mobile-card-value">EMP${String(emp.id).padStart(3, '0')}</span>
+                    <span class="mobile-card-label">NIP</span>
+                    <span class="mobile-card-value">${emp.nip || '-'}</span>
                 </div>
                 <div class="mobile-card-row">
                     <span class="mobile-card-label">Departemen</span>
@@ -532,7 +532,7 @@ const adminEmployees = {
                     <img src="${getAvatarUrl(emp)}" alt="${emp.name}" class="profile-avatar-large">
                     <div class="profile-main-info">
                         <h4>${emp.name}</h4>
-                        <p class="profile-id">ID: EMP${String(emp.id).padStart(3, '0')}</p>
+                        <p class="profile-id">NIP: ${emp.nip || '-'}</p>
                         <span class="status-badge ${emp.status}">${this.getStatusLabel(emp.status)}</span>
                     </div>
                 </div>

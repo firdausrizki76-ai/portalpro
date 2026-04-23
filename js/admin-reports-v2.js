@@ -252,7 +252,8 @@ const adminReports = {
             empIzin.forEach(i => absentCount += parseInt(i.duration) || 1);
 
             return {
-                id: emp.id, name: emp.name, department: emp.department || '-',
+                id: emp.id, nip: emp.nip || emp.NIP || '-', 
+                name: emp.name, department: emp.department || '-',
                 avatar: emp.avatar, present, late, noClockOut, noClockIn, absent: absentCount,
                 location: displayLocation,
                 total: present + late + noClockOut + noClockIn + absentCount
@@ -396,7 +397,7 @@ const adminReports = {
                         <img src="${getAvatarUrl(row)}" style="width:32px; height:32px; border-radius:50%;">
                         <div>
                             <div style="font-weight:600; color:var(--text-dark)">${row.name}</div>
-                            <div style="font-size:11px; color:var(--text-muted)">ID: ${row.id}</div>
+                            <div style="font-size:11px; color:var(--text-muted)">NIP: ${row.nip}</div>
                         </div>
                     </div>
                 </td>
