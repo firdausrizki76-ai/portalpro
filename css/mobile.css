@@ -330,7 +330,11 @@
         position: fixed;
         left: 0;
         top: 0;
-        height: 100vh;
+        height: 100%;
+        height: 100dvh;
+        bottom: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         transform: translateX(-100%);
         z-index: 1000;
         width: 280px;
