@@ -99,15 +99,13 @@ const absensi = {
         // Fetch active WFH/WFA/Dinas permits for this user
         let unlocked = { wfh: false, wfa: false, dinas: false };
         try {
-            const userId = currentUser?.id || 'demo-user';
-            const result = await api.getActiveWfhPermit(userId);
-            if (result.success && result.data) {
-                unlocked = result.data.unlocked || unlocked;
-                this._activePermits = result.data;
+            const res = await api.getActiveWfhPermit(currentUser.id);
+            if (res.success && res.data && res.data.unlocked) {
+                if (res.data.unlocked.wfh) unlocked.wfh = true;
+                if (res.data.unlocked.wfa) unlocked.wfa = true;
+                if (res.data.unlocked.dinas) unlocked.dinas = true;
             }
-        } catch (e) {
-            console.warn('Failed to check WFH permits:', e);
-        }
+        } catch (e) { console.warn('Failed to check WFH permit:', e); }
 
         // Add WFH / WFA / Dinas options - LOCKED unless approved
         const remoteOptions = [
@@ -626,19 +624,19 @@ const absensi = {
         const now = new Date();
         const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // Get shift start time
-        let shiftStartTimeStr = "08:00"; // fallback
+        // Get shift end time
+        let shiftEndTimeStr = "17:00"; // fallback
         const shifts = storage.get('shifts', []);
         const userShift = shifts.find(s => String(s.name) === String(shiftName));
         
-        if (userShift && userShift.startTime) {
-            shiftStartTimeStr = userShift.startTime.replace('.', ':');
+        if (userShift && userShift.endTime) {
+            shiftEndTimeStr = userShift.endTime.replace('.', ':');
         }
         
-        const [sH, sM] = shiftStartTimeStr.split(':').map(Number);
-        const shiftStartInMinutes = (sH || 0) * 60 + (sM || 0);
+        const [eH, eM] = shiftEndTimeStr.split(':').map(Number);
+        const shiftEndInMinutes = (eH || 0) * 60 + (eM || 0);
 
-        return currentTimeInMinutes > (shiftStartInMinutes + 60);
+        return currentTimeInMinutes > shiftEndInMinutes;
     },
 
     updateUI() {
