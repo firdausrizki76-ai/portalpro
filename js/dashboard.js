@@ -192,12 +192,23 @@ const dashboard = {
 
         // Calculate stats
         const total = Math.max(26, attendance.length); // Assuming min 26 working days base
-        const present = attendance.filter(a => a.status === 'ontime').length;
-        const late = attendance.filter(a => a.status === 'late').length;
-        const absent = attendance.filter(a => a.status === 'absent').length;
+        let present = 0;
+        let late = 0;
+        let absent = 0;
+
+        attendance.forEach(a => {
+            const s = (a.status || '').toLowerCase();
+            if (s.includes('terlambat')) {
+                late++;
+            } else if (s.includes('tepat waktu')) {
+                present++;
+            } else if (s.includes('alfa') || s.includes('tanpa absen')) {
+                absent++;
+            }
+        });
 
         // Update donut chart values
-        const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
+        const presentPercent = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
 
         // Update center text
         const donutValue = document.querySelector('.donut-value');

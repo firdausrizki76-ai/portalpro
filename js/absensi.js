@@ -322,12 +322,18 @@ const absensi = {
                 }
             }
 
-            // Status Badge
+            // Status Badge - Improved parser for verbose backend status
             let statusBadge = '<span class="badge-status">Waiting</span>';
-            if (record.status.toLowerCase() === 'ontime') {
+            const s = (record.status || '').toLowerCase();
+            
+            if (s.includes('tepat waktu') && !s.includes('terlambat')) {
                 statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
-            } else if (record.status.toLowerCase() === 'terlambat' || record.status.toLowerCase() === 'late') {
+            } else if (s.includes('terlambat')) {
                 statusBadge = '<span class="badge-status warning">Terlambat</span>';
+            } else if (s.includes('alfa') || s.includes('tanpa absen')) {
+                statusBadge = '<span class="badge-status danger">Alfa/Izin</span>';
+            } else if (s === 'waiting') {
+                statusBadge = '<span class="badge-status">Menunggu</span>';
             }
 
             // Format date to local standard UI string
@@ -576,14 +582,17 @@ const absensi = {
         }
 
         const result = await this.saveAttendance();
-        
         if (result && result.success) {
             // Only update UI and show success if save actually worked
             this.updateUI();
             this.renderTimeline();
+            
+            // CRITICAL: Refresh history immediately so the table at the bottom updates
+            this.loadAttendanceHistory();
 
             // Notify Admin
             const recipientId = 'admin';
+            const currentUser = auth.getCurrentUser();
             const actionLabel = action === 'clock-in' ? 'Clock In' : (action === 'clock-out' ? 'Clock Out' : 'Lembur');
             notifications.add(recipientId, currentUser.name, `melakukan ${actionLabel}`, 'info');
         } else {
@@ -775,10 +784,22 @@ const absensi = {
             } else if (isLibur) {
                 btnClockIn.classList.add('completed');
             } else if (isTooEarly) {
-                btnClockIn.innerHTML = '<i class="fas fa-clock"></i><span>Belum Waktunya</span>';
+                btnClockIn.innerHTML = `
+                    <div class="btn-icon"><i class="fas fa-clock"></i></div>
+                    <div class="btn-text">
+                        <span class="btn-label">Belum Waktunya</span>
+                        <span class="btn-time">--:--</span>
+                    </div>
+                `;
             } else {
                 btnClockIn.classList.remove('completed');
-                btnClockIn.innerHTML = '<i class="fas fa-sign-in-alt"></i><span>Clock In</span>';
+                btnClockIn.innerHTML = `
+                    <div class="btn-icon"><i class="fas fa-sign-in-alt"></i></div>
+                    <div class="btn-text">
+                        <span class="btn-label">Clock In</span>
+                        <span class="btn-time" id="clock-in-time">--:--</span>
+                    </div>
+                `;
             }
         }
 
