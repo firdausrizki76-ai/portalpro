@@ -421,6 +421,7 @@ const adminEmployees = {
 
         const name = document.getElementById('emp-name').value;
         const email = document.getElementById('emp-email').value;
+        const nip = document.getElementById('emp-nip').value;
         const department = document.getElementById('emp-department').value;
         const position = document.getElementById('emp-position').value;
         const shift = document.getElementById('emp-shift').value;
@@ -431,6 +432,7 @@ const adminEmployees = {
         const employeeData = {
             name,
             email,
+            nip,
             department,
             position,
             shift,
@@ -583,6 +585,12 @@ const adminEmployees = {
         // Fill form
         document.getElementById('emp-name').value = emp.name;
         document.getElementById('emp-email').value = emp.email;
+        
+        const nipInput = document.getElementById('emp-nip');
+        if (nipInput) {
+            nipInput.value = emp.nip || '';
+        }
+
         document.getElementById('emp-department').value = emp.department;
         document.getElementById('emp-position').value = emp.position;
         document.getElementById('emp-shift').value = emp.shift;
