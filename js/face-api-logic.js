@@ -27,7 +27,28 @@ const faceRecognition = {
         this.position = null;
         this.isRegistering = (action === 'register-face');
 
-        // Update UI
+        // CRITICAL: Reset the camera preview area to restore video/canvas elements
+        const preview = document.getElementById('camera-preview');
+        if (preview) {
+            preview.innerHTML = `
+                <video id="camera-video" autoplay playsinline muted></video>
+                <canvas id="camera-canvas" style="display: none;"></canvas>
+                <div class="face-overlay" id="face-overlay"><div class="face-frame"></div></div>
+            `;
+        }
+
+        // Reset UI buttons state
+        const captureBtn = document.getElementById('btn-capture');
+        const retakeBtn = document.getElementById('btn-retake');
+        const confirmBtn = document.getElementById('btn-confirm-attendance');
+        const registerContainer = document.getElementById('registration-save-container');
+
+        if (captureBtn) captureBtn.style.display = 'flex';
+        if (retakeBtn) retakeBtn.style.display = 'none';
+        if (confirmBtn) confirmBtn.style.display = 'none';
+        if (registerContainer) registerContainer.remove();
+
+        // Update UI Titles
         this.updateActionTitle(action);
         
         // Load AI Models
@@ -522,13 +543,23 @@ const faceRecognition = {
                 const container = document.getElementById('registration-save-container');
                 if (container) {
                     container.innerHTML = `
-                        <div style="font-size:64px;">✅</div>
-                        <h3 style="color:#10b981; margin:12px 0;">Pendaftaran Berhasil!</h3>
-                        <p style="color:#64748b;">Wajah Anda telah disimpan. Anda akan diarahkan ke halaman absensi...</p>
+                        <div style="text-align:center; padding: 20px;">
+                            <div style="font-size:64px; margin-bottom: 20px;">✅</div>
+                            <h3 style="color:#10b981; margin:12px 0;">Pendaftaran Berhasil!</h3>
+                            <p style="color:#64748b;">Wajah Anda telah disimpan. Aplikasi akan memulai ulang untuk mengaktifkan menu absen...</p>
+                        </div>
                     `;
                 }
                 
-                setTimeout(() => router.navigate('absensi'), 2000);
+                // Automatic restart as requested by user to ensure all states are fresh
+                setTimeout(() => {
+                    if (typeof loader !== 'undefined') loader.show('Memulai ulang...');
+                    // Use location.reload but keep the hash to return to absensi if needed, 
+                    // or just go to root and let user click. 
+                    // User wants "menu absen sekarang bisa dilakukan", so navigating to #absensi is best.
+                    window.location.href = window.location.origin + window.location.pathname + '#absensi';
+                    window.location.reload();
+                }, 2000);
             } else {
                 const errorMsg = result.error || 'Server menolak data';
                 console.error('Registration Rejection:', errorMsg);
