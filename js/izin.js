@@ -170,6 +170,7 @@ const izin = {
             if (!mapInitialized) {
                 this.initLeafletMap();
                 mapInitialized = true;
+                this.refreshMap(); // Ensure size is correct right after init
             } else {
                 this.refreshMap();
             }

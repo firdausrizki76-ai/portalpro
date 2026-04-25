@@ -797,10 +797,14 @@
                                             position: fixed !important;
                                             top: 0 !important;
                                             left: 0 !important;
-                                            display: flex !important;
-                                            align-items: stretch !important;
-                                            justify-content: stretch !important;
+                                            z-index: 9999 !important;
                                             background: #fff !important;
+                                            display: none; /* Let JS handle this */
+                                            align-items: stretch;
+                                            justify-content: stretch;
+                                        }
+                                        #map-picker-modal.modal-overlay[style*="display: block"] {
+                                            display: flex !important;
                                         }
                                         #map-picker-modal .modal-container {
                                             width: 100% !important;
@@ -2083,23 +2087,23 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/api.js?v=90"></script>
-    <script src="js/main.js?v=90"></script>
-    <script src="js/auth.js?v=90"></script>
+    <script src="js/api.js?v=91"></script>
+    <script src="js/main.js?v=91"></script>
+    <script src="js/auth.js?v=91"></script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
-    <script src="js/router.js?v=90"></script>
-    <script src="js/dashboard.js?v=90"></script>
-    <script src="js/absensi.js?v=90"></script>
-    <script src="js/face-api-logic.js?v=90"></script>
-    <script src="js/izin.js?v=90"></script>
-    <script src="js/laporan-kinerja.js?v=90"></script>
-    <script src="js/cuti.js?v=90"></script>
-    <script src="js/admin-dashboard.js?v=90"></script>
-    <script src="js/admin-employees.js?v=90"></script>
-    <script src="js/admin-reports-v2.js?v=90"></script>
-    <script src="js/shift-schedule.js?v=90"></script>
-    <script src="js/settings.js?v=90"></script>
-    <script src="js/mobile.js?v=90"></script>
+    <script src="js/router.js?v=91"></script>
+    <script src="js/dashboard.js?v=91"></script>
+    <script src="js/absensi.js?v=91"></script>
+    <script src="js/face-api-logic.js?v=91"></script>
+    <script src="js/izin.js?v=91"></script>
+    <script src="js/laporan-kinerja.js?v=91"></script>
+    <script src="js/cuti.js?v=91"></script>
+    <script src="js/admin-dashboard.js?v=91"></script>
+    <script src="js/admin-employees.js?v=91"></script>
+    <script src="js/admin-reports-v2.js?v=91"></script>
+    <script src="js/shift-schedule.js?v=91"></script>
+    <script src="js/settings.js?v=91"></script>
+    <script src="js/mobile.js?v=91"></script>
     <style>
         .performance-photo-thumb {
             width: 45px;
