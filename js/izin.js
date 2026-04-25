@@ -206,7 +206,7 @@ const izin = {
                             this.map.setCenter(pos);
                             this.map.setZoom(17);
                             this.marker.setPosition(pos);
-                            coordsInput.value = JSON.stringify(pos);
+                            if(coordsInput) coordsInput.value = JSON.stringify(pos);
                             this.updateAddressFromCoords(pos.lat, pos.lng);
                             btnCurrentLoc.innerHTML = '<i class="fas fa-crosshairs"></i>';
                         },
@@ -220,6 +220,46 @@ const izin = {
                 }
             });
         }
+
+        // Manual Search Trigger
+        const btnTriggerSearch = document.getElementById('btn-trigger-search');
+        if (btnTriggerSearch) {
+            btnTriggerSearch.addEventListener('click', () => {
+                const query = document.getElementById('map-search-input')?.value;
+                if (query) {
+                    this.performManualSearch(query);
+                }
+            });
+        }
+    },
+
+    performManualSearch(query) {
+        if (!query || typeof google === 'undefined' || !google.maps) return;
+        
+        const geocoder = new google.maps.Geocoder();
+        const coordsInput = document.getElementById('izin-coords');
+        const btnTriggerSearch = document.getElementById('btn-trigger-search');
+        
+        if (btnTriggerSearch) btnTriggerSearch.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        geocoder.geocode({ address: query }, (results, status) => {
+            if (btnTriggerSearch) btnTriggerSearch.textContent = 'Cari';
+            
+            if (status === 'OK' && results[0]) {
+                const loc = results[0].geometry.location;
+                if (this.map && this.marker) {
+                    this.map.setCenter(loc);
+                    this.map.setZoom(17);
+                    this.marker.setPosition(loc);
+                    if(coordsInput) coordsInput.value = JSON.stringify({lat: loc.lat(), lng: loc.lng()});
+                    
+                    const selectedAddrEl = document.getElementById('map-selected-address');
+                    if (selectedAddrEl) selectedAddrEl.textContent = results[0].formatted_address;
+                }
+            } else {
+                toast.error("Lokasi tidak ditemukan. Coba ketik lebih spesifik.");
+            }
+        });
     },
 
     initGoogleMaps() {
@@ -236,7 +276,7 @@ const izin = {
                         mapTypeControl: false,
                         streetViewControl: false,
                         fullscreenControl: false,
-                        zoomControl: false // Hide default zoom to save space on mobile
+                        zoomControl: false
                     });
 
                     this.marker = new google.maps.Marker({
@@ -246,7 +286,6 @@ const izin = {
                         animation: google.maps.Animation.DROP
                     });
 
-                    // Save default coords
                     if(coordsInput) coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
 
                     google.maps.event.addListener(this.marker, 'dragend', () => {
@@ -270,6 +309,8 @@ const izin = {
                         autocomplete.addListener('place_changed', () => {
                             const place = autocomplete.getPlace();
                             if (!place.geometry || !place.geometry.location) {
+                                // If user pressed enter without selecting, try manual search
+                                if (searchInput.value) this.performManualSearch(searchInput.value);
                                 return;
                             }
 
@@ -282,17 +323,18 @@ const izin = {
                             this.marker.setPosition(place.geometry.location);
                             if(coordsInput) coordsInput.value = JSON.stringify({lat: place.geometry.location.lat(), lng: place.geometry.location.lng()});
                             
-                            // Immediately set the formatted address to save geocoding call
                             if (place.formatted_address) {
                                 const selectedAddrEl = document.getElementById('map-selected-address');
                                 if (selectedAddrEl) selectedAddrEl.textContent = place.formatted_address;
-                            } else {
-                                this.updateAddressFromCoords(place.geometry.location.lat(), place.geometry.location.lng());
                             }
                         });
                         
                         searchInput.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') e.preventDefault();
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const query = searchInput.value;
+                                if (query) this.performManualSearch(query);
+                            }
                         });
                     }
                 }
