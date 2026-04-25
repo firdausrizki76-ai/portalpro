@@ -16,6 +16,10 @@ const adminReports = {
     jurnalData: [],
     leaveData: [],
     
+    sortState: {
+        leave: { key: 'dates', direction: 'desc' }
+    },
+    
     // Caching state
     loadedMonths: { attendance: null, jurnal: null, leave: null, izin: null, employees: false },
 
@@ -371,6 +375,16 @@ const adminReports = {
         });
     },
 
+    sortLeave(key) {
+        if (this.sortState.leave.key === key) {
+            this.sortState.leave.direction = this.sortState.leave.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortState.leave.key = key;
+            this.sortState.leave.direction = 'asc';
+        }
+        this.renderLeaveReports();
+    },
+
     /**
      * Render Functions
      */
@@ -506,7 +520,28 @@ const adminReports = {
         const mobileContainer = document.getElementById('leave-mobile-cards');
         if (!tbody) return;
 
-        const data = this.getFilteredLeave();
+        let data = this.getFilteredLeave();
+        
+        // Apply Sorting
+        const { key, direction } = this.sortState.leave;
+        data.sort((a, b) => {
+            let valA = a[key] || '';
+            let valB = b[key] || '';
+            
+            // Handle numeric duration
+            if (key === 'duration') {
+                valA = parseInt(valA) || 0;
+                valB = parseInt(valB) || 0;
+            } else {
+                valA = valA.toString().toLowerCase();
+                valB = valB.toString().toLowerCase();
+            }
+            
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
         tbody.innerHTML = '';
         if (mobileContainer) mobileContainer.innerHTML = '';
 

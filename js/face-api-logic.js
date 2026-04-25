@@ -672,7 +672,6 @@ const faceRecognition = {
                 
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
-                const latLng = { lat, lng };
 
                 if (statusEl) {
                     statusEl.innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--color-success)"></i> Lokasi Terdeteksi`;
@@ -681,31 +680,28 @@ const faceRecognition = {
                 // Hide the placeholder
                 if (mapPlaceholder) mapPlaceholder.style.display = 'none';
                 
-                // Initialize or Update Google Map
-                if (mapContainer && window.google) {
+                // Initialize or Update Leaflet Map
+                if (mapContainer) {
                     try {
                         if (!this.miniMap) {
-                            // Create Google Map
-                            this.miniMap = new google.maps.Map(mapContainer, {
-                                center: latLng,
-                                zoom: 16,
-                                disableDefaultUI: true,
-                                gestureHandling: 'none' // Static-like for verification
-                            });
+                            // Create map
+                            this.miniMap = L.map('location-map', {
+                                zoomControl: false,
+                                attributionControl: false
+                            }).setView([lat, lng], 16);
                             
-                            this.miniMarker = new google.maps.Marker({
-                                position: latLng,
-                                map: this.miniMap,
-                                animation: google.maps.Animation.DROP
-                            });
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.miniMap);
+                            
+                            this.miniMarker = L.marker([lat, lng]).addTo(this.miniMap);
                         } else {
                             // Update map
-                            this.miniMap.setCenter(latLng);
-                            this.miniMarker.setPosition(latLng);
-                            google.maps.event.trigger(this.miniMap, 'resize');
+                            this.miniMap.setView([lat, lng], 16);
+                            this.miniMarker.setLatLng([lat, lng]);
+                            this.miniMap.invalidateSize();
                         }
                     } catch (e) {
-                        console.error('Google Maps init error on face-rec:', e);
+                        console.error('Leaflet init error on face-rec:', e);
+                        // Fallback: show static text or just ignore if already init
                     }
                 }
 
@@ -719,16 +715,14 @@ const faceRecognition = {
                     if (timeEl) timeEl.textContent = new Date().toLocaleTimeString('id-ID');
                     if (accuracyEl) accuracyEl.textContent = `±${Math.round(pos.coords.accuracy)}m`;
                     
-                    // Google Reverse Geocoding
-                    if (window.google) {
-                        const geocoder = new google.maps.Geocoder();
-                        geocoder.geocode({ location: latLng }, (results, status) => {
+                    // Fetch reverse geocode for address
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                        .then(res => res.json())
+                        .then(data => {
                             const addrEl = document.getElementById('location-address');
-                            if (status === 'OK' && results[0] && addrEl) {
-                                addrEl.textContent = results[0].formatted_address;
-                            }
-                        });
-                    }
+                            if (addrEl && data.display_name) addrEl.textContent = data.display_name;
+                        })
+                        .catch(err => console.warn('Reverse geocode error:', err));
                 }
             },
             (err) => { 
