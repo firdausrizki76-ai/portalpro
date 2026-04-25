@@ -257,25 +257,15 @@ const izin = {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
             const data = await res.json();
             
+            const listEl = document.getElementById('map-suggestions-list');
+            if (!listEl) return;
+            
             if (data && data.length > 0) {
-                let pacContainer = document.querySelector('.pac-container');
-                if (!pacContainer) {
-                    pacContainer = document.createElement('div');
-                    pacContainer.className = 'pac-container';
-                    document.body.appendChild(pacContainer);
-                }
-                
-                const searchInput = document.getElementById('map-search-input');
-                const rect = searchInput.getBoundingClientRect();
-                pacContainer.style.top = (rect.bottom + window.scrollY) + 'px';
-                pacContainer.style.left = (rect.left + window.scrollX) + 'px';
-                pacContainer.style.width = rect.width + 'px';
-                pacContainer.style.display = 'block';
-                
-                pacContainer.innerHTML = data.map(item => `
-                    <div class="pac-item" onclick="izin.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\\'")}')">
-                        <i class="fas fa-map-marker-alt" style="color:#94a3b8; margin-right:8px;"></i>
-                        <span class="pac-item-query">${item.display_name}</span>
+                listEl.style.display = 'block';
+                listEl.innerHTML = data.map(item => `
+                    <div class="suggestion-item" onclick="izin.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${item.display_name}</span>
                     </div>
                 `).join('');
             } else {
@@ -285,8 +275,11 @@ const izin = {
     },
 
     hideSuggestions() {
-        const pacContainer = document.querySelector('.pac-container');
-        if (pacContainer) pacContainer.style.display = 'none';
+        const listEl = document.getElementById('map-suggestions-list');
+        if (listEl) {
+            listEl.style.display = 'none';
+            listEl.innerHTML = '';
+        }
     },
 
     selectLocation(lat, lon, address) {
