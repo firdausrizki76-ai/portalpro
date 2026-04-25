@@ -347,8 +347,67 @@ const faceRecognition = {
                         } else {
                             console.warn('Location tracking enabled but no office coordinates set.');
                         }
+                    } else if (selectedPoint.id === 'wfh' || selectedPoint.id === 'dinas') {
+                        // Special handling for WFH and DINAS (200m radius from registered coords)
+                        console.log(`Checking location for remote mode: ${selectedPoint.name}`);
+                        
+                        try {
+                            const res = await api.getActiveWfhPermit(auth.getCurrentUser().id);
+                            if (res.success && res.data && res.data.permits) {
+                                // Find the permit matching the selected type that is active today
+                                const typeMap = {'wfh': 'wfh', 'dinas': 'dinas'};
+                                const permitType = typeMap[selectedPoint.id];
+                                
+                                const activePermit = res.data.permits.find(p => p.type.toLowerCase() === permitType);
+                                
+                                if (activePermit && activePermit.verificationLocation) {
+                                    try {
+                                        const coords = JSON.parse(activePermit.verificationLocation);
+                                        const targetLat = parseFloat(coords.lat);
+                                        const targetLng = parseFloat(coords.lng);
+                                        
+                                        if (!isNaN(targetLat) && !isNaN(targetLng)) {
+                                            if (!this.position) {
+                                                toast.error('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.');
+                                                return;
+                                            }
+
+                                            const userLat = this.position.coords.latitude;
+                                            const userLng = this.position.coords.longitude;
+                                            const remoteRadius = 200; // Fixed 200m for WFH/Dinas
+                                            
+                                            const d = this.calculateDistance(userLat, userLng, targetLat, targetLng);
+                                            console.log(`Distance to registered ${selectedPoint.name} location: ${d.toFixed(1)}m`);
+                                            
+                                            if (d > remoteRadius) {
+                                                modal.show(
+                                                    'Di Luar Lokasi Izin',
+                                                    `<div style="text-align:center; padding: 20px;">
+                                                        <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
+                                                        <p>Anda berada di luar radius lokasi izin ${selectedPoint.name}.</p>
+                                                        <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                                                            Radius maksimal: <b>${remoteRadius}m</b><br>
+                                                            Jarak Anda: <b>${d.toFixed(0)}m</b>
+                                                        </p>
+                                                    </div>`,
+                                                    [{ label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }]
+                                                );
+                                                return;
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.warn('Could not parse permit coordinates:', err);
+                                    }
+                                } else {
+                                    console.warn('No active permit or missing coordinates for verificationLocation');
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to verify WFH permit location', e);
+                        }
                     } else {
-                        console.log(`Location tracking skipped for remote mode: ${selectedPoint.name}`);
+                        // WFA
+                        console.log(`Location tracking completely skipped for WFA mode.`);
                     }
                 } else {
                     console.log('Location tracking skipped (disabled in settings)');

@@ -130,9 +130,18 @@ const izin = {
         const container = document.getElementById('izin-location-container');
         if (!typeSelect || !container) return;
 
+        // Create hidden input to store coordinates if it doesn't exist
+        let coordsInput = document.getElementById('izin-coords');
+        if (!coordsInput) {
+            coordsInput = document.createElement('input');
+            coordsInput.type = 'hidden';
+            coordsInput.id = 'izin-coords';
+            document.getElementById('izin-form').appendChild(coordsInput);
+        }
+
         typeSelect.addEventListener('change', () => {
             const val = typeSelect.value;
-            // Show for WFA and Dinas, and optionally WFH if needed
+            // Show for WFA and Dinas, and WFH
             if (val === 'wfa' || val === 'dinas' || val === 'wfh') {
                 container.style.display = 'block';
                 this.refreshMap();
@@ -146,33 +155,71 @@ const izin = {
         const defaultLng = 106.7700;
 
         try {
-            if (!this.map && document.getElementById('izin-map-picker')) {
-                this.map = L.map('izin-map-picker').setView([defaultLat, defaultLng], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(this.map);
-
-                this.marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(this.map);
-
-                this.marker.on('dragend', () => {
-                    const pos = this.marker.getLatLng();
-                    this.updateAddressFromCoords(pos.lat, pos.lng);
-                });
-
-                this.map.on('click', (e) => {
-                    this.marker.setLatLng(e.latlng);
-                    this.updateAddressFromCoords(e.latlng.lat, e.latlng.lng);
-                });
-
-                // Add search capability for manual input
-                const addressInput = document.getElementById('izin-address');
-                if (addressInput) {
-                    addressInput.addEventListener('change', () => {
-                        const query = addressInput.value;
-                        if (query && query.length > 3) {
-                            this.searchAddress(query);
-                        }
+            if (typeof google !== 'undefined' && google.maps) {
+                if (!this.map && document.getElementById('izin-map-picker')) {
+                    this.map = new google.maps.Map(document.getElementById('izin-map-picker'), {
+                        center: { lat: defaultLat, lng: defaultLng },
+                        zoom: 15,
+                        mapTypeControl: false,
+                        streetViewControl: false
                     });
+
+                    this.marker = new google.maps.Marker({
+                        position: { lat: defaultLat, lng: defaultLng },
+                        map: this.map,
+                        draggable: true
+                    });
+
+                    // Save default coords
+                    coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
+
+                    google.maps.event.addListener(this.marker, 'dragend', () => {
+                        const pos = this.marker.getPosition();
+                        coordsInput.value = JSON.stringify({lat: pos.lat(), lng: pos.lng()});
+                        this.updateAddressFromCoords(pos.lat(), pos.lng());
+                    });
+
+                    this.map.addListener('click', (e) => {
+                        this.marker.setPosition(e.latLng);
+                        coordsInput.value = JSON.stringify({lat: e.latLng.lat(), lng: e.latLng.lng()});
+                        this.updateAddressFromCoords(e.latLng.lat(), e.latLng.lng());
+                    });
+
+                    // Initialize Autocomplete for the address input
+                    const addressInput = document.getElementById('izin-address');
+                    if (addressInput) {
+                        const autocomplete = new google.maps.places.Autocomplete(addressInput);
+                        autocomplete.bindTo('bounds', this.map);
+
+                        autocomplete.addListener('place_changed', () => {
+                            const place = autocomplete.getPlace();
+                            if (!place.geometry || !place.geometry.location) {
+                                return;
+                            }
+
+                            // If the place has a geometry, then present it on a map.
+                            if (place.geometry.viewport) {
+                                this.map.fitBounds(place.geometry.viewport);
+                            } else {
+                                this.map.setCenter(place.geometry.location);
+                                this.map.setZoom(17); 
+                            }
+                            this.marker.setPosition(place.geometry.location);
+                            coordsInput.value = JSON.stringify({lat: place.geometry.location.lat(), lng: place.geometry.location.lng()});
+                        });
+                        
+                        // Prevent form submission on enter in the address field
+                        addressInput.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') e.preventDefault();
+                        });
+                    }
+                }
+            } else {
+                console.warn('Google Maps API not loaded. Make sure you added your API key.');
+                // Fallback text
+                const mapPicker = document.getElementById('izin-map-picker');
+                if (mapPicker && !mapPicker.innerHTML.includes('API Key')) {
+                    mapPicker.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Google Maps gagal dimuat. Pastikan API Key sudah dimasukkan di file index.html.</div>';
                 }
             }
         } catch (e) {
@@ -180,49 +227,28 @@ const izin = {
         }
     },
 
-    async searchAddress(query) {
-        try {
-            // Use Nominatim forward geocoding
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-            const data = await response.json();
-            
-            if (data && data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lon = parseFloat(data[0].lon);
-                
-                if (this.map && this.marker) {
-                    this.map.setView([lat, lon], 15);
-                    this.marker.setLatLng([lat, lon]);
-                    // Don't call updateAddressFromCoords here to avoid overwriting user input with formatted OSM address
-                }
-            }
-        } catch (error) {
-            console.warn('Geocoding search failed:', error);
-        }
-    },
-
     refreshMap() {
-        if (this.map) {
+        if (this.map && typeof google !== 'undefined') {
             setTimeout(() => {
-                this.map.invalidateSize();
+                google.maps.event.trigger(this.map, 'resize');
             }, 100);
         }
     },
 
     async updateAddressFromCoords(lat, lng) {
+        if (typeof google === 'undefined' || !google.maps) return;
+        
         const addressInput = document.getElementById('izin-address');
         if (addressInput) {
-            addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)} (Mencari alamat...)`;
-            try {
-                // Use nominatim for reverse geocoding
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                const data = await response.json();
-                if (data.display_name) {
-                    addressInput.value = data.display_name;
+            addressInput.value = 'Mencari alamat...';
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    addressInput.value = results[0].formatted_address;
+                } else {
+                    addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                 }
-            } catch (e) {
-                addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            }
+            });
         }
     },
 
@@ -263,13 +289,14 @@ const izin = {
         const duration = document.getElementById('izin-duration')?.value;
         const reason = document.getElementById('izin-reason')?.value;
         const address = document.getElementById('izin-address')?.value || '';
+        const coordsStr = document.getElementById('izin-coords')?.value || '';
 
         if (!type || !startDate || !endDate || !reason) {
             toast.error('Harap isi semua field yang wajib diisi!');
             return;
         }
 
-        // Validate address for WFA/Dinas
+        // Validate address for WFA/Dinas/WFH
         if ((type === 'wfa' || type === 'dinas' || type === 'wfh') && !address) {
             toast.error('Harap tentukan lokasi/alamat pelaksanaan!');
             return;
@@ -295,6 +322,7 @@ const izin = {
             duration: parseInt(duration),
             reason: reason,
             alamatIzin: address,
+            verificationLocation: coordsStr,
             status: 'pending'
         };
 
