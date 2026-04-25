@@ -168,7 +168,7 @@ const izin = {
         const openMap = () => {
             modal.style.display = 'block';
             if (!mapInitialized) {
-                this.initGoogleMaps();
+                this.initLeafletMap();
                 mapInitialized = true;
             } else {
                 this.refreshMap();
@@ -195,7 +195,7 @@ const izin = {
         
         if (btnCurrentLoc) {
             btnCurrentLoc.addEventListener('click', () => {
-                if (navigator.geolocation && this.map && this.marker) {
+                if (this.map && this.marker) {
                     btnCurrentLoc.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
@@ -203,9 +203,8 @@ const izin = {
                                 lat: position.coords.latitude,
                                 lng: position.coords.longitude,
                             };
-                            this.map.setCenter(pos);
-                            this.map.setZoom(17);
-                            this.marker.setPosition(pos);
+                            this.map.setView([pos.lat, pos.lng], 17);
+                            this.marker.setLatLng([pos.lat, pos.lng]);
                             if(coordsInput) coordsInput.value = JSON.stringify(pos);
                             this.updateAddressFromCoords(pos.lat, pos.lng);
                             btnCurrentLoc.innerHTML = '<i class="fas fa-crosshairs"></i>';
@@ -215,13 +214,11 @@ const izin = {
                             btnCurrentLoc.innerHTML = '<i class="fas fa-crosshairs"></i>';
                         }
                     );
-                } else {
-                    toast.error("Geolocation tidak didukung di browser Anda.");
                 }
             });
         }
 
-        // Manual Search Trigger
+        // Manual Search & Autocomplete Trigger
         const btnTriggerSearch = document.getElementById('btn-trigger-search');
         if (btnTriggerSearch) {
             btnTriggerSearch.addEventListener('click', () => {
@@ -231,119 +228,141 @@ const izin = {
                 }
             });
         }
+
+        if (searchInput) {
+            let debounceTimer;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                const query = searchInput.value;
+                if (query.length < 3) {
+                    this.hideSuggestions();
+                    return;
+                }
+                debounceTimer = setTimeout(() => this.showSuggestions(query), 500);
+            });
+
+            // Prevent form submission
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.performManualSearch(searchInput.value);
+                    this.hideSuggestions();
+                }
+            });
+        }
     },
 
-    performManualSearch(query) {
-        if (!query || typeof google === 'undefined' || !google.maps) return;
+    async showSuggestions(query) {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
+            const data = await res.json();
+            
+            if (data && data.length > 0) {
+                let pacContainer = document.querySelector('.pac-container');
+                if (!pacContainer) {
+                    pacContainer = document.createElement('div');
+                    pacContainer.className = 'pac-container';
+                    document.body.appendChild(pacContainer);
+                }
+                
+                const searchInput = document.getElementById('map-search-input');
+                const rect = searchInput.getBoundingClientRect();
+                pacContainer.style.top = (rect.bottom + window.scrollY) + 'px';
+                pacContainer.style.left = (rect.left + window.scrollX) + 'px';
+                pacContainer.style.width = rect.width + 'px';
+                pacContainer.style.display = 'block';
+                
+                pacContainer.innerHTML = data.map(item => `
+                    <div class="pac-item" onclick="izin.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-map-marker-alt" style="color:#94a3b8; margin-right:8px;"></i>
+                        <span class="pac-item-query">${item.display_name}</span>
+                    </div>
+                `).join('');
+            } else {
+                this.hideSuggestions();
+            }
+        } catch (e) { console.error(e); }
+    },
+
+    hideSuggestions() {
+        const pacContainer = document.querySelector('.pac-container');
+        if (pacContainer) pacContainer.style.display = 'none';
+    },
+
+    selectLocation(lat, lon, address) {
+        if (this.map && this.marker) {
+            const pos = [lat, lon];
+            this.map.setView(pos, 17);
+            this.marker.setLatLng(pos);
+            
+            const coordsInput = document.getElementById('izin-coords');
+            if(coordsInput) coordsInput.value = JSON.stringify({lat, lng: lon});
+            
+            const selectedAddrEl = document.getElementById('map-selected-address');
+            if (selectedAddrEl) selectedAddrEl.textContent = address;
+            
+            const searchInput = document.getElementById('map-search-input');
+            if (searchInput) searchInput.value = address;
+        }
+        this.hideSuggestions();
+    },
+
+    async performManualSearch(query) {
+        if (!query) return;
         
-        const geocoder = new google.maps.Geocoder();
-        const coordsInput = document.getElementById('izin-coords');
         const btnTriggerSearch = document.getElementById('btn-trigger-search');
-        
         if (btnTriggerSearch) btnTriggerSearch.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
-        geocoder.geocode({ address: query }, (results, status) => {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+            const data = await res.json();
+            
             if (btnTriggerSearch) btnTriggerSearch.textContent = 'Cari';
             
-            if (status === 'OK' && results[0]) {
-                const loc = results[0].geometry.location;
-                if (this.map && this.marker) {
-                    this.map.setCenter(loc);
-                    this.map.setZoom(17);
-                    this.marker.setPosition(loc);
-                    if(coordsInput) coordsInput.value = JSON.stringify({lat: loc.lat(), lng: loc.lng()});
-                    
-                    const selectedAddrEl = document.getElementById('map-selected-address');
-                    if (selectedAddrEl) selectedAddrEl.textContent = results[0].formatted_address;
-                }
+            if (data && data.length > 0) {
+                this.selectLocation(data[0].lat, data[0].lon, data[0].display_name);
             } else {
-                toast.error("Lokasi tidak ditemukan. Coba ketik lebih spesifik.");
+                toast.error("Lokasi tidak ditemukan.");
             }
-        });
+        } catch (e) {
+            if (btnTriggerSearch) btnTriggerSearch.textContent = 'Cari';
+            toast.error("Gagal melakukan pencarian.");
+        }
     },
 
-    initGoogleMaps() {
+    initLeafletMap() {
         const defaultLat = -6.3400;
         const defaultLng = 106.7700;
         const coordsInput = document.getElementById('izin-coords');
 
         try {
-            if (typeof google !== 'undefined' && google.maps) {
-                if (!this.map && document.getElementById('izin-map-picker')) {
-                    this.map = new google.maps.Map(document.getElementById('izin-map-picker'), {
-                        center: { lat: defaultLat, lng: defaultLng },
-                        zoom: 15,
-                        mapTypeControl: false,
-                        streetViewControl: false,
-                        fullscreenControl: false,
-                        zoomControl: false
-                    });
+            if (!this.map && document.getElementById('izin-map-picker')) {
+                this.map = L.map('izin-map-picker', {
+                    zoomControl: false,
+                    attributionControl: false
+                }).setView([defaultLat, defaultLng], 15);
 
-                    this.marker = new google.maps.Marker({
-                        position: { lat: defaultLat, lng: defaultLng },
-                        map: this.map,
-                        draggable: true,
-                        animation: google.maps.Animation.DROP
-                    });
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(this.map);
 
-                    if(coordsInput) coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
+                this.marker = L.marker([defaultLat, defaultLng], {
+                    draggable: true
+                }).addTo(this.map);
 
-                    google.maps.event.addListener(this.marker, 'dragend', () => {
-                        const pos = this.marker.getPosition();
-                        if(coordsInput) coordsInput.value = JSON.stringify({lat: pos.lat(), lng: pos.lng()});
-                        this.updateAddressFromCoords(pos.lat(), pos.lng());
-                    });
+                if(coordsInput) coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
 
-                    this.map.addListener('click', (e) => {
-                        this.marker.setPosition(e.latLng);
-                        if(coordsInput) coordsInput.value = JSON.stringify({lat: e.latLng.lat(), lng: e.latLng.lng()});
-                        this.updateAddressFromCoords(e.latLng.lat(), e.latLng.lng());
-                    });
+                this.marker.on('dragend', () => {
+                    const pos = this.marker.getLatLng();
+                    if(coordsInput) coordsInput.value = JSON.stringify({lat: pos.lat, lng: pos.lng});
+                    this.updateAddressFromCoords(pos.lat, pos.lng);
+                });
 
-                    // Initialize Autocomplete for the search input
-                    const searchInput = document.getElementById('map-search-input');
-                    if (searchInput) {
-                        const autocomplete = new google.maps.places.Autocomplete(searchInput);
-                        autocomplete.bindTo('bounds', this.map);
-
-                        autocomplete.addListener('place_changed', () => {
-                            const place = autocomplete.getPlace();
-                            if (!place.geometry || !place.geometry.location) {
-                                // If user pressed enter without selecting, try manual search
-                                if (searchInput.value) this.performManualSearch(searchInput.value);
-                                return;
-                            }
-
-                            if (place.geometry.viewport) {
-                                this.map.fitBounds(place.geometry.viewport);
-                            } else {
-                                this.map.setCenter(place.geometry.location);
-                                this.map.setZoom(17); 
-                            }
-                            this.marker.setPosition(place.geometry.location);
-                            if(coordsInput) coordsInput.value = JSON.stringify({lat: place.geometry.location.lat(), lng: place.geometry.location.lng()});
-                            
-                            if (place.formatted_address) {
-                                const selectedAddrEl = document.getElementById('map-selected-address');
-                                if (selectedAddrEl) selectedAddrEl.textContent = place.formatted_address;
-                            }
-                        });
-                        
-                        searchInput.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const query = searchInput.value;
-                                if (query) this.performManualSearch(query);
-                            }
-                        });
-                    }
-                }
-            } else {
-                console.warn('Google Maps API not loaded.');
-                const mapPicker = document.getElementById('izin-map-picker');
-                if (mapPicker) {
-                    mapPicker.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Google Maps gagal dimuat. Pastikan API Key valid.</div>';
-                }
+                this.map.on('click', (e) => {
+                    this.marker.setLatLng(e.latlng);
+                    if(coordsInput) coordsInput.value = JSON.stringify({lat: e.latlng.lat, lng: e.latlng.lng});
+                    this.updateAddressFromCoords(e.latlng.lat, e.latlng.lng);
+                });
             }
         } catch (e) {
             console.error('Error initializing map:', e);
@@ -351,31 +370,31 @@ const izin = {
     },
 
     refreshMap() {
-        if (this.map && typeof google !== 'undefined') {
+        if (this.map) {
             setTimeout(() => {
-                google.maps.event.trigger(this.map, 'resize');
-                // Re-center on marker
+                this.map.invalidateSize();
                 if (this.marker) {
-                    this.map.setCenter(this.marker.getPosition());
+                    this.map.setView(this.marker.getLatLng(), this.map.getZoom());
                 }
             }, 100);
         }
     },
 
     async updateAddressFromCoords(lat, lng) {
-        if (typeof google === 'undefined' || !google.maps) return;
-        
         const selectedAddrEl = document.getElementById('map-selected-address');
         if (selectedAddrEl) {
             selectedAddrEl.textContent = 'Mencari alamat...';
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    selectedAddrEl.textContent = results[0].formatted_address;
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await res.json();
+                if (data && data.display_name) {
+                    selectedAddrEl.textContent = data.display_name;
                 } else {
                     selectedAddrEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                 }
-            });
+            } catch (e) {
+                selectedAddrEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            }
         }
     },
 
