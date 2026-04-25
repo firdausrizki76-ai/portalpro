@@ -405,11 +405,11 @@ const faceRecognition = {
                                     }
                                 } else {
                                     console.warn('No active permit or missing coordinates for verificationLocation');
-                                    toast.error(`Anda tidak memiliki izin aktif untuk ${selectedPoint.name} atau lokasi belum diset.`);
+                                    toast.error('Anda berada diluar titik lokasi yg di izinkan untuk absen');
                                     return;
                                 }
                             } else {
-                                toast.error(`Tidak ada data izin aktif untuk ${selectedPoint.name}.`);
+                                toast.error('Anda berada diluar titik lokasi yg di izinkan untuk absen');
                                 return;
                             }
                         } catch (e) {
