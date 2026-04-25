@@ -660,6 +660,7 @@ const faceRecognition = {
         const statusEl = document.getElementById('location-status');
         const mapPlaceholder = document.querySelector('#location-map .map-placeholder');
         const locationInfoEl = document.getElementById('location-info');
+        const mapContainer = document.getElementById('location-map');
         
         if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mencari sinyal GPS...';
 
@@ -668,31 +669,72 @@ const faceRecognition = {
                 this.position = pos; 
                 this.locationVerified = true; 
                 this.checkCanSubmit(); 
+                
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+
                 if (statusEl) {
                     statusEl.innerHTML = `<i class="fas fa-map-marker-alt" style="color:var(--color-success)"></i> Lokasi Terdeteksi`;
                 }
-                // Hide the "Meminta akses lokasi..." placeholder
+                
+                // Hide the placeholder
                 if (mapPlaceholder) mapPlaceholder.style.display = 'none';
+                
+                // Initialize or Update Leaflet Map
+                if (mapContainer) {
+                    try {
+                        if (!this.miniMap) {
+                            // Create map
+                            this.miniMap = L.map('location-map', {
+                                zoomControl: false,
+                                attributionControl: false
+                            }).setView([lat, lng], 16);
+                            
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.miniMap);
+                            
+                            this.miniMarker = L.marker([lat, lng]).addTo(this.miniMap);
+                        } else {
+                            // Update map
+                            this.miniMap.setView([lat, lng], 16);
+                            this.miniMarker.setLatLng([lat, lng]);
+                            this.miniMap.invalidateSize();
+                        }
+                    } catch (e) {
+                        console.error('Leaflet init error on face-rec:', e);
+                        // Fallback: show static text or just ignore if already init
+                    }
+                }
+
                 // Show coordinate info section
                 if (locationInfoEl) {
                     locationInfoEl.style.display = 'block';
                     const coordsEl = document.getElementById('location-coords');
                     const timeEl = document.getElementById('location-time');
                     const accuracyEl = document.getElementById('location-accuracy');
-                    if (coordsEl) coordsEl.textContent = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+                    if (coordsEl) coordsEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                     if (timeEl) timeEl.textContent = new Date().toLocaleTimeString('id-ID');
                     if (accuracyEl) accuracyEl.textContent = `±${Math.round(pos.coords.accuracy)}m`;
+                    
+                    // Fetch reverse geocode for address
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            const addrEl = document.getElementById('location-address');
+                            if (addrEl && data.display_name) addrEl.textContent = data.display_name;
+                        })
+                        .catch(err => console.warn('Reverse geocode error:', err));
                 }
             },
             (err) => { 
                 console.warn('Geolocation error:', err);
-                this.locationVerified = true; // Still allow as per fallback logic but log it
+                this.locationVerified = true; // Still allow as per fallback logic
                 this.checkCanSubmit(); 
                 if (statusEl) {
                     statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i> GPS tidak ditemukan (Izin?)';
                 }
                 // Update placeholder to show error state
                 if (mapPlaceholder) {
+                    mapPlaceholder.style.display = 'flex';
                     mapPlaceholder.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i><p>Lokasi tidak tersedia</p>';
                 }
             },
