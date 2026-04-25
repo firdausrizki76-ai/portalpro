@@ -177,9 +177,8 @@ const izin = {
         const openMap = () => {
             modal.style.display = 'block';
             if (!mapInitialized) {
-                this.initLeafletMap();
+                this.initGoogleMap();
                 mapInitialized = true;
-                this.refreshMap(); // Ensure size is correct right after init
             } else {
                 this.refreshMap();
             }
@@ -213,8 +212,9 @@ const izin = {
                                 lat: position.coords.latitude,
                                 lng: position.coords.longitude,
                             };
-                            this.map.setView([pos.lat, pos.lng], 17);
-                            this.marker.setLatLng([pos.lat, pos.lng]);
+                            this.map.setCenter(pos);
+                            this.map.setZoom(17);
+                            this.marker.setPosition(pos);
                             if(coordsInput) coordsInput.value = JSON.stringify(pos);
                             this.updateAddressFromCoords(pos.lat, pos.lng);
                             btnCurrentLoc.innerHTML = '<i class="fas fa-crosshairs"></i>';
@@ -251,7 +251,6 @@ const izin = {
                 debounceTimer = setTimeout(() => this.showSuggestions(query), 500);
             });
 
-            // Prevent form submission
             searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -263,25 +262,26 @@ const izin = {
     },
 
     async showSuggestions(query) {
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
-            const data = await res.json();
-            
+        if (!window.google || !google.maps || !google.maps.places) return;
+        
+        const service = new google.maps.places.AutocompleteService();
+        service.getPlacePredictions({ input: query, componentRestrictions: { country: 'id' } }, (predictions, status) => {
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+                this.hideSuggestions();
+                return;
+            }
+
             const listEl = document.getElementById('map-suggestions-list');
             if (!listEl) return;
             
-            if (data && data.length > 0) {
-                listEl.style.display = 'block';
-                listEl.innerHTML = data.map(item => `
-                    <div class="suggestion-item" onclick="izin.selectLocation(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\\'")}')">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>${item.display_name}</span>
-                    </div>
-                `).join('');
-            } else {
-                this.hideSuggestions();
-            }
-        } catch (e) { console.error(e); }
+            listEl.style.display = 'block';
+            listEl.innerHTML = predictions.map(p => `
+                <div class="suggestion-item" onclick="izin.selectByPlaceId('${p.place_id}', '${p.description.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>${p.description}</span>
+                </div>
+            `).join('');
+        });
     },
 
     hideSuggestions() {
@@ -292,14 +292,25 @@ const izin = {
         }
     },
 
+    selectByPlaceId(placeId, description) {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ placeId: placeId }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const loc = results[0].geometry.location;
+                this.selectLocation(loc.lat(), loc.lng(), description);
+            }
+        });
+    },
+
     selectLocation(lat, lon, address) {
         if (this.map && this.marker) {
-            const pos = [lat, lon];
-            this.map.setView(pos, 17);
-            this.marker.setLatLng(pos);
+            const pos = { lat: parseFloat(lat), lng: parseFloat(lon) };
+            this.map.setCenter(pos);
+            this.map.setZoom(17);
+            this.marker.setPosition(pos);
             
             const coordsInput = document.getElementById('izin-coords');
-            if(coordsInput) coordsInput.value = JSON.stringify({lat, lng: lon});
+            if(coordsInput) coordsInput.value = JSON.stringify(pos);
             
             const selectedAddrEl = document.getElementById('map-selected-address');
             if (selectedAddrEl) selectedAddrEl.textContent = address;
@@ -311,93 +322,89 @@ const izin = {
     },
 
     async performManualSearch(query) {
-        if (!query) return;
+        if (!query || !window.google) return;
         
         const btnTriggerSearch = document.getElementById('btn-trigger-search');
         if (btnTriggerSearch) btnTriggerSearch.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-            const data = await res.json();
-            
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: query }, (results, status) => {
             if (btnTriggerSearch) btnTriggerSearch.textContent = 'Cari';
             
-            if (data && data.length > 0) {
-                this.selectLocation(data[0].lat, data[0].lon, data[0].display_name);
+            if (status === 'OK' && results[0]) {
+                const loc = results[0].geometry.location;
+                this.selectLocation(loc.lat(), loc.lng(), results[0].formatted_address);
             } else {
                 toast.error("Lokasi tidak ditemukan.");
             }
-        } catch (e) {
-            if (btnTriggerSearch) btnTriggerSearch.textContent = 'Cari';
-            toast.error("Gagal melakukan pencarian.");
-        }
+        });
     },
 
-    initLeafletMap() {
-        const defaultLat = -6.3400;
-        const defaultLng = 106.7700;
+    initGoogleMap() {
+        const defaultPos = { lat: -6.3400, lng: 106.7700 };
         const coordsInput = document.getElementById('izin-coords');
 
         try {
             if (!this.map && document.getElementById('izin-map-picker')) {
-                this.map = L.map('izin-map-picker', {
-                    zoomControl: false,
-                    attributionControl: false
-                }).setView([defaultLat, defaultLng], 15);
-
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19
-                }).addTo(this.map);
-
-                this.marker = L.marker([defaultLat, defaultLng], {
-                    draggable: true
-                }).addTo(this.map);
-
-                if(coordsInput) coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
-
-                this.marker.on('dragend', () => {
-                    const pos = this.marker.getLatLng();
-                    if(coordsInput) coordsInput.value = JSON.stringify({lat: pos.lat, lng: pos.lng});
-                    this.updateAddressFromCoords(pos.lat, pos.lng);
+                this.map = new google.maps.Map(document.getElementById('izin-map-picker'), {
+                    center: defaultPos,
+                    zoom: 15,
+                    disableDefaultUI: true,
+                    gestureHandling: 'greedy'
                 });
 
-                this.map.on('click', (e) => {
-                    this.marker.setLatLng(e.latlng);
-                    if(coordsInput) coordsInput.value = JSON.stringify({lat: e.latlng.lat, lng: e.latlng.lng});
-                    this.updateAddressFromCoords(e.latlng.lat, e.latlng.lng);
+                this.marker = new google.maps.Marker({
+                    position: defaultPos,
+                    map: this.map,
+                    draggable: true,
+                    animation: google.maps.Animation.DROP
                 });
+
+                if(coordsInput) coordsInput.value = JSON.stringify(defaultPos);
+
+                this.marker.addListener('dragend', () => {
+                    const pos = this.marker.getPosition();
+                    const coords = { lat: pos.lat(), lng: pos.lng() };
+                    if(coordsInput) coordsInput.value = JSON.stringify(coords);
+                    this.updateAddressFromCoords(coords.lat, coords.lng);
+                });
+
+                this.map.addListener('click', (e) => {
+                    this.marker.setPosition(e.latLng);
+                    const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+                    if(coordsInput) coordsInput.value = JSON.stringify(coords);
+                    this.updateAddressFromCoords(coords.lat, coords.lng);
+                });
+                
+                // Initial reverse geocode
+                this.updateAddressFromCoords(defaultPos.lat, defaultPos.lng);
             }
         } catch (e) {
-            console.error('Error initializing map:', e);
+            console.error('Error initializing Google Map:', e);
         }
     },
 
     refreshMap() {
         if (this.map) {
-            setTimeout(() => {
-                this.map.invalidateSize();
-                if (this.marker) {
-                    this.map.setView(this.marker.getLatLng(), this.map.getZoom());
-                }
-            }, 100);
+            google.maps.event.trigger(this.map, 'resize');
+            if (this.marker) {
+                this.map.setCenter(this.marker.getPosition());
+            }
         }
     },
 
     async updateAddressFromCoords(lat, lng) {
         const selectedAddrEl = document.getElementById('map-selected-address');
-        if (selectedAddrEl) {
+        if (selectedAddrEl && window.google) {
             selectedAddrEl.textContent = 'Mencari alamat...';
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                const data = await res.json();
-                if (data && data.display_name) {
-                    selectedAddrEl.textContent = data.display_name;
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    selectedAddrEl.textContent = results[0].formatted_address;
                 } else {
                     selectedAddrEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                 }
-            } catch (e) {
-                selectedAddrEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            }
+            });
         }
     },
 
