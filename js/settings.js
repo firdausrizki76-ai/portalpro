@@ -5,6 +5,7 @@
 
 const settings = {
     shifts: [],
+    allSettings: {},
 
     async init() {
         if (typeof loader !== 'undefined') loader.show('Memuat pengaturan...');
@@ -42,6 +43,7 @@ const settings = {
             }));
 
             const allSettings = settingsResult.data || {};
+            this.allSettings = allSettings;
 
             // Company info
             const companyName = document.getElementById('company-name');
@@ -114,6 +116,9 @@ const settings = {
             if (kasubagNip) kasubagNip.value = allSettings.signature_kasubag_nip || '';
             if (camatName) camatName.value = allSettings.signature_camat_name || '';
             if (camatNip) camatNip.value = allSettings.signature_camat_nip || '';
+
+            // Initial sync for signatures based on default selected location
+            this.updateSignatureFields();
         } catch (error) {
             console.error('Error loading settings:', error);
             this.shifts = storage.get('shifts', []);
@@ -181,6 +186,12 @@ const settings = {
         const saveSignaturesBtn = document.getElementById('btn-save-signatures');
         if (saveSignaturesBtn) {
             saveSignaturesBtn.addEventListener('click', () => this.saveSignatureSettings());
+        }
+
+        // Location change for signatures
+        const sigLocSelect = document.getElementById('setting-signature-location');
+        if (sigLocSelect) {
+            sigLocSelect.addEventListener('change', () => this.updateSignatureFields());
         }
 
         // Get current location buttons (multiple)
@@ -317,23 +328,55 @@ const settings = {
     },
 
     async saveSignatureSettings() {
+        const loc = document.getElementById('setting-signature-location')?.value || 'Kecamatan Cinere';
+        const isDefault = loc === 'Kecamatan Cinere';
+        const prefix = isDefault ? 'signature_' : `sig_${loc.replace(/\s+/g, '_').toLowerCase()}_`;
+
         const kasubagName = document.getElementById('setting-kasubag-name');
         const kasubagNip = document.getElementById('setting-kasubag-nip');
         const camatName = document.getElementById('setting-camat-name');
         const camatNip = document.getElementById('setting-camat-nip');
 
+        const kName = kasubagName ? kasubagName.value : '';
+        const kNip = kasubagNip ? kasubagNip.value : '';
+        const cName = camatName ? camatName.value : '';
+        const cNip = camatNip ? camatNip.value : '';
+
         try {
             await Promise.all([
-                api.saveSetting('signature_kasubag_name', kasubagName ? kasubagName.value : ''),
-                api.saveSetting('signature_kasubag_nip', kasubagNip ? kasubagNip.value : ''),
-                api.saveSetting('signature_camat_name', camatName ? camatName.value : ''),
-                api.saveSetting('signature_camat_nip', camatNip ? camatNip.value : '')
+                api.saveSetting(`${prefix}kasubag_name`, kName),
+                api.saveSetting(`${prefix}kasubag_nip`, kNip),
+                api.saveSetting(`${prefix}camat_name`, cName),
+                api.saveSetting(`${prefix}camat_nip`, cNip)
             ]);
-            toast.success('Informasi tanda tangan berhasil disimpan!');
+            
+            // Update local cache
+            this.allSettings[`${prefix}kasubag_name`] = kName;
+            this.allSettings[`${prefix}kasubag_nip`] = kNip;
+            this.allSettings[`${prefix}camat_name`] = cName;
+            this.allSettings[`${prefix}camat_nip`] = cNip;
+
+            toast.success(`Info tanda tangan ${loc} berhasil disimpan!`);
         } catch (error) {
             console.error('Error saving signature settings:', error);
             toast.error('Gagal menyimpan informasi tanda tangan');
         }
+    },
+
+    updateSignatureFields() {
+        const loc = document.getElementById('setting-signature-location')?.value || 'Kecamatan Cinere';
+        const isDefault = loc === 'Kecamatan Cinere';
+        const prefix = isDefault ? 'signature_' : `sig_${loc.replace(/\s+/g, '_').toLowerCase()}_`;
+        
+        const kasubagName = document.getElementById('setting-kasubag-name');
+        const kasubagNip = document.getElementById('setting-kasubag-nip');
+        const camatName = document.getElementById('setting-camat-name');
+        const camatNip = document.getElementById('setting-camat-nip');
+
+        if (kasubagName) kasubagName.value = this.allSettings[`${prefix}kasubag_name`] || '';
+        if (kasubagNip) kasubagNip.value = this.allSettings[`${prefix}kasubag_nip`] || '';
+        if (camatName) camatName.value = this.allSettings[`${prefix}camat_name`] || '';
+        if (camatNip) camatNip.value = this.allSettings[`${prefix}camat_nip`] || '';
     },
 
     renderShifts() {
