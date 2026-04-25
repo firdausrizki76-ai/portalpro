@@ -89,16 +89,8 @@
     align-items: center;
 }
 
-.search-input-wrapper i {
-    position: absolute;
-    left: var(--spacing-md);
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-}
-
 .search-input-wrapper input {
     width: 100%;
-    padding-left: var(--spacing-xl);
 }
 
 /* Shift Legend */
