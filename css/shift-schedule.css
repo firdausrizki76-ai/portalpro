@@ -199,7 +199,7 @@
 }
 
 .shift-schedule-table th {
-    background: var(--bg-tertiary);
+    background: #ffffff; /* Solid background to prevent transparency */
     font-weight: 600;
     color: var(--text-primary);
     position: sticky;
@@ -210,11 +210,11 @@
 .shift-schedule-table th.sticky-col {
     position: sticky;
     left: 0;
-    z-index: 20;
+    z-index: 30; /* Higher than top headers */
     min-width: 140px;
     max-width: 140px;
     width: 140px;
-    background: var(--bg-tertiary);
+    background: #ffffff; /* Solid background */
     border-right: 2px solid var(--border-color);
     box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
@@ -223,7 +223,7 @@
     position: sticky;
     left: 0;
     z-index: 5;
-    background: var(--bg-secondary);
+    background: #ffffff; /* Solid background */
     border-right: 2px solid var(--border-color);
     box-shadow: 2px 0 5px rgba(0,0,0,0.05);
     text-align: left;
@@ -496,14 +496,14 @@
     .shift-schedule-table td.sticky-col {
         min-width: 100px;
         max-width: 100px;
-        background: var(--bg-secondary) !important;
+        background: #ffffff !important; /* Force solid white */
         border-right: 2px solid var(--border-color);
         box-shadow: 2px 0 5px rgba(0,0,0,0.1);
         z-index: 30; /* Higher than top headers */
     }
 
     .shift-schedule-table th.sticky-col {
-        background: var(--bg-tertiary) !important;
+        background: #f8fafc !important; /* Slightly different for header */
         z-index: 40; /* Top-left corner needs to be on top of everything */
     }
     
