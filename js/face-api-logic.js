@@ -394,16 +394,28 @@ const faceRecognition = {
                                                 );
                                                 return;
                                             }
+                                        } else {
+                                            toast.error('Data koordinat izin tidak valid. Silakan hubungi Admin.');
+                                            return;
                                         }
                                     } catch (err) {
                                         console.warn('Could not parse permit coordinates:', err);
+                                        toast.error('Gagal memverifikasi lokasi izin Anda.');
+                                        return;
                                     }
                                 } else {
                                     console.warn('No active permit or missing coordinates for verificationLocation');
+                                    toast.error(`Anda tidak memiliki izin aktif untuk ${selectedPoint.name} atau lokasi belum diset.`);
+                                    return;
                                 }
+                            } else {
+                                toast.error(`Tidak ada data izin aktif untuk ${selectedPoint.name}.`);
+                                return;
                             }
                         } catch (e) {
                             console.error('Failed to verify WFH permit location', e);
+                            toast.error('Gagal memverifikasi izin Anda dengan server.');
+                            return;
                         }
                     } else {
                         // WFA
