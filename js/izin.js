@@ -142,13 +142,22 @@ const izin = {
 
         typeSelect.addEventListener('change', () => {
             const val = typeSelect.value;
+            const addressInput = document.getElementById('izin-address');
+            
             // Show for WFA and Dinas, and WFH
             if (val === 'wfa' || val === 'dinas' || val === 'wfh') {
                 container.style.display = 'block';
                 if(locationLabel) {
-                    if (val === 'wfa') locationLabel.textContent = 'Lokasi Work From Anywhere';
-                    if (val === 'wfh') locationLabel.textContent = 'Lokasi Work From Home';
-                    if (val === 'dinas') locationLabel.textContent = 'Lokasi Perjalanan Dinas';
+                    if (val === 'wfa') {
+                        locationLabel.textContent = 'Lokasi Work From Anywhere';
+                        if (btnOpen) btnOpen.style.display = 'none'; // Hide map button for WFA
+                        if (addressInput) addressInput.value = 'Work From Anywhere';
+                    } else {
+                        if (btnOpen) btnOpen.style.display = 'flex';
+                        if (val === 'wfh') locationLabel.textContent = 'Lokasi Work From Home';
+                        if (val === 'dinas') locationLabel.textContent = 'Lokasi Perjalanan Dinas';
+                        if (addressInput && addressInput.value === 'Work From Anywhere') addressInput.value = '';
+                    }
                 }
             } else {
                 container.style.display = 'none';

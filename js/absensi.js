@@ -685,16 +685,27 @@ const absensi = {
         const shiftEndInMinutes = (eH || 0) * 60 + (eM || 0);
 
         const isCrossMidnight = shiftStartInMinutes > shiftEndInMinutes;
+        const gracePeriod = 480; // 8 hours in minutes
 
         if (isCrossMidnight) {
-            // For cross-midnight, Alfa is only if we are past shiftEnd but before shiftStart-60
-            // But actually, past shiftEnd means we missed it.
-            // If it is 07:00, we missed it (Alfa). If it's 20:00, it's just Too Early for the next shift.
-            // So we can differentiate by time of day. 
-            // Let's say if we are between shiftEndInMinutes and 12:00 PM, it's Alfa.
-            return currentTimeInMinutes > shiftEndInMinutes && currentTimeInMinutes < 720;
+            // For cross-midnight, shift end is on the next day.
+            // If it's 03:00 (shift end), grace is until 11:00 AM.
+            // If current time is past shiftEnd but before shiftStart-60
+            if (currentTimeInMinutes > shiftEndInMinutes) {
+                return currentTimeInMinutes > (shiftEndInMinutes + gracePeriod);
+            }
+            return false;
         } else {
-            return currentTimeInMinutes > shiftEndInMinutes;
+            // Standard day shift (e.g. 08:00 - 17:00). Grace until 01:00 AM.
+            // If shift ends at 17:00, 8 hours later is 01:00 AM (midnight crossing).
+            const endWithGrace = shiftEndInMinutes + gracePeriod;
+            if (endWithGrace > 1440) { // Crosses midnight
+                const nextDayMinutes = endWithGrace - 1440;
+                // If it's early morning (before nextDayMinutes), it's still okay.
+                // If it's between nextDayMinutes and shiftStart-60, it's Alfa.
+                return currentTimeInMinutes > nextDayMinutes && currentTimeInMinutes < (shiftStartInMinutes - 60);
+            }
+            return currentTimeInMinutes > endWithGrace;
         }
     },
 
