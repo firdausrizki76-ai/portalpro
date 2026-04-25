@@ -1384,17 +1384,17 @@
                                 <table class="reports-table" id="attendance-reports-table">
                                     <thead>
                                         <tr>
-                                            <th rowspan="2">Nama</th>
-                                            <th rowspan="2">Bidang</th>
-                                            <th rowspan="2">Lokasi Kantor</th>
+                                            <th rowspan="2" onclick="adminReports.sortAttendance('name')" style="cursor:pointer">Nama <i class="fas fa-sort"></i></th>
+                                            <th rowspan="2" onclick="adminReports.sortAttendance('department')" style="cursor:pointer">Bidang <i class="fas fa-sort"></i></th>
+                                            <th rowspan="2" onclick="adminReports.sortAttendance('location')" style="cursor:pointer">Lokasi Kantor <i class="fas fa-sort"></i></th>
                                             <th colspan="4" class="text-center">Ringkasan</th>
                                             <th rowspan="2">Aksi</th>
                                         </tr>
                                         <tr>
-                                            <th class="success">Hadir</th>
-                                            <th class="warning">Telat</th>
-                                            <th class="danger">Absen</th>
-                                            <th>Total</th>
+                                            <th class="success" onclick="adminReports.sortAttendance('present')" style="cursor:pointer">Hadir <i class="fas fa-sort"></i></th>
+                                            <th class="warning" onclick="adminReports.sortAttendance('late')" style="cursor:pointer">Telat <i class="fas fa-sort"></i></th>
+                                            <th class="danger" onclick="adminReports.sortAttendance('absent')" style="cursor:pointer">Absen <i class="fas fa-sort"></i></th>
+                                            <th onclick="adminReports.sortAttendance('total')" style="cursor:pointer">Total <i class="fas fa-sort"></i></th>
                                         </tr>
                                     </thead>
                                     <tbody id="attendance-reports-body"></tbody>
@@ -1435,12 +1435,12 @@
                                 <table class="reports-table" id="jurnal-reports-table">
                                     <thead>
                                         <tr>
-                                            <th>Tanggal</th>
-                                            <th>Nama</th>
-                                            <th>Bidang</th>
+                                            <th onclick="adminReports.sortJurnal('date')" style="cursor:pointer">Tanggal <i class="fas fa-sort"></i></th>
+                                            <th onclick="adminReports.sortJurnal('employeeName')" style="cursor:pointer">Nama <i class="fas fa-sort"></i></th>
+                                            <th onclick="adminReports.sortJurnal('department')" style="cursor:pointer">Bidang <i class="fas fa-sort"></i></th>
                                             <th>Tugas</th>
                                             <th>Foto</th>
-                                            <th>Status</th>
+                                            <th onclick="adminReports.sortJurnal('status')" style="cursor:pointer">Status <i class="fas fa-sort"></i></th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -2087,23 +2087,23 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/api.js?v=95"></script>
-    <script src="js/main.js?v=95"></script>
-    <script src="js/auth.js?v=95"></script>
+    <script src="js/api.js?v=96"></script>
+    <script src="js/main.js?v=96"></script>
+    <script src="js/auth.js?v=96"></script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
-    <script src="js/router.js?v=95"></script>
-    <script src="js/dashboard.js?v=95"></script>
-    <script src="js/absensi.js?v=95"></script>
-    <script src="js/face-api-logic.js?v=95"></script>
-    <script src="js/izin.js?v=95"></script>
-    <script src="js/laporan-kinerja.js?v=95"></script>
-    <script src="js/cuti.js?v=95"></script>
-    <script src="js/admin-dashboard.js?v=95"></script>
-    <script src="js/admin-employees.js?v=95"></script>
-    <script src="js/admin-reports-v2.js?v=95"></script>
-    <script src="js/shift-schedule.js?v=95"></script>
-    <script src="js/settings.js?v=95"></script>
-    <script src="js/mobile.js?v=95"></script>
+    <script src="js/router.js?v=96"></script>
+    <script src="js/dashboard.js?v=96"></script>
+    <script src="js/absensi.js?v=96"></script>
+    <script src="js/face-api-logic.js?v=96"></script>
+    <script src="js/izin.js?v=96"></script>
+    <script src="js/laporan-kinerja.js?v=96"></script>
+    <script src="js/cuti.js?v=96"></script>
+    <script src="js/admin-dashboard.js?v=96"></script>
+    <script src="js/admin-employees.js?v=96"></script>
+    <script src="js/admin-reports-v2.js?v=96"></script>
+    <script src="js/shift-schedule.js?v=96"></script>
+    <script src="js/settings.js?v=96"></script>
+    <script src="js/mobile.js?v=96"></script>
     <style>
         .performance-photo-thumb {
             width: 45px;

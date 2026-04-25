@@ -17,6 +17,8 @@ const adminReports = {
     leaveData: [],
     
     sortState: {
+        attendance: { key: 'name', direction: 'asc' },
+        jurnal: { key: 'date', direction: 'desc' },
         leave: { key: 'dates', direction: 'desc' }
     },
     
@@ -375,6 +377,26 @@ const adminReports = {
         });
     },
 
+    sortAttendance(key) {
+        if (this.sortState.attendance.key === key) {
+            this.sortState.attendance.direction = this.sortState.attendance.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortState.attendance.key = key;
+            this.sortState.attendance.direction = 'asc';
+        }
+        this.renderAttendanceReports();
+    },
+
+    sortJurnal(key) {
+        if (this.sortState.jurnal.key === key) {
+            this.sortState.jurnal.direction = this.sortState.jurnal.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortState.jurnal.key = key;
+            this.sortState.jurnal.direction = 'asc';
+        }
+        this.renderJurnalReports();
+    },
+
     sortLeave(key) {
         if (this.sortState.leave.key === key) {
             this.sortState.leave.direction = this.sortState.leave.direction === 'asc' ? 'desc' : 'asc';
@@ -393,7 +415,28 @@ const adminReports = {
         const mobileContainer = document.getElementById('attendance-mobile-cards');
         if (!tbody) return;
 
-        const data = this.getFilteredAttendance();
+        let data = this.getFilteredAttendance();
+
+        // Apply Sorting
+        const { key, direction } = this.sortState.attendance;
+        data.sort((a, b) => {
+            let valA = a[key] || '';
+            let valB = b[key] || '';
+            
+            const numericKeys = ['present', 'late', 'absent', 'total'];
+            if (numericKeys.includes(key)) {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+            } else {
+                valA = valA.toString().toLowerCase();
+                valB = valB.toString().toLowerCase();
+            }
+            
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
         tbody.innerHTML = '';
         if (mobileContainer) mobileContainer.innerHTML = '';
 
@@ -457,7 +500,22 @@ const adminReports = {
         const mobileContainer = document.getElementById('jurnal-mobile-cards');
         if (!tbody) return;
 
-        const data = this.getFilteredJurnal();
+        let data = this.getFilteredJurnal();
+
+        // Apply Sorting
+        const { key, direction } = this.sortState.jurnal;
+        data.sort((a, b) => {
+            let valA = a[key] || '';
+            let valB = b[key] || '';
+            
+            valA = valA.toString().toLowerCase();
+            valB = valB.toString().toLowerCase();
+            
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
         tbody.innerHTML = '';
         if (mobileContainer) mobileContainer.innerHTML = '';
 
