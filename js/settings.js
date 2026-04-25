@@ -288,6 +288,8 @@ const settings = {
         const offLng3 = document.getElementById('setting-office-lng-3');
         const offLat4 = document.getElementById('setting-office-lat-4');
         const offLng4 = document.getElementById('setting-office-lng-4');
+        const faceToggle = document.getElementById('setting-face-recognition');
+        const locToggle = document.getElementById('setting-location-tracking');
 
         try {
             await Promise.all([

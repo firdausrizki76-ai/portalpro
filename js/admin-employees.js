@@ -13,6 +13,10 @@ const adminEmployees = {
         position: '',
         status: ''
     },
+    sortState: {
+        key: 'name',
+        direction: 'asc'
+    },
     editingId: null,
     isSubmitting: false,
     initialized: false,
@@ -162,7 +166,7 @@ const adminEmployees = {
     },
 
     getFilteredEmployees() {
-        return this.employees.filter(emp => {
+        let filtered = this.employees.filter(emp => {
             const matchesSearch = !this.filters.search ||
                 emp.name.toLowerCase().includes(this.filters.search) ||
                 emp.email.toLowerCase().includes(this.filters.search) ||
@@ -174,6 +178,33 @@ const adminEmployees = {
 
             return matchesSearch && matchesDept && matchesPos && matchesStatus;
         });
+
+        // Apply Sorting
+        const { key, direction } = this.sortState;
+        filtered.sort((a, b) => {
+            let valA = a[key] || '';
+            let valB = b[key] || '';
+            
+            valA = valA.toString().toLowerCase();
+            valB = valB.toString().toLowerCase();
+            
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return filtered;
+    },
+
+    sortEmployees(key) {
+        if (this.sortState.key === key) {
+            this.sortState.direction = this.sortState.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortState.key = key;
+            this.sortState.direction = 'asc';
+        }
+        this.renderTable();
+        this.renderMobileCards();
     },
 
     updateDynamicFilters() {
