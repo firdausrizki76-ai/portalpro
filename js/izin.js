@@ -128,6 +128,7 @@ const izin = {
     initMapPicker() {
         const typeSelect = document.getElementById('izin-type');
         const container = document.getElementById('izin-location-container');
+        const locationLabel = document.getElementById('izin-location-label');
         if (!typeSelect || !container) return;
 
         // Create hidden input to store coordinates if it doesn't exist
@@ -144,15 +145,87 @@ const izin = {
             // Show for WFA and Dinas, and WFH
             if (val === 'wfa' || val === 'dinas' || val === 'wfh') {
                 container.style.display = 'block';
-                this.refreshMap();
+                if(locationLabel) {
+                    if (val === 'wfa') locationLabel.textContent = 'Lokasi Work From Anywhere';
+                    if (val === 'wfh') locationLabel.textContent = 'Lokasi Work From Home';
+                    if (val === 'dinas') locationLabel.textContent = 'Lokasi Perjalanan Dinas';
+                }
             } else {
                 container.style.display = 'none';
             }
         });
 
-        // Default location (Depok area as requested previously)
+        // Modal Elements
+        const modal = document.getElementById('map-picker-modal');
+        const btnOpen = document.getElementById('btn-open-map-picker');
+        const btnClose = document.getElementById('btn-close-map-picker');
+        const btnConfirm = document.getElementById('btn-confirm-location');
+        const btnCurrentLoc = document.getElementById('btn-current-location');
+        const searchInput = document.getElementById('map-search-input');
+        
+        let mapInitialized = false;
+        
+        const openMap = () => {
+            modal.style.display = 'block';
+            if (!mapInitialized) {
+                this.initGoogleMaps();
+                mapInitialized = true;
+            } else {
+                this.refreshMap();
+            }
+        };
+        
+        const closeMap = () => {
+            modal.style.display = 'none';
+        };
+
+        if (btnOpen) btnOpen.addEventListener('click', openMap);
+        if (btnClose) btnClose.addEventListener('click', closeMap);
+        
+        if (btnConfirm) {
+            btnConfirm.addEventListener('click', () => {
+                const selectedAddrText = document.getElementById('map-selected-address')?.textContent;
+                const addressInput = document.getElementById('izin-address');
+                if (addressInput && selectedAddrText && selectedAddrText !== 'Geser pin untuk memilih lokasi...' && selectedAddrText !== 'Mencari alamat...') {
+                    addressInput.value = selectedAddrText;
+                }
+                closeMap();
+            });
+        }
+        
+        if (btnCurrentLoc) {
+            btnCurrentLoc.addEventListener('click', () => {
+                if (navigator.geolocation && this.map && this.marker) {
+                    btnCurrentLoc.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const pos = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude,
+                            };
+                            this.map.setCenter(pos);
+                            this.map.setZoom(17);
+                            this.marker.setPosition(pos);
+                            coordsInput.value = JSON.stringify(pos);
+                            this.updateAddressFromCoords(pos.lat, pos.lng);
+                            btnCurrentLoc.innerHTML = '<i class="fas fa-crosshairs"></i>';
+                        },
+                        () => {
+                            toast.error("Gagal mendapatkan lokasi saat ini.");
+                            btnCurrentLoc.innerHTML = '<i class="fas fa-crosshairs"></i>';
+                        }
+                    );
+                } else {
+                    toast.error("Geolocation tidak didukung di browser Anda.");
+                }
+            });
+        }
+    },
+
+    initGoogleMaps() {
         const defaultLat = -6.3400;
         const defaultLng = 106.7700;
+        const coordsInput = document.getElementById('izin-coords');
 
         try {
             if (typeof google !== 'undefined' && google.maps) {
@@ -161,34 +234,37 @@ const izin = {
                         center: { lat: defaultLat, lng: defaultLng },
                         zoom: 15,
                         mapTypeControl: false,
-                        streetViewControl: false
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                        zoomControl: false // Hide default zoom to save space on mobile
                     });
 
                     this.marker = new google.maps.Marker({
                         position: { lat: defaultLat, lng: defaultLng },
                         map: this.map,
-                        draggable: true
+                        draggable: true,
+                        animation: google.maps.Animation.DROP
                     });
 
                     // Save default coords
-                    coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
+                    if(coordsInput) coordsInput.value = JSON.stringify({lat: defaultLat, lng: defaultLng});
 
                     google.maps.event.addListener(this.marker, 'dragend', () => {
                         const pos = this.marker.getPosition();
-                        coordsInput.value = JSON.stringify({lat: pos.lat(), lng: pos.lng()});
+                        if(coordsInput) coordsInput.value = JSON.stringify({lat: pos.lat(), lng: pos.lng()});
                         this.updateAddressFromCoords(pos.lat(), pos.lng());
                     });
 
                     this.map.addListener('click', (e) => {
                         this.marker.setPosition(e.latLng);
-                        coordsInput.value = JSON.stringify({lat: e.latLng.lat(), lng: e.latLng.lng()});
+                        if(coordsInput) coordsInput.value = JSON.stringify({lat: e.latLng.lat(), lng: e.latLng.lng()});
                         this.updateAddressFromCoords(e.latLng.lat(), e.latLng.lng());
                     });
 
-                    // Initialize Autocomplete for the address input
-                    const addressInput = document.getElementById('izin-address');
-                    if (addressInput) {
-                        const autocomplete = new google.maps.places.Autocomplete(addressInput);
+                    // Initialize Autocomplete for the search input
+                    const searchInput = document.getElementById('map-search-input');
+                    if (searchInput) {
+                        const autocomplete = new google.maps.places.Autocomplete(searchInput);
                         autocomplete.bindTo('bounds', this.map);
 
                         autocomplete.addListener('place_changed', () => {
@@ -197,7 +273,6 @@ const izin = {
                                 return;
                             }
 
-                            // If the place has a geometry, then present it on a map.
                             if (place.geometry.viewport) {
                                 this.map.fitBounds(place.geometry.viewport);
                             } else {
@@ -205,21 +280,27 @@ const izin = {
                                 this.map.setZoom(17); 
                             }
                             this.marker.setPosition(place.geometry.location);
-                            coordsInput.value = JSON.stringify({lat: place.geometry.location.lat(), lng: place.geometry.location.lng()});
+                            if(coordsInput) coordsInput.value = JSON.stringify({lat: place.geometry.location.lat(), lng: place.geometry.location.lng()});
+                            
+                            // Immediately set the formatted address to save geocoding call
+                            if (place.formatted_address) {
+                                const selectedAddrEl = document.getElementById('map-selected-address');
+                                if (selectedAddrEl) selectedAddrEl.textContent = place.formatted_address;
+                            } else {
+                                this.updateAddressFromCoords(place.geometry.location.lat(), place.geometry.location.lng());
+                            }
                         });
                         
-                        // Prevent form submission on enter in the address field
-                        addressInput.addEventListener('keydown', (e) => {
+                        searchInput.addEventListener('keydown', (e) => {
                             if (e.key === 'Enter') e.preventDefault();
                         });
                     }
                 }
             } else {
-                console.warn('Google Maps API not loaded. Make sure you added your API key.');
-                // Fallback text
+                console.warn('Google Maps API not loaded.');
                 const mapPicker = document.getElementById('izin-map-picker');
-                if (mapPicker && !mapPicker.innerHTML.includes('API Key')) {
-                    mapPicker.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Google Maps gagal dimuat. Pastikan API Key sudah dimasukkan di file index.html.</div>';
+                if (mapPicker) {
+                    mapPicker.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Google Maps gagal dimuat. Pastikan API Key valid.</div>';
                 }
             }
         } catch (e) {
@@ -231,6 +312,10 @@ const izin = {
         if (this.map && typeof google !== 'undefined') {
             setTimeout(() => {
                 google.maps.event.trigger(this.map, 'resize');
+                // Re-center on marker
+                if (this.marker) {
+                    this.map.setCenter(this.marker.getPosition());
+                }
             }, 100);
         }
     },
@@ -238,15 +323,15 @@ const izin = {
     async updateAddressFromCoords(lat, lng) {
         if (typeof google === 'undefined' || !google.maps) return;
         
-        const addressInput = document.getElementById('izin-address');
-        if (addressInput) {
-            addressInput.value = 'Mencari alamat...';
+        const selectedAddrEl = document.getElementById('map-selected-address');
+        if (selectedAddrEl) {
+            selectedAddrEl.textContent = 'Mencari alamat...';
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                 if (status === 'OK' && results[0]) {
-                    addressInput.value = results[0].formatted_address;
+                    selectedAddrEl.textContent = results[0].formatted_address;
                 } else {
-                    addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    selectedAddrEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                 }
             });
         }
