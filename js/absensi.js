@@ -93,30 +93,18 @@ const absensi = {
         // 2. Add Office Locations (Lock them if remote permit exists)
         let hasAssignedLocation = false;
         Object.entries(this.locationMap).forEach(([id, name]) => {
-            if (userLocation && name.toLowerCase() === userLocation.toLowerCase()) {
-                if (hasRemotePermit) {
-                    html += `<option value="${id}" disabled style="color:#999;">🔒 ${name}${lockSuffix}</option>`;
-                } else {
-                    html += `<option value="${id}">${name}</option>`;
-                }
-                hasAssignedLocation = true;
+            const isAssigned = userLocation && (name.toLowerCase() === userLocation.toLowerCase() || 
+                               name.toLowerCase().includes(userLocation.toLowerCase()) ||
+                               userLocation.toLowerCase().includes(name.toLowerCase()));
+            
+            if (isAssigned) hasAssignedLocation = true;
+
+            if (hasRemotePermit) {
+                html += `<option value="${id}" disabled style="color:#999;">🔒 ${name}${lockSuffix}</option>`;
+            } else {
+                html += `<option value="${id}">${name}${isAssigned ? ' (Kantor Anda)' : ''}</option>`;
             }
         });
-
-        // If no match found by exact name, try partial match
-        if (!hasAssignedLocation && userLocation) {
-            Object.entries(this.locationMap).forEach(([id, name]) => {
-                if (name.toLowerCase().includes(userLocation.toLowerCase()) ||
-                    userLocation.toLowerCase().includes(name.toLowerCase())) {
-                    if (hasRemotePermit) {
-                        html += `<option value="${id}" disabled style="color:#999;">🔒 ${name}${lockSuffix}</option>`;
-                    } else {
-                        html += `<option value="${id}">${name}</option>`;
-                    }
-                    hasAssignedLocation = true;
-                }
-            });
-        }
 
         // 3. Add WFH / WFA / Dinas options - LOCKED unless approved
         const remoteOptions = [
