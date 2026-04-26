@@ -331,13 +331,16 @@ const faceRecognition = {
 
                             if (!withinRange) {
                                 modal.show(
-                                    'Di Luar Jangkauan',
+                                    'Di Luar Jangkauan Kantor',
                                     `<div style="text-align:center; padding: 20px;">
                                         <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--color-warning); margin-bottom: 20px;"></i>
-                                        <p>Anda berada di luar radius absen yang diizinkan.</p>
+                                        <p>Anda berada di luar radius kantor <b>${closestPoint.name}</b>.</p>
                                         <p style="font-size: 14px; color: #666; margin-top: 10px;">
                                             Radius maksimal: <b>${maxDistance}m</b><br>
-                                            Paling dekat ke: <b>${closestPoint.name}</b> (${minDistance.toFixed(0)}m)
+                                            Jarak Anda: <b>${minDistance.toFixed(0)}m</b>
+                                        </p>
+                                        <p style="font-size: 12px; color: #999; margin-top: 15px;">
+                                            Jika Anda sedang WFH/Dinas, pastikan Anda memilih opsi <b>✅ WFH</b> atau <b>✅ Perjalanan Dinas</b> di menu lokasi.
                                         </p>
                                     </div>`,
                                     [{ label: 'Tutup', class: 'btn-secondary', onClick: () => modal.close() }]

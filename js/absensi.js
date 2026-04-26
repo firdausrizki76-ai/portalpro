@@ -125,7 +125,9 @@ const absensi = {
         selectEl.innerHTML = html;
 
         // If employee has only one assigned office location, auto-select it
-        if (hasAssignedLocation) {
+        // ONLY if they don't have active remote permits (to avoid conflict)
+        const hasRemotePermit = unlocked.wfh || unlocked.wfa || unlocked.dinas;
+        if (hasAssignedLocation && !hasRemotePermit) {
             const assignedOptions = Array.from(selectEl.options).filter(opt => 
                 opt.value && opt.value !== '' && !['wfh', 'wfa', 'dinas'].includes(opt.value)
             );
