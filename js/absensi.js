@@ -90,25 +90,11 @@ const absensi = {
         // Start with empty default
         let html = '<option value="">-- Pilih Lokasi Absen --</option>';
 
-        // 2. Build options based on strict mutual exclusivity
+        // 2. Build options logic
         const hasRemotePermit = unlocked.wfh || unlocked.wfa || unlocked.dinas;
 
-        // If remote permit is active, ONLY show those remote options (HIDE OFFICE)
-        if (hasRemotePermit) {
-            const remoteOptions = [
-                { value: 'wfh', label: 'WFH (Work From Home)', key: 'wfh' },
-                { value: 'wfa', label: 'WFA (Work From Anywhere)', key: 'wfa' },
-                { value: 'dinas', label: 'Perjalanan Dinas', key: 'dinas' }
-            ];
-
-            remoteOptions.forEach(opt => {
-                if (unlocked[opt.key]) {
-                    html += `<option value="${opt.value}">✅ ${opt.label}</option>`;
-                }
-            });
-        } 
-        // If NO remote permit, ONLY show the assigned office (HIDE REMOTE OPTIONS)
-        else {
+        // OFFICE LOCATION: Only show if NO remote permit is active
+        if (!hasRemotePermit) {
             Object.entries(this.locationMap).forEach(([id, name]) => {
                 const isMatch = userLocation && (name.toLowerCase() === userLocation.toLowerCase() || 
                                  name.toLowerCase().includes(userLocation.toLowerCase()) ||
@@ -119,19 +105,29 @@ const absensi = {
                     hasAssignedLocation = true;
                 }
             });
-
-            if (!hasAssignedLocation) {
-                // Fallback if no office matched
-                html += `<option value="" disabled>Lokasi kantor tidak ditemukan. Hubungi Admin.</option>`;
-            }
         }
+
+        // REMOTE OPTIONS: ALWAYS SHOW (with lock if inactive)
+        const remoteOptions = [
+            { value: 'wfh', label: 'WFH (Work From Home)', key: 'wfh' },
+            { value: 'wfa', label: 'WFA (Work From Anywhere)', key: 'wfa' },
+            { value: 'dinas', label: 'Perjalanan Dinas', key: 'dinas' }
+        ];
+
+        remoteOptions.forEach(opt => {
+            if (unlocked[opt.key]) {
+                html += `<option value="${opt.value}">✅ ${opt.label}</option>`;
+            } else {
+                html += `<option value="${opt.value}" disabled style="color:#999;">🔒 ${opt.label} (Perlu izin)</option>`;
+            }
+        });
 
         selectEl.innerHTML = html;
 
-        // 3. Auto-select logic (very simple now since list is filtered)
-        const firstValue = selectEl.options.length > 1 ? selectEl.options[1].value : '';
-        if (firstValue) {
-            selectEl.value = firstValue;
+        // 3. Auto-select logic
+        const firstActiveValue = Array.from(selectEl.options).find(opt => opt.value && !opt.disabled)?.value;
+        if (firstActiveValue) {
+            selectEl.value = firstActiveValue;
             selectEl.dispatchEvent(new Event('change'));
         }
 
