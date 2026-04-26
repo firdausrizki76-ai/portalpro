@@ -91,8 +91,7 @@ const absensi = {
         let html = '<option value="">-- Pilih Lokasi Absen --</option>';
 
         // 2. Build options logic
-        const hasRemotePermit = unlocked.wfh || unlocked.wfa || unlocked.dinas;
-
+        let hasAssignedLocation = false;
         // OFFICE LOCATION: Only show if NO remote permit is active
         if (!hasRemotePermit) {
             Object.entries(this.locationMap).forEach(([id, name]) => {
