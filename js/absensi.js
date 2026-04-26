@@ -174,10 +174,14 @@ const absensi = {
                 }
             }
 
+            // Use current profile shift as the base (refreshed by auth.refreshProfile in parallel)
+            const freshUser = auth.getCurrentUser();
+            currentShift = freshUser?.shift || 'Pagi';
+
             let todayAttendance = (result.status === 'fulfilled' && result.value.success) ? result.value.data : {};
 
-            if (!todayAttendance.date) {
-                // Automated shift lookup from admin schedule
+            if (!todayAttendance.date || !todayAttendance.shift) {
+                // Automated shift lookup from admin schedule as override if exists
                 try {
                     const stringUserId = String(userId);
                     const schedules = storage.get('shift_schedule', {});
@@ -187,21 +191,15 @@ const absensi = {
                     const currentDay = todayObj.getDate();
                     const key = `${currentYear}-${currentMonth}`;
 
-                    // Update shift from profile if available (fresher from database)
-                    const freshUser = auth.getCurrentUser();
-                    if (freshUser && freshUser.shift) {
-                        currentShift = freshUser.shift;
-                    }
-
                     if (schedules[key] && schedules[key][stringUserId]) {
                         const assignedShift = schedules[key][stringUserId][currentDay];
                         if (assignedShift && assignedShift.trim() !== '') {
-                            console.log('Absen Shift Sync - Found Schedule:', assignedShift);
+                            console.log('Absen Shift Sync - Found Calendar Override:', assignedShift);
                             currentShift = assignedShift;
                         }
                     }
                 } catch (e) {
-                    console.error('Error reading shift schedule:', e);
+                    console.error('Error reading shift schedule override:', e);
                 }
 
                 todayAttendance = {
