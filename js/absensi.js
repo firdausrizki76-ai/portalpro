@@ -123,15 +123,20 @@ const absensi = {
 
         selectEl.innerHTML = html;
 
-        // If employee has only one assigned office location, auto-select it
-        // ONLY if they don't have active remote permits (to avoid conflict)
-        const hasRemotePermit = unlocked.wfh || unlocked.wfa || unlocked.dinas;
+        // 4. Auto-select assigned office if not on remote permit
         if (hasAssignedLocation && !hasRemotePermit) {
-            const assignedOptions = Array.from(selectEl.options).filter(opt => 
-                opt.value && opt.value !== '' && !['wfh', 'wfa', 'dinas'].includes(opt.value)
-            );
-            if (assignedOptions.length === 1) {
-                selectEl.value = assignedOptions[0].value;
+            // Find the ID that matches the user's location
+            let targetId = null;
+            Object.entries(this.locationMap).forEach(([id, name]) => {
+                if (userLocation && (name.toLowerCase() === userLocation.toLowerCase() || 
+                    name.toLowerCase().includes(userLocation.toLowerCase()) ||
+                    userLocation.toLowerCase().includes(name.toLowerCase()))) {
+                    targetId = id;
+                }
+            });
+
+            if (targetId) {
+                selectEl.value = targetId;
                 selectEl.dispatchEvent(new Event('change'));
             }
         }
