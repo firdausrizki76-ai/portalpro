@@ -1,0 +1,11 @@
+Found 10 deployments.
+- AKfycbzvu9TMVaUGeuacbeQkeXWQpuljsAgTkWedbXhqjZA @HEAD 
+- AKfycbxuMwDLtb-7HqvlhOO7rRreLMaq7DBLzksag14vT8i2-MhV0Mhphc4WD8d7JRd--da4 @8 
+- AKfycbwJoFcqvM-dgJJoeqpmB7uml1ImiY6sIyUX7RWf8O3t37vAveZOtMwxnA-wH8iHfo7V @11 
+- AKfycbwWfN84WXxHN2OL-35JQ2t0IqVJF9fUVvdqoRWJ-JkVqrw44VWb4LnYzEQsWyIppiOD @12 
+- AKfycbzkjdbag7jl60RXa7VoN_Y_C-Q8JY_dFH6rjqpHTGY-ZCP2HYxqcFrPmlnL5Ceg5Xuw @6 
+- AKfycby-b_ZJq6FGEkXwtY4onMhbiytuvmWyiluj7rEjLLblIcSqFZ-GQ11OEQz-w9WL-gKi @9 
+- AKfycbzRBlfIuJHhyQ0G1CQo-g3Qay1oqjU8N5C1tX6UHMldqtvbgd60W2RlqgED_vy7AlI5 @4 - Fix shift time format + settings persistence
+- AKfycbwvHMAmnIrrPxiXS13ViElfv8msUAuYrPyBktd7bkxURbb6gOgsB0_c1yuGk-OQKpIb @7 
+- AKfycbwxsQzqmUuCrLJ7IS50jGkEkPBx-m9YlborF2iQHeynPc-hwrUMo_I9Rf7JhqOP3-O2 @10 
+- AKfycbx4jAOWPpYyVRD36CgkfLaTQHg4jc-JKHT5Kfj1y9MMnuJfcrZw3fTb3cqZe6cjfw33 @5 
