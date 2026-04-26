@@ -73,30 +73,7 @@ const absensi = {
         // Use lokasiKerja first, fallback to department
         const userLocation = (currentUser?.lokasiKerja || currentUser?.department || '').trim();
 
-        // Start with empty default
-        let html = '<option value="">-- Pilih Lokasi Absen --</option>';
-
-        // Find the matching location for this employee
-        let hasAssignedLocation = false;
-        Object.entries(this.locationMap).forEach(([id, name]) => {
-            if (userLocation && name.toLowerCase() === userLocation.toLowerCase()) {
-                html += `<option value="${id}">${name}</option>`;
-                hasAssignedLocation = true;
-            }
-        });
-
-        // If no match found by exact name, try partial match
-        if (!hasAssignedLocation && userLocation) {
-            Object.entries(this.locationMap).forEach(([id, name]) => {
-                if (name.toLowerCase().includes(userLocation.toLowerCase()) ||
-                    userLocation.toLowerCase().includes(name.toLowerCase())) {
-                    html += `<option value="${id}">${name}</option>`;
-                    hasAssignedLocation = true;
-                }
-            });
-        }
-
-        // Fetch active WFH/WFA/Dinas permits for this user
+        // 1. Fetch active WFH/WFA/Dinas permits for this user FIRST
         let unlocked = { wfh: false, wfa: false, dinas: false };
         try {
             const res = await api.getActiveWfhPermit(currentUser.id);
@@ -107,7 +84,41 @@ const absensi = {
             }
         } catch (e) { console.warn('Failed to check WFH permit:', e); }
 
-        // Add WFH / WFA / Dinas options - LOCKED unless approved
+        const hasRemotePermit = unlocked.wfh || unlocked.wfa || unlocked.dinas;
+        const lockSuffix = hasRemotePermit ? ' (Terdaftar WFH/Dinas)' : '';
+
+        // Start with empty default
+        let html = '<option value="">-- Pilih Lokasi Absen --</option>';
+
+        // 2. Add Office Locations (Lock them if remote permit exists)
+        let hasAssignedLocation = false;
+        Object.entries(this.locationMap).forEach(([id, name]) => {
+            if (userLocation && name.toLowerCase() === userLocation.toLowerCase()) {
+                if (hasRemotePermit) {
+                    html += `<option value="${id}" disabled style="color:#999;">🔒 ${name}${lockSuffix}</option>`;
+                } else {
+                    html += `<option value="${id}">${name}</option>`;
+                }
+                hasAssignedLocation = true;
+            }
+        });
+
+        // If no match found by exact name, try partial match
+        if (!hasAssignedLocation && userLocation) {
+            Object.entries(this.locationMap).forEach(([id, name]) => {
+                if (name.toLowerCase().includes(userLocation.toLowerCase()) ||
+                    userLocation.toLowerCase().includes(name.toLowerCase())) {
+                    if (hasRemotePermit) {
+                        html += `<option value="${id}" disabled style="color:#999;">🔒 ${name}${lockSuffix}</option>`;
+                    } else {
+                        html += `<option value="${id}">${name}</option>`;
+                    }
+                    hasAssignedLocation = true;
+                }
+            });
+        }
+
+        // 3. Add WFH / WFA / Dinas options - LOCKED unless approved
         const remoteOptions = [
             { value: 'wfh', label: 'WFH (Work From Home)', key: 'wfh' },
             { value: 'wfa', label: 'WFA (Work From Anywhere)', key: 'wfa' },
