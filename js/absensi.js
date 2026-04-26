@@ -90,55 +90,49 @@ const absensi = {
         // Start with empty default
         let html = '<option value="">-- Pilih Lokasi Absen --</option>';
 
-        // 2. Add Office Locations (Lock them if remote permit exists)
-        let hasAssignedLocation = false;
-        Object.entries(this.locationMap).forEach(([id, name]) => {
-            const isAssigned = userLocation && (name.toLowerCase() === userLocation.toLowerCase() || 
-                               name.toLowerCase().includes(userLocation.toLowerCase()) ||
-                               userLocation.toLowerCase().includes(name.toLowerCase()));
-            
-            if (isAssigned) hasAssignedLocation = true;
+        // 2. Build options based on strict mutual exclusivity
+        const hasRemotePermit = unlocked.wfh || unlocked.wfa || unlocked.dinas;
 
-            if (hasRemotePermit) {
-                html += `<option value="${id}" disabled style="color:#999;">🔒 ${name}${lockSuffix}</option>`;
-            } else {
-                html += `<option value="${id}">${name}${isAssigned ? ' (Kantor Anda)' : ''}</option>`;
-            }
-        });
+        // If remote permit is active, ONLY show those remote options (HIDE OFFICE)
+        if (hasRemotePermit) {
+            const remoteOptions = [
+                { value: 'wfh', label: 'WFH (Work From Home)', key: 'wfh' },
+                { value: 'wfa', label: 'WFA (Work From Anywhere)', key: 'wfa' },
+                { value: 'dinas', label: 'Perjalanan Dinas', key: 'dinas' }
+            ];
 
-        // 3. Add WFH / WFA / Dinas options - LOCKED unless approved
-        const remoteOptions = [
-            { value: 'wfh', label: 'WFH (Work From Home)', key: 'wfh' },
-            { value: 'wfa', label: 'WFA (Work From Anywhere)', key: 'wfa' },
-            { value: 'dinas', label: 'Perjalanan Dinas', key: 'dinas' }
-        ];
-
-        remoteOptions.forEach(opt => {
-            if (unlocked[opt.key]) {
-                html += `<option value="${opt.value}">✅ ${opt.label}</option>`;
-            } else {
-                html += `<option value="${opt.value}" disabled style="color:#999;">🔒 ${opt.label} (Perlu izin)</option>`;
-            }
-        });
-
-        selectEl.innerHTML = html;
-
-        // 4. Auto-select assigned office if not on remote permit
-        if (hasAssignedLocation && !hasRemotePermit) {
-            // Find the ID that matches the user's location
-            let targetId = null;
+            remoteOptions.forEach(opt => {
+                if (unlocked[opt.key]) {
+                    html += `<option value="${opt.value}">✅ ${opt.label}</option>`;
+                }
+            });
+        } 
+        // If NO remote permit, ONLY show the assigned office (HIDE REMOTE OPTIONS)
+        else {
             Object.entries(this.locationMap).forEach(([id, name]) => {
-                if (userLocation && (name.toLowerCase() === userLocation.toLowerCase() || 
-                    name.toLowerCase().includes(userLocation.toLowerCase()) ||
-                    userLocation.toLowerCase().includes(name.toLowerCase()))) {
-                    targetId = id;
+                const isMatch = userLocation && (name.toLowerCase() === userLocation.toLowerCase() || 
+                                 name.toLowerCase().includes(userLocation.toLowerCase()) ||
+                                 userLocation.toLowerCase().includes(name.toLowerCase()));
+                
+                if (isMatch) {
+                    html += `<option value="${id}">${name}</option>`;
+                    hasAssignedLocation = true;
                 }
             });
 
-            if (targetId) {
-                selectEl.value = targetId;
-                selectEl.dispatchEvent(new Event('change'));
+            if (!hasAssignedLocation) {
+                // Fallback if no office matched
+                html += `<option value="" disabled>Lokasi kantor tidak ditemukan. Hubungi Admin.</option>`;
             }
+        }
+
+        selectEl.innerHTML = html;
+
+        // 3. Auto-select logic (very simple now since list is filtered)
+        const firstValue = selectEl.options.length > 1 ? selectEl.options[1].value : '';
+        if (firstValue) {
+            selectEl.value = firstValue;
+            selectEl.dispatchEvent(new Event('change'));
         }
 
         console.log('Location dropdown populated | Location:', userLocation, '| Unlocked:', unlocked);
