@@ -136,7 +136,8 @@ function getActiveWfhPermit(userId) {
         typeLabel: p.typeLabel,
         startDate: p.startDate || p.date,
         endDate: p.endDate || p.startDate || p.date,
-        status: p.status
+        status: p.status,
+        verificationLocation: p.verificationLocation
       }))
     }
   };
