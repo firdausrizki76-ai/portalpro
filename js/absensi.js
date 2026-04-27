@@ -315,19 +315,22 @@ const absensi = {
                 }
             }
 
-            // Status Badge - Improved parser for verbose backend status
-            let statusBadge = '<span class="badge-status">Waiting</span>';
-            const s = (record.status || '').toLowerCase();
+            // Status Badge - Use RAW text from spreadsheet but apply dynamic coloring
+            const rawStatus = record.status || 'Waiting';
+            const s = rawStatus.toLowerCase();
+            let badgeClass = '';
             
-            if (s.includes('tepat waktu') && !s.includes('terlambat')) {
-                statusBadge = '<span class="badge-status success">Tepat Waktu</span>';
-            } else if (s.includes('terlambat')) {
-                statusBadge = '<span class="badge-status warning">Terlambat</span>';
-            } else if (s.includes('alfa') || s.includes('tanpa absen')) {
-                statusBadge = '<span class="badge-status danger">Alfa/Izin</span>';
-            } else if (s === 'waiting') {
-                statusBadge = '<span class="badge-status">Menunggu</span>';
+            if (s.includes('hadir') || s.includes('tepat waktu') || s.includes('wfh') || s.includes('dinas') || s.includes('wfa')) {
+                badgeClass = 'success';
+            } else if (s.includes('terlambat') || s.includes('pulang awal')) {
+                badgeClass = 'warning';
+            } else if (s.includes('alfa') || s.includes('tanpa absen') || s.includes('mangkir')) {
+                badgeClass = 'danger';
+            } else if (s.includes('izin') || s.includes('sakit') || s.includes('cuti')) {
+                badgeClass = 'info';
             }
+
+            const statusBadge = `<span class="badge-status ${badgeClass}">${rawStatus}</span>`;
 
             // Format date to local standard UI string
             const [y, m, d] = record.date.split('-');
