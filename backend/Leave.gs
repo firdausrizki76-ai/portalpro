@@ -186,10 +186,18 @@ function generateLeaveSummaryPDF(month, dept, location) {
     const combined = [];
     approvedLeaves.forEach(l => {
       const emp = employees.find(e => String(e.id) === String(l.userId)) || { name: 'Unknown' };
+      
+      let dateDisplay = '';
+      if (l.startDate && l.endDate) {
+        dateDisplay = l.startDate === l.endDate ? l.startDate : `${l.startDate} s/d ${l.endDate}`;
+      } else {
+        dateDisplay = l.startDate || l.endDate || '-';
+      }
+
       combined.push({
         name: emp.name,
-        type: l.type || 'Cuti',
-        dates: `${l.startDate} s/d ${l.endDate}`,
+        type: l.typeLabel || l.type || 'Cuti',
+        dates: dateDisplay,
         duration: `${l.duration || 1} Hari`,
         reason: l.reason || '-',
         timestamp: l.appliedAt
@@ -198,10 +206,18 @@ function generateLeaveSummaryPDF(month, dept, location) {
     
     approvedIzins.forEach(i => {
       const emp = employees.find(e => String(e.id) === String(i.userId)) || { name: 'Unknown' };
+      
+      let dateDisplay = '';
+      if (i.startDate && i.endDate) {
+        dateDisplay = i.startDate === i.endDate ? i.startDate : `${i.startDate} s/d ${i.endDate}`;
+      } else {
+        dateDisplay = i.startDate || i.endDate || i.date || '-';
+      }
+
       combined.push({
         name: emp.name,
-        type: i.type || 'Izin',
-        dates: i.date,
+        type: i.typeLabel || i.type || 'Izin',
+        dates: dateDisplay,
         duration: `${i.duration || 1} Hari`,
         reason: i.reason || '-',
         timestamp: i.appliedAt
