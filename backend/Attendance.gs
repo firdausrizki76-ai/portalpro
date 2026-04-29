@@ -415,7 +415,7 @@ function generateAttendanceSummaryPDF(month, dept, location) {
             <td></td>
             <td>
               Depok, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
-              Admin Kepegawaian<br>
+              Camat<br>
               <div class="signature-space"></div>
               ${camatDisplay}
             </td>
