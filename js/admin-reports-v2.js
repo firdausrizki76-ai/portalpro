@@ -938,41 +938,47 @@ const adminReports = {
 
     exportToExcel(type) {
         let data = [];
-        let filename = `Rekap_${type}_${this.filters[type].month}.xls`;
+        const typeLabels = { attendance: 'Absensi', jurnal: 'Laporan_Kinerja', leave: 'Cuti_Izin' };
+        let filename = `Rekap_${typeLabels[type] || type}_${this.filters[type]?.month || ''}.xls`;
         
         if (type === 'attendance') {
             const raw = this.getFilteredAttendance();
-            data = raw.map(r => ({
+            data = raw.map((r, i) => ({
+                'No': i + 1,
                 'Nama Karyawan': r.name,
+                'NIP': r.nip || '-',
                 'Bidang': r.department,
+                'Lokasi Kantor': r.location || '-',
                 'Hadir (On-Time)': r.present,
                 'Terlambat': r.late,
-                'Tanpa Absen Masuk (TAM)': r.noClockIn,
-                'Tanpa Absen Pulang (TAP)': r.noClockOut,
+                'T.A.M': r.noClockIn,
+                'T.A.P': r.noClockOut,
                 'Cuti/Izin/Sakit': r.absent,
-                'Total Hari Kerja': r.total
+                'Total': r.total
             }));
         }
         else if (type === 'jurnal') {
             const raw = this.getFilteredJurnal();
-            data = raw.map(r => ({
+            data = raw.map((r, i) => ({
+                'No': i + 1,
                 'Tanggal': r.date,
                 'Nama Pegawai': r.employeeName,
                 'Bidang': r.department,
-                'Laporan Pekerjaan (Tugas)': r.tasks,
-                'Status': r.status.toUpperCase()
+                'Uraian Laporan Pekerjaan': r.tasks,
+                'Status': (r.status || '').toUpperCase()
             }));
         }
         else if (type === 'leave') {
             const raw = this.getFilteredLeave();
-            data = raw.map(r => ({
+            data = raw.map((r, i) => ({
+                'No': i + 1,
                 'Nama Pegawai': r.name,
                 'Bidang': r.department,
                 'Jenis': r.type,
                 'Tanggal': r.dates,
                 'Durasi (Hari)': r.duration,
-                'Alasan': r.reason,
-                'Status': r.status.toUpperCase()
+                'Alasan': r.reason || '-',
+                'Status': (r.status || '').toUpperCase()
             }));
         }
 
@@ -981,79 +987,71 @@ const adminReports = {
             return;
         }
 
-        // Use HTML table format to force Excel to show tidy cells/columns
+        // Build a proper HTML table for Excel with styling
         const headers = Object.keys(data[0]);
+        const monthDisplay = this.filters[type]?.month || '';
+        
         let tableHtml = `
-            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${type}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
-            <body>
-                <table border="1">
-                    <thead>
-                        <tr style="background-color: #f3f4f6;">
-                            ${headers.map(h => `<th style="font-weight: bold; padding: 5px; border: 1px solid #ccc;">${h}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.map(r => `
-                            <tr>
-                                ${Object.values(r).map(v => `<td style="padding: 5px; border: 1px solid #ccc;">${v}</td>`).join('')}
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </body>
-            </html>
-        `;
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>${typeLabels[type] || type}</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+  td, th { mso-number-format:"\\@"; }
+  .num { mso-number-format:"0"; }
+</style>
+</head>
+<body>
+<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse; font-family:Arial,sans-serif; font-size:11pt;">
+  <thead>
+    <tr>
+      <td colspan="${headers.length}" style="font-size:14pt; font-weight:bold; text-align:center; padding:10px; background:#1a56db; color:#fff; border:1px solid #0f3c8c;">
+        Rekap ${typeLabels[type] || type} — Periode: ${monthDisplay}
+      </td>
+    </tr>
+    <tr style="background:#e5e7eb;">
+      ${headers.map(h => `<th style="font-weight:bold; padding:8px 12px; border:1px solid #bbb; text-align:center; white-space:nowrap;">${h}</th>`).join('')}
+    </tr>
+  </thead>
+  <tbody>
+    ${data.map((r, idx) => `
+    <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+      ${Object.entries(r).map(([key, v]) => {
+        const isNum = typeof v === 'number';
+        return `<td style="padding:6px 10px; border:1px solid #ddd;${isNum ? ' text-align:center;' : ''}" ${isNum ? 'class="num"' : ''}>${v}</td>`;
+      }).join('')}
+    </tr>`).join('')}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="${headers.length}" style="font-size:9pt; color:#888; padding:8px; border:1px solid #ddd;">
+        Diekspor pada: ${new Date().toLocaleString('id-ID')} | Total Data: ${data.length} baris
+      </td>
+    </tr>
+  </tfoot>
+</table>
+</body>
+</html>`;
 
-        const blob = new Blob(['\ufeff', tableHtml], { type: 'application/vnd.ms-excel' });
+        const blob = new Blob(['\ufeff', tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.setAttribute('href', url);
-        a.setAttribute('download', filename);
-        a.style.visibility = 'hidden';
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        toast.success(`Data ${type} berhasil diekspor ke Excel (Tidy Cells)`);
+        toast.success(`Data ${typeLabels[type] || type} berhasil diekspor ke Excel`);
     },
 
-    getFilteredAttendance() {
-        const dept = this.filters.attendance.dept.toLowerCase();
-        const status = this.filters.attendance.status.toLowerCase();
-        
-        return this.attendanceData.filter(d => {
-            const matchDept = !dept || (d.department || '').toLowerCase() === dept;
-            const matchStatus = !status || 
-                (status === 'hadir' && d.present > 0) ||
-                (status === 'telat' && d.late > 0) ||
-                (status === 'tidak hadir' && d.absent > 0);
-            return matchDept && matchStatus;
-        });
-    },
 
-    getFilteredJurnal() {
-        const emp = this.filters.jurnal.employee.toLowerCase();
-        const status = this.filters.jurnal.status.toLowerCase();
-        
-        return this.jurnalData.filter(d => {
-            const matchEmp = !emp || (d.employeeName || '').toLowerCase() === emp;
-            const matchStatus = !status || (d.status || '').toLowerCase() === status;
-            return matchEmp && matchStatus;
-        });
-    },
 
-    getFilteredLeave() {
-        const typeFilter = this.filters.leave.type.toLowerCase();
-        const status = this.filters.leave.status.toLowerCase();
-        
-        return this.leaveData.filter(d => {
-            const matchType = !typeFilter || (d.type || '').toLowerCase() === typeFilter;
-            const matchStatus = !status || (d.status || '').toLowerCase() === status;
-            return matchType && matchStatus;
-        });
-    },
 
     async downloadAttendancePDF() {
         const month = this.filters.attendance.month;

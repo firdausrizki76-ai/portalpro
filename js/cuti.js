@@ -1,19 +1,40 @@
 /**
  * Portal Karyawan - Cuti/Leave
  * Leave request functionality
+ * 
+ * Balances are calculated from the employee profile data stored in the
+ * backend (leave_*_used columns on Employees sheet).  The quotas are
+ * defined once here and the "remaining" balance is: quota - used.
  */
 
 const cuti = {
     leaves: [],
-    leaveBalance: 12,
     filterStatus: '',
-
     initialized: false,
+    sliderIndex: 0,
+
+    // Default quotas per leave type (days)
+    quotas: {
+        annual: 12,
+        large: 3,
+        sick: 12,
+        maternity: 90,
+        important: 60
+    },
+
+    // Actual "used" counts – loaded from employee profile
+    used: {
+        annual: 0,
+        large: 0,
+        sick: 0,
+        maternity: 0,
+        important: 0
+    },
 
     async init() {
         if (this.initialized) {
             this.loadLeaves().then(() => {
-                this.updateBalanceDisplay();
+                this.updateAllBalances();
                 this.updateStats();
                 this.renderLeaveList();
             });
@@ -24,17 +45,18 @@ const cuti = {
             // Priority 1: Init UI immediately so page is responsive
             this.initForm();
             this.initFilters();
-            
+            this.initSlider();
+
             // Initial render with cached/default values
-            this.updateBalanceDisplay();
+            this.updateAllBalances();
             this.updateStats();
             this.renderLeaveList();
 
             // Priority 2: Load fresh data in background
             await this.loadLeaves();
-            
+
             // Re-render when data arrives
-            this.updateBalanceDisplay();
+            this.updateAllBalances();
             this.updateStats();
             this.renderLeaveList();
             this.initialized = true;
@@ -55,6 +77,8 @@ const cuti = {
             if (cached) {
                 this.leaves = cached;
                 this._backgroundRefresh(userId, cacheKey);
+                // Still load profile for latest quotas
+                await this._loadProfile(userId);
                 return;
             }
         }
@@ -68,10 +92,26 @@ const cuti = {
             this.leaves = storage.get(cacheKey, []);
         }
 
-        // Load balance from storage or use default
-        const savedBalance = storage.get('leaveBalance');
-        if (savedBalance !== null) {
-            this.leaveBalance = savedBalance;
+        // Load actual used quotas from employee profile
+        await this._loadProfile(userId);
+    },
+
+    /**
+     * Load employee profile to get actual leave_*_used values from the database
+     */
+    async _loadProfile(userId) {
+        try {
+            const profileRes = await api.getEmployeeProfile(userId);
+            if (profileRes.success && profileRes.data) {
+                const d = profileRes.data;
+                this.used.annual = Number(d.leave_annual_used) || 0;
+                this.used.sick = Number(d.leave_sick_used) || 0;
+                this.used.maternity = Number(d.leave_maternity_used) || 0;
+                this.used.large = Number(d.leave_large_used) || 0;
+                this.used.important = Number(d.leave_important_used) || 0;
+            }
+        } catch (e) {
+            console.warn('Failed to load profile for leave quotas:', e);
         }
     },
 
@@ -87,6 +127,15 @@ const cuti = {
         } catch (e) {
             console.warn('Cuti background refresh failed', e);
         }
+    },
+
+    /**
+     * Get remaining balance for a given leave type
+     */
+    getBalance(type) {
+        const quota = this.quotas[type] || 0;
+        const used = this.used[type] || 0;
+        return Math.max(0, quota - used);
     },
 
     initForm() {
@@ -156,22 +205,31 @@ const cuti = {
             return;
         }
 
-        // Check balance for annual leave
-        if (type.value === 'annual' && diffDays > this.leaveBalance) {
-            toast.error('Sisa cuti tidak mencukupi!');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Ajukan Cuti';
+        // Check balance for the selected type (except 'other' which is outside quota)
+        const leaveType = type.value;
+        if (leaveType !== 'other') {
+            const remaining = this.getBalance(leaveType);
+            if (diffDays > remaining) {
+                const typeLabels = {
+                    annual: 'Cuti Tahunan', sick: 'Cuti Sakit', important: 'Cuti Penting',
+                    maternity: 'Cuti Melahirkan', large: 'Cuti Besar'
+                };
+                toast.error(`Sisa ${typeLabels[leaveType] || 'cuti'} tidak mencukupi! (Sisa: ${remaining} hari)`);
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Ajukan Cuti';
+                }
+                return;
             }
-            return;
         }
 
         const typeLabels = {
             annual: 'Cuti Tahunan',
             sick: 'Cuti Sakit',
-            important: 'Cuti Penting',
+            important: 'Cuti Karena Alasan Penting',
             maternity: 'Cuti Melahirkan',
-            other: 'Lainnya'
+            large: 'Cuti Besar',
+            other: 'Cuti di Luar Tanggungan Negara'
         };
 
         const currentUser = auth.getCurrentUser();
@@ -190,19 +248,16 @@ const cuti = {
             const result = await api.submitLeave(leaveData);
             if (result.success) {
                 this.leaves.unshift(result.data);
-
-                // Deduct balance for annual leave
-                if (type.value === 'annual') {
-                    this.leaveBalance -= diffDays;
-                    storage.set('leaveBalance', this.leaveBalance);
-                    this.updateBalanceDisplay();
-                }
-
                 toast.success('Pengajuan cuti berhasil dikirim!');
-                
+
                 // Reset form
                 e.target.reset();
                 document.getElementById('leave-duration').value = '';
+
+                // Reload profile to get updated balances from backend
+                const userId = currentUser?.id || 'demo-user';
+                await this._loadProfile(userId);
+                this.updateAllBalances();
             } else {
                 toast.error(result.error || 'Gagal mengajukan cuti');
             }
@@ -230,11 +285,97 @@ const cuti = {
         }
     },
 
-    updateBalanceDisplay() {
-        const balanceEl = document.querySelector('.balance-value');
-        if (balanceEl) {
-            balanceEl.textContent = this.leaveBalance;
+    // ==================== SLIDER ====================
+    initSlider() {
+        const track = document.getElementById('balance-slider-track');
+        const navLeft = document.getElementById('balance-nav-left');
+        const navRight = document.getElementById('balance-nav-right');
+        const dotsContainer = document.getElementById('balance-dots');
+
+        if (!track) return;
+
+        const cards = track.querySelectorAll('.balance-card');
+        const totalCards = cards.length;
+
+        // Create dots
+        if (dotsContainer) {
+            dotsContainer.innerHTML = '';
+            for (let i = 0; i < totalCards; i++) {
+                const dot = document.createElement('span');
+                dot.className = 'balance-dot' + (i === 0 ? ' active' : '');
+                dot.addEventListener('click', () => this.slideToIndex(i));
+                dotsContainer.appendChild(dot);
+            }
         }
+
+        // Nav buttons
+        if (navLeft) {
+            navLeft.addEventListener('click', () => {
+                this.slideToIndex(this.sliderIndex - 1);
+            });
+        }
+        if (navRight) {
+            navRight.addEventListener('click', () => {
+                this.slideToIndex(this.sliderIndex + 1);
+            });
+        }
+
+        // Touch / swipe support
+        let startX = 0;
+        let isDragging = false;
+        track.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+        }, { passive: true });
+
+        track.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const diff = startX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 40) {
+                if (diff > 0) {
+                    this.slideToIndex(this.sliderIndex + 1);
+                } else {
+                    this.slideToIndex(this.sliderIndex - 1);
+                }
+            }
+        }, { passive: true });
+    },
+
+    slideToIndex(index) {
+        const track = document.getElementById('balance-slider-track');
+        if (!track) return;
+
+        const cards = track.querySelectorAll('.balance-card');
+        const totalCards = cards.length;
+        if (totalCards === 0) return;
+
+        // Wrap around
+        if (index < 0) index = totalCards - 1;
+        if (index >= totalCards) index = 0;
+
+        this.sliderIndex = index;
+
+        // Scroll the track
+        const cardWidth = cards[0].offsetWidth;
+        track.scrollTo({ left: cardWidth * index, behavior: 'smooth' });
+
+        // Update dots
+        const dots = document.querySelectorAll('.balance-dot');
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index);
+        });
+    },
+
+    // ==================== BALANCE DISPLAY ====================
+    updateAllBalances() {
+        const types = ['annual', 'large', 'sick', 'maternity', 'important'];
+        types.forEach(type => {
+            const el = document.getElementById(`balance-${type}`);
+            if (el) {
+                el.textContent = this.getBalance(type);
+            }
+        });
     },
 
     updateStats() {
@@ -294,6 +435,7 @@ const cuti = {
                 sick: 'fa-heartbeat',
                 important: 'fa-home',
                 maternity: 'fa-baby',
+                large: 'fa-calendar-alt',
                 other: 'fa-question-circle'
             };
 
@@ -359,13 +501,6 @@ const cuti = {
             const leave = this.leaves.find(l => l.id === id);
             if (leave) {
                 leave.status = 'rejected';
-
-                // Return balance for annual leave
-                if (leave.type === 'annual') {
-                    this.leaveBalance += leave.duration;
-                    storage.set('leaveBalance', this.leaveBalance);
-                    this.updateBalanceDisplay();
-                }
             }
             this.renderLeaveList();
             this.updateStats();
