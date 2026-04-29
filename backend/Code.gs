@@ -99,7 +99,7 @@ function handleRequest(e) {
         result = getAllAttendanceData(data.month);
         break;
       case 'downloadAttendancePDF':
-        result = generateAttendanceSummaryPDF(data.month);
+        result = generateAttendanceSummaryPDF(data.month, data.dept, data.location);
         break;
 
       // ---- Journals ----
@@ -142,7 +142,10 @@ function handleRequest(e) {
         result = getAllLeavesData(data.month);
         break;
       case 'downloadLeavePDF':
-        result = generateLeaveSummaryPDF(data.month);
+        result = generateLeaveSummaryPDF(data.month, data.dept, data.location);
+        break;
+      case 'downloadLeaveWord':
+        result = generateLeaveDoc(data.id);
         break;
 
       // ---- Izin / Permission (WFH/WFA/Dinas) ----

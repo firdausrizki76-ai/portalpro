@@ -166,6 +166,24 @@ const cuti = {
 
         if (startDate) startDate.addEventListener('change', calculateDuration);
         if (endDate) endDate.addEventListener('change', calculateDuration);
+
+        // Auto-fill profile data if available
+        const currentUser = auth.getCurrentUser();
+        if (currentUser) {
+            if (document.getElementById('leave-nip')) document.getElementById('leave-nip').value = currentUser.nip || '';
+            if (document.getElementById('leave-jabatan')) document.getElementById('leave-jabatan').value = currentUser.position || '';
+            if (document.getElementById('leave-masa-kerja')) {
+                // Calculate masa kerja (years between joinDate and today)
+                if (currentUser.joinDate) {
+                    const join = new Date(currentUser.joinDate);
+                    const today = new Date();
+                    const diff = today.getFullYear() - join.getFullYear();
+                    document.getElementById('leave-masa-kerja').value = `${diff} Tahun`;
+                } else {
+                    document.getElementById('leave-masa-kerja').value = '-';
+                }
+            }
+        }
     },
 
     async handleSubmit(e) {
@@ -236,11 +254,17 @@ const cuti = {
 
         const leaveData = {
             userId: currentUser?.id || 'demo-user',
+            employeeName: currentUser?.name || 'Pegawai',
+            nip: document.getElementById('leave-nip')?.value || '',
+            jabatan: document.getElementById('leave-jabatan')?.value || '',
+            masaKerja: document.getElementById('leave-masa-kerja')?.value || '',
             type: type.value,
             typeLabel: typeLabels[type.value],
             startDate: startDate.value,
             endDate: endDate.value,
             duration: diffDays,
+            alamatCuti: document.getElementById('leave-alamat')?.value || '',
+            telpCuti: document.getElementById('leave-telp')?.value || '',
             reason: reason.value
         };
 
@@ -457,9 +481,46 @@ const cuti = {
                         </div>
                         <p class="leave-reason">${leave.reason}</p>
                     </div>
+                    <div class="leave-actions">
+                        <button class="btn-export-word-large" onclick="cuti.downloadCutiWord('${leave.id}')">
+                            <i class="fas fa-file-word"></i> <span>Download Word</span>
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
+    },
+
+    async downloadCutiWord(id) {
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan dokumen Word...');
+        try {
+            const res = await api.request('downloadLeaveWord', { id });
+            if (res.success && res.data) {
+                const byteCharacters = atob(res.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/msword' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = res.filename || `Permohonan_Cuti_${id}.doc`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                toast.success('Dokumen Word berhasil diunduh');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh dokumen');
+            }
+        } catch (e) {
+            console.error('Download Word error:', e);
+            toast.error('Terjadi kesalahan saat mengunduh');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
     },
 
     getStatusLabel(status) {

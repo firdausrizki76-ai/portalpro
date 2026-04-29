@@ -388,3 +388,16 @@
     }
 }
 
+.leave-actions {
+    margin-top: var(--spacing-sm);
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 576px) {
+    .leave-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: var(--spacing);
+    }
+}

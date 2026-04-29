@@ -255,18 +255,58 @@ function getAllAttendanceData(month) {
   return { success: true, data: rows };
 }
 
-function generateAttendanceSummaryPDF(month) {
+function generateAttendanceSummaryPDF(month, dept, location) {
   try {
     const employees = getAllRows('Employees');
     const attendanceRes = getAllAttendanceData(month);
     const leaveRes = getAllLeavesData(month);
     const izinRes = getAllIzinData(month);
     
-    const attendances = attendanceRes.data || [];
-    const leaves = (leaveRes.data || []).filter(l => l.status === 'approved');
-    const izins = (izinRes.data || []).filter(i => i.status === 'approved');
+    let attendances = attendanceRes.data || [];
+    let leaves = (leaveRes.data || []).filter(l => l.status === 'approved');
+    let izins = (izinRes.data || []).filter(i => i.status === 'approved');
+    
+    // Filter employees by dept and location if provided
+    let filteredEmployees = employees;
+    if (dept) {
+      filteredEmployees = filteredEmployees.filter(e => e.department === dept);
+    }
+    if (location) {
+      filteredEmployees = filteredEmployees.filter(e => (e.lokasiKerja || e.lokasikerja) === location);
+    }
     
     const monthName = typeof getIndonesianMonthName === 'function' ? getIndonesianMonthName(month) : month;
+    
+    // ---- Load Signature Data from Settings ----
+    const settingsRes = getSettingsData();
+    const allSettings = settingsRes.data || {};
+    
+    // Determine location-based signature prefix (Kecamatan)
+    // Use the filtered location if provided, otherwise fallback to first employee's location
+    let targetLocation = location || (filteredEmployees.length > 0 ? (filteredEmployees[0].lokasiKerja || filteredEmployees[0].lokasikerja || filteredEmployees[0].position) : '');
+    let sigPrefix = 'signature_';
+    
+    if (targetLocation && targetLocation !== '-') {
+      const locMatch = String(targetLocation).match(/Kecamatan\s+([a-zA-Z\s]+)/i);
+      let cleanLoc = '';
+      if (locMatch && locMatch[1]) {
+        cleanLoc = locMatch[1].trim().toLowerCase().replace(/\s+/g, '_');
+      } else {
+        cleanLoc = String(targetLocation).toLowerCase().replace(/kecamatan/g, '').trim().replace(/\s+/g, '_');
+      }
+      
+      if (cleanLoc) {
+        sigPrefix = 'sig_kecamatan_' + cleanLoc + '_';
+      }
+    }
+    
+    const kasubagName = allSettings[sigPrefix + 'kasubag_name'] || allSettings['signature_kasubag_name'] || '';
+    const kasubagNip = allSettings[sigPrefix + 'kasubag_nip'] || allSettings['signature_kasubag_nip'] || '';
+    const camatName = allSettings[sigPrefix + 'camat_name'] || allSettings['signature_camat_name'] || '';
+    const camatNip = allSettings[sigPrefix + 'camat_nip'] || allSettings['signature_camat_nip'] || '';
+    
+    const kasubagDisplay = kasubagName ? `<strong><u>${kasubagName}</u></strong>` + (kasubagNip ? `<br>NIP. ${kasubagNip}` : '') : '<strong>( .................................... )</strong>';
+    const camatDisplay = camatName ? `<strong><u>${camatName}</u></strong>` + (camatNip ? `<br>NIP. ${camatNip}` : '') : '<strong>( .................................... )</strong>';
     
     let html = `
     <html>
@@ -292,7 +332,7 @@ function generateAttendanceSummaryPDF(month) {
     <body>
       <div class="header">
         <h1>Rekapitulasi Kehadiran Pegawai</h1>
-        <p>Periode: ${monthName}</p>
+        <p>Periode: ${monthName}${location ? ' - ' + location : ''}</p>
       </div>
       
       <table>
@@ -314,10 +354,10 @@ function generateAttendanceSummaryPDF(month) {
         </thead>
         <tbody>`;
         
-    if (!employees || employees.length === 0) {
+    if (!filteredEmployees || filteredEmployees.length === 0) {
       html += `<tr><td colspan="9" class="center" style="padding: 40px;">Tidak ada data pegawai</td></tr>`;
     } else {
-      employees.forEach((emp, index) => {
+      filteredEmployees.forEach((emp, index) => {
         const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
         let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
         
@@ -368,16 +408,16 @@ function generateAttendanceSummaryPDF(month) {
         <table>
           <tr>
             <td>
-              Mengetahui,<br>Atasan Langsung<br>
+              Mengetahui,<br>Kepala Bidang<br>
               <div class="signature-space"></div>
-              <strong>( .................................... )</strong>
+              ${kasubagDisplay}
             </td>
             <td></td>
             <td>
               Depok, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
               Admin Kepegawaian<br>
               <div class="signature-space"></div>
-              <strong>( .................................... )</strong>
+              ${camatDisplay}
             </td>
           </tr>
         </table>

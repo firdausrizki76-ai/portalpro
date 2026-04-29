@@ -92,24 +92,34 @@ function saveJournalPhotoToDrive(userId, date, photoBase64) {
 }
 
 function getAllJournalsData(month) {
-  const sheet = getSheet('Journals');
-  // Check if headers are valid
-  if (sheet.getLastRow() > 0) {
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    if (headers.indexOf('date') === -1) {
-      console.warn('Journal Date header missing. Repairing...');
-      repairDatabase();
-    }
-  }
-
   const allRows = getAllRows('Journals');
   let rows = allRows;
   
   if (month) {
     rows = allRows.filter(r => {
-      const d = String(r.date || '');
-      if (d && !d.includes('-')) return true; // Let dirty/invalid data pass through
-      return d && d.startsWith(month);
+      const d = r.date || '';
+      if (!d) return false;
+      
+      // Robust date parsing
+      let dateStr = '';
+      if (d instanceof Date) {
+        dateStr = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM');
+      } else {
+        // Try to extract yyyy-MM from string
+        const match = String(d).match(/(\d{4})-(\d{2})/);
+        if (match) {
+          dateStr = match[0];
+        } else {
+          // Fallback for strings that might be dd/mm/yyyy
+          try {
+            const dateObj = new Date(d);
+            if (!isNaN(dateObj.getTime())) {
+              dateStr = Utilities.formatDate(dateObj, 'Asia/Jakarta', 'yyyy-MM');
+            }
+          } catch (e) {}
+        }
+      }
+      return dateStr === month;
     });
   }
   
@@ -132,6 +142,35 @@ function generateJournalPDF(userId, month) {
     journals.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     
     const monthName = getIndonesianMonthName(month);
+    
+    // ---- Load Signature Data from Settings ----
+    const settingsRes = getSettingsData();
+    const allSettings = settingsRes.data || {};
+    
+    // Determine location-based signature prefix (Kecamatan)
+    // Robust extraction: find 'Kecamatan' and the word after it, or use the whole location string
+    let empLocation = emp.lokasiKerja || emp.lokasikerja || emp.position || '';
+    let sigPrefix = 'signature_'; 
+    
+    if (empLocation && empLocation !== '-') {
+      // Find the name of the kecamatan
+      const locMatch = String(empLocation).match(/Kecamatan\s+([a-zA-Z\s]+)/i);
+      let cleanLoc = '';
+      if (locMatch && locMatch[1]) {
+        cleanLoc = locMatch[1].trim().toLowerCase().replace(/\s+/g, '_');
+      } else {
+        cleanLoc = empLocation.toLowerCase().replace(/kecamatan/g, '').trim().replace(/\s+/g, '_');
+      }
+      
+      if (cleanLoc) {
+        sigPrefix = 'sig_kecamatan_' + cleanLoc + '_';
+      }
+    }
+    
+    const kasubagName = allSettings[sigPrefix + 'kasubag_name'] || allSettings['signature_kasubag_name'] || '';
+    const kasubagNip = allSettings[sigPrefix + 'kasubag_nip'] || allSettings['signature_kasubag_nip'] || '';
+    
+    const kasubagDisplay = kasubagName ? `<strong><u>${kasubagName}</u></strong>` + (kasubagNip ? `<br>NIP. ${kasubagNip}` : '') : '<strong>( .................................... )</strong>';
     
     let html = `
     <html>
@@ -205,11 +244,34 @@ function generateJournalPDF(userId, month) {
           `<div class="list-item"><span class="bullet arrow">➢</span><span class="text ${rowStyle}">${t}</span></div>`
         ).join('');
         
-        const photoHtml = j.photo ? `
-          <div class="img-container">
-            <img src="${j.photo}" class="jurnal-img">
-          </div>
-        ` : '-';
+        let photoHtml = '-';
+        if (j.photo) {
+          try {
+            let photoUrl = j.photo;
+            const driveRegex = /(?:id=|d\/)([a-zA-Z0-9_-]{25,})/;
+            const match = photoUrl.match(driveRegex);
+            
+            if (match && match[1]) {
+              const fileId = match[1];
+              try {
+                // Fetch a small thumbnail (300px) instead of full file
+                // This makes the Base64 string small and stable for PDF generator
+                const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+                const response = UrlFetchApp.fetch(thumbUrl);
+                const blob = response.getBlob();
+                const b64 = Utilities.base64Encode(blob.getBytes());
+                photoUrl = "data:" + blob.getContentType() + ";base64," + b64;
+              } catch (e) {
+                // Fallback to direct link if fetch fails
+                photoUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+              }
+            }
+            photoHtml = `<div class="img-container"><img src="${photoUrl}" class="jurnal-img"></div>`;
+          } catch (e) {
+            console.warn('Gagal memproses foto untuk PDF:', e);
+            photoHtml = '<em>(Foto error)</em>';
+          }
+        }
         
         html += `
           <tr class="${rowStyle}">
@@ -236,12 +298,12 @@ function generateJournalPDF(userId, month) {
           <tr>
             <td>
               Mengetahui,<br>Atasan Langsung<br><br><br><br><br>
-              <strong>( .................................... )</strong>
+              ${kasubagDisplay}
             </td>
             <td>
               Depok, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
               Pegawai,<br><br><br><br><br>
-              <strong>( ${emp.name} )</strong>
+              <strong><u>${emp.name}</u></strong>
             </td>
           </tr>
         </table>

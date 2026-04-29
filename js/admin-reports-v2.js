@@ -192,11 +192,14 @@ const adminReports = {
                 cacheKey
             );
             
+            // Re-populate filters and dropdowns with fresh data
+            this.updateDynamicDeptFilter();
+            this.populateEmployeeFilter();
+
             // Re-render the active tab silently
             const currentHash = window.location.hash;
             if (currentHash.includes('attendance')) this.renderAttendanceReports();
             if (currentHash.includes('jurnal')) {
-                this.populateEmployeeFilter();
                 this.renderJurnalReports();
             }
             if (currentHash.includes('leave')) this.renderLeaveReports();
