@@ -195,7 +195,10 @@ const adminReports = {
             // Re-render the active tab silently
             const currentHash = window.location.hash;
             if (currentHash.includes('attendance')) this.renderAttendanceReports();
-            if (currentHash.includes('jurnal')) this.renderJurnalReports();
+            if (currentHash.includes('jurnal')) {
+                this.populateEmployeeFilter();
+                this.renderJurnalReports();
+            }
             if (currentHash.includes('leave')) this.renderLeaveReports();
             
         } catch (e) {
@@ -1055,11 +1058,15 @@ const adminReports = {
 
     async downloadAttendancePDF() {
         const month = this.filters.attendance.month;
+        const dept = this.filters.attendance.dept;
+        const location = this.filters.attendance.location;
         if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Absensi PDF...');
 
         try {
             const res = await api.request('downloadAttendancePDF', {
-                month: month
+                month: month,
+                dept: dept,
+                location: location
             });
 
             if (res.success && res.data) {
@@ -1078,11 +1085,15 @@ const adminReports = {
 
     async downloadLeavePDF() {
         const month = this.filters.leave.month;
+        const type = this.filters.leave.type;
+        const status = this.filters.leave.status;
         if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Cuti/Izin PDF...');
 
         try {
             const res = await api.request('downloadLeavePDF', {
-                month: month
+                month: month,
+                type: type,
+                status: status
             });
 
             if (res.success && res.data) {
