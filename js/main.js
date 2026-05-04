@@ -447,6 +447,33 @@ var dateTime = {
         return hours + 'j ' + minutes + 'm';
     },
 
+    calculateWorkingDays: function(startDate, endDate) {
+        if (!startDate || !endDate) return 0;
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+        
+        let count = 0;
+        let curDate = new Date(start.getTime());
+        
+        // Ensure we only process the date part
+        curDate.setHours(0, 0, 0, 0);
+        const endCopy = new Date(end.getTime());
+        endCopy.setHours(0, 0, 0, 0);
+
+        while (curDate <= endCopy) {
+            const dayOfWeek = curDate.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 0: Sunday, 6: Saturday
+                count++;
+            }
+            curDate.setDate(curDate.getDate() + 1);
+        }
+        
+        return count;
+    },
+
     /**
      * Calculate attendance status label and CSS class
      * @param {Object} record Attendance record from database

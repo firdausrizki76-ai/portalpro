@@ -407,10 +407,7 @@ const izin = {
         const durationHidden = document.getElementById('izin-duration');
 
         if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const diffTime = end.getTime() - start.getTime();
-            const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
+            const diffDays = dateTime.calculateWorkingDays(startDate, endDate);
             
             if (durationDisplay) durationDisplay.value = `${diffDays} hari`;
             if (durationHidden) durationHidden.value = diffDays;

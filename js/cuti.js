@@ -151,16 +151,8 @@ const cuti = {
 
         const calculateDuration = () => {
             if (startDate.value && endDate.value) {
-                const start = new Date(startDate.value);
-                const end = new Date(endDate.value);
-                const diffTime = end - start;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-                if (diffDays > 0) {
-                    duration.value = `${diffDays} hari`;
-                } else {
-                    duration.value = '0 hari';
-                }
+                const count = dateTime.calculateWorkingDays(startDate.value, endDate.value);
+                duration.value = `${count} hari`;
             }
         };
 
@@ -209,13 +201,17 @@ const cuti = {
             return;
         }
 
-        // Calculate duration
-        const start = new Date(startDate.value);
-        const end = new Date(endDate.value);
-        const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        // Calculate duration (excluding weekends)
+        const diffDays = dateTime.calculateWorkingDays(startDate.value, endDate.value);
 
         if (diffDays <= 0) {
-            toast.error('Tanggal selesai harus setelah tanggal mulai!');
+            const start = new Date(startDate.value);
+            const end = new Date(endDate.value);
+            if (end < start) {
+                toast.error('Tanggal selesai harus setelah tanggal mulai!');
+            } else {
+                toast.error('Cuti tidak dapat diajukan di hari libur (Sabtu/Minggu)!');
+            }
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Ajukan Cuti';

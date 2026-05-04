@@ -295,25 +295,7 @@ const absensi = {
         }
 
         tbody.innerHTML = historyData.slice(0, 10).map(record => {
-            // Calculate duration if clocked out
-            let duration = '--';
-            if (record.clockIn && record.clockOut) {
-                const [inH, inM] = record.clockIn.split(':').map(Number);
-                const [outH, outM] = record.clockOut.split(':').map(Number);
-                let diffInMinutes = (outH * 60 + outM) - (inH * 60 + inM);
-
-                if (diffInMinutes > 0) {
-                    const h = Math.floor(diffInMinutes / 60);
-                    const m = diffInMinutes % 60;
-                    duration = `${h}j ${m}m`;
-                }
-
-                if (diffInMinutes > 0) {
-                    const h = Math.floor(diffInMinutes / 60);
-                    const m = diffInMinutes % 60;
-                    duration = `${h}j ${m}m`;
-                }
-            }
+            const duration = dateTime.calculateDuration(record.clockIn, record.clockOut);
 
             // Status Badge - Use RAW text from spreadsheet but apply dynamic coloring
             const rawStatus = record.status || 'Waiting';

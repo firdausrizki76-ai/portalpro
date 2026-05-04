@@ -316,28 +316,41 @@
     color: var(--text-primary);
 }
 
-/* Shift Colors */
+/* Shift Colors - Enhanced for Premium Look */
+.shift-pagi,
+.shift-select-cell.shift-pagi,
 .shift-select.shift-pagi {
-    background: rgba(245, 158, 11, 0.15);
-    color: #B45309;
-    font-weight: 600;
+    background: #FFFBEB !important;
+    color: #92400E !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #F59E0B !important;
 }
 
+.shift-siang,
+.shift-select-cell.shift-siang,
 .shift-select.shift-siang {
-    background: rgba(59, 130, 246, 0.15);
-    color: #1D4ED8;
-    font-weight: 600;
+    background: #EFF6FF !important;
+    color: #1E40AF !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #3B82F6 !important;
 }
 
+.shift-malam,
+.shift-select-cell.shift-malam,
 .shift-select.shift-malam {
-    background: rgba(99, 102, 241, 0.15);
-    color: #4338CA;
-    font-weight: 600;
+    background: #EEF2FF !important;
+    color: #3730A3 !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #6366F1 !important;
 }
 
+.shift-libur,
+.shift-select-cell.shift-libur,
 .shift-select.shift-libur {
-    background: rgba(239, 68, 68, 0.1);
-    color: #DC2626;
+    background: #FEF2F2 !important;
+    color: #991B1B !important;
+    font-weight: 500 !important;
+    border-bottom: 2px solid #EF4444 !important;
 }
 
 /* Weekend Cell */

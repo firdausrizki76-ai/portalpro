@@ -272,13 +272,14 @@ const shiftSchedule = {
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
                 const currentShift = monthData[emp.id]?.[day] || (isWeekend ? 'Libur' : '');
-
+                const shiftClass = currentShift ? 'shift-' + currentShift.toLowerCase() : '';
+                
                 const td = document.createElement('td');
-                td.className = `shift-select-cell ${isWeekend ? 'weekend' : ''}`;
+                td.className = `shift-select-cell ${shiftClass} ${isWeekend ? 'weekend' : ''}`;
 
                 // Create shift select dropdown
                 const select = document.createElement('select');
-                select.className = `shift-select ${currentShift ? 'shift-' + currentShift.toLowerCase() : ''}`;
+                select.className = `shift-select ${shiftClass}`;
                 select.setAttribute('data-employee-id', emp.id);
                 select.setAttribute('data-day', day);
 
@@ -295,9 +296,24 @@ const shiftSchedule = {
 
                 // Add change event
                 select.addEventListener('change', (e) => {
-                    this.updateShift(emp.id, day, e.target.value);
-                    // Update class for styling
-                    select.className = `shift-select ${e.target.value ? 'shift-' + e.target.value.toLowerCase() : ''}`;
+                    const newValue = e.target.value;
+                    this.updateShift(emp.id, day, newValue);
+                    
+                    // Update class for styling both select and parent td
+                    const newShiftClass = newValue ? 'shift-' + newValue.toLowerCase() : '';
+                    
+                    // Remove old shift classes from both
+                    const oldClasses = ['shift-pagi', 'shift-siang', 'shift-malam', 'shift-libur'];
+                    oldClasses.forEach(c => {
+                        select.classList.remove(c);
+                        td.classList.remove(c);
+                    });
+                    
+                    if (newShiftClass) {
+                        select.classList.add(newShiftClass);
+                        td.classList.add(newShiftClass);
+                    }
+                    
                     this.updateSummary();
                 });
 
