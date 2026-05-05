@@ -409,7 +409,13 @@ const izin = {
         if (startDate && endDate) {
             const diffDays = dateTime.calculateWorkingDays(startDate, endDate);
             
-            if (durationDisplay) durationDisplay.value = `${diffDays} hari`;
+            if (durationDisplay) {
+                if (diffDays > 0) {
+                    durationDisplay.value = `${diffDays} hari`;
+                } else {
+                    durationDisplay.value = '0 hari (Hari Libur)';
+                }
+            }
             if (durationHidden) durationHidden.value = diffDays;
         } else {
             if (durationDisplay) durationDisplay.value = '-- hari';

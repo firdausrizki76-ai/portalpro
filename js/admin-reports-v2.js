@@ -1070,6 +1070,9 @@ const adminReports = {
         toast.success(`Data ${typeLabels[type] || type} berhasil diekspor ke Excel`);
     },
 
+
+
+
     async downloadAttendancePDF() {
         const month = this.filters.attendance.month;
         const dept = this.filters.attendance.dept;

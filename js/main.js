@@ -433,7 +433,7 @@ var dateTime = {
         var endTime = new Date('2000-01-01 ' + e);
         var diff = endTime - startTime;
 
-        // Handle night shifts (e.g., 16:30 to 06:00)
+        // Handle night shifts (e.g., 23:00 to 08:00)
         if (diff < 0) {
             endTime = new Date('2000-01-02 ' + end);
             diff = endTime - startTime;

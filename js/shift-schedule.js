@@ -273,7 +273,7 @@ const shiftSchedule = {
 
                 const currentShift = monthData[emp.id]?.[day] || (isWeekend ? 'Libur' : '');
                 const shiftClass = currentShift ? 'shift-' + currentShift.toLowerCase() : '';
-                
+
                 const td = document.createElement('td');
                 td.className = `shift-select-cell ${shiftClass} ${isWeekend ? 'weekend' : ''}`;
 

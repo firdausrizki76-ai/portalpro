@@ -295,7 +295,11 @@ const absensi = {
         }
 
         tbody.innerHTML = historyData.slice(0, 10).map(record => {
-            const duration = dateTime.calculateDuration(record.clockIn, record.clockOut);
+            // Calculate duration if clocked out
+            let duration = '--';
+            if (record.clockIn && record.clockOut) {
+                duration = dateTime.calculateDuration(record.clockIn, record.clockOut);
+            }
 
             // Status Badge - Use RAW text from spreadsheet but apply dynamic coloring
             const rawStatus = record.status || 'Waiting';

@@ -151,8 +151,15 @@ const cuti = {
 
         const calculateDuration = () => {
             if (startDate.value && endDate.value) {
-                const count = dateTime.calculateWorkingDays(startDate.value, endDate.value);
-                duration.value = `${count} hari`;
+                const diffDays = dateTime.calculateWorkingDays(startDate.value, endDate.value);
+
+                if (diffDays > 0) {
+                    duration.value = `${diffDays} hari`;
+                } else if (startDate.value && endDate.value) {
+                    duration.value = '0 hari (Hari Libur)';
+                } else {
+                    duration.value = '0 hari';
+                }
             }
         };
 
@@ -205,13 +212,7 @@ const cuti = {
         const diffDays = dateTime.calculateWorkingDays(startDate.value, endDate.value);
 
         if (diffDays <= 0) {
-            const start = new Date(startDate.value);
-            const end = new Date(endDate.value);
-            if (end < start) {
-                toast.error('Tanggal selesai harus setelah tanggal mulai!');
-            } else {
-                toast.error('Cuti tidak dapat diajukan di hari libur (Sabtu/Minggu)!');
-            }
+            toast.error('Tanggal yang dipilih adalah hari libur atau urutan tanggal salah!');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Ajukan Cuti';
