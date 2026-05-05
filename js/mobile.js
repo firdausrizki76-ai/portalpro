@@ -13,8 +13,12 @@ const mobile = {
         this.initBottomNav();
         this.handleResize();
         
-        // Listen for resize events
-        window.addEventListener('resize', () => this.handleResize());
+        // Listen for resize events with debounce
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => this.handleResize(), 250);
+        });
     },
     
     checkMobile() {
@@ -54,20 +58,18 @@ const mobile = {
         const overlay = document.getElementById('sidebar-overlay');
         const sidebarToggle = document.getElementById('sidebar-toggle');
         
-        console.log('[Mobile] Setting up sidebar listeners', { menuToggle, sidebarToggle });
+        console.log('[Mobile] Setting up sidebar listeners');
 
         // Mobile menu toggle (Top Left)
         if (menuToggle) {
-            // Remove old listener if any and add new one
             menuToggle.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[Mobile] Menu toggle clicked');
                 this.toggleSidebar();
             };
         }
         
-        // Sidebar toggle button (collapse/expand on desktop, close on mobile)
+        // Sidebar toggle button
         if (sidebarToggle) {
             sidebarToggle.onclick = (e) => {
                 if (this.isMobile) {
@@ -78,12 +80,10 @@ const mobile = {
             };
         }
         
-        // Close sidebar when clicking overlay
         if (overlay) {
             overlay.onclick = () => this.closeSidebar();
         }
         
-        // Close sidebar when clicking nav items on mobile
         document.querySelectorAll('.nav-item').forEach(item => {
             item.onclick = () => {
                 if (this.isMobile) {
@@ -97,14 +97,12 @@ const mobile = {
         const bottomNav = document.getElementById('bottom-nav');
         if (!bottomNav) return;
         
-        // Get role from auth or fallback to employee
         const userRole = (window.auth && window.auth.currentUser && window.auth.currentUser.role === 'admin') ? 'admin' : 'employee';
         console.log('[Mobile] Initializing bottom nav for role:', userRole);
 
         const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
         
         navItems.forEach(item => {
-            // Role-based filtering
             const itemRole = item.dataset.role || 'employee';
             if (itemRole !== userRole) {
                 item.style.setProperty('display', 'none', 'important');
@@ -112,18 +110,14 @@ const mobile = {
                 item.style.setProperty('display', 'flex', 'important');
             }
 
-            // Click listener
             const page = item.dataset.page;
             if (page) {
                 item.onclick = (e) => {
                     e.preventDefault();
-                    // Update active state
                     navItems.forEach(n => {
                         if (n.dataset.page) n.classList.remove('active');
                     });
                     item.classList.add('active');
-                    
-                    // Navigate
                     if (window.router) window.router.navigate(page);
                 };
             }
@@ -133,10 +127,7 @@ const mobile = {
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        
         this.sidebarOpen = !this.sidebarOpen;
-        console.log('[Mobile] Toggling sidebar. New state:', this.sidebarOpen);
-        
         if (this.sidebarOpen) {
             sidebar?.classList.add('open');
             overlay?.classList.add('show');
@@ -149,7 +140,6 @@ const mobile = {
     closeSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        
         this.sidebarOpen = false;
         sidebar?.classList.remove('open');
         overlay?.classList.remove('show');
@@ -157,13 +147,10 @@ const mobile = {
     },
     
     updateTableViews() {
-        // Convert tables to cards on mobile if needed
         const tableContainers = document.querySelectorAll('.table-responsive');
-        
         tableContainers.forEach(container => {
             const table = container.querySelector('table');
             const mobileCards = container.nextElementSibling;
-            
             if (table && mobileCards && mobileCards.classList.contains('mobile-cards')) {
                 if (this.isMobile) {
                     container.style.display = 'none';
@@ -176,11 +163,9 @@ const mobile = {
         });
     },
     
-    // Update bottom nav active state based on current page
     updateBottomNav(page) {
         const bottomNav = document.getElementById('bottom-nav');
         if (!bottomNav) return;
-        
         const navItems = bottomNav.querySelectorAll('.bottom-nav-item');
         navItems.forEach(item => {
             item.classList.remove('active');
@@ -191,59 +176,12 @@ const mobile = {
     }
 };
 
-// Touch swipe support for sidebar
-document.addEventListener('touchstart', handleTouchStart, { passive: true });
-document.addEventListener('touchmove', handleTouchMove, { passive: true });
-
-let xDown = null;
-let yDown = null;
-
-function handleTouchStart(evt) {
-    xDown = evt.touches[0].clientX;
-    yDown = evt.touches[0].clientY;
-}
-
-function handleTouchMove(evt) {
-    if (!xDown || !yDown) return;
-    
-    const xUp = evt.touches[0].clientX;
-    const yUp = evt.touches[0].clientY;
-    
-    const xDiff = xDown - xUp;
-    const yDiff = yDown - yUp;
-    
-    // Horizontal swipe
-    if (Math.abs(xDiff) > Math.abs(yDiff)) {
-        // Swipe right - open sidebar (from left edge)
-        if (xDiff < -50 && xDown < 50 && mobile.isMobile) {
-            mobile.toggleSidebar();
-        }
-        // Swipe left - close sidebar
-        if (xDiff > 50 && mobile.sidebarOpen) {
-            mobile.closeSidebar();
-        }
-    }
-    
-    xDown = null;
-    yDown = null;
-}
-
-// Initialize on DOM ready
-// Initialize using the helper if available, otherwise DOMContentLoaded
 if (typeof onDOMReady === 'function') {
-    onDOMReady(() => {
-        console.log('[Mobile] Initializing via onDOMReady');
-        mobile.init();
-    });
+    onDOMReady(() => mobile.init());
 } else if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('[Mobile] Initializing via DOMContentLoaded');
-        mobile.init();
-    });
+    document.addEventListener('DOMContentLoaded', () => mobile.init());
 } else {
-    console.log('[Mobile] Initializing immediately (DOM already ready)');
     mobile.init();
 }
 
-// Expose
 window.mobile = mobile;
