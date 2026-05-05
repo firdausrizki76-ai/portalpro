@@ -113,7 +113,6 @@ const adminReports = {
         } catch (error) {
             console.error('Init leave error:', error);
         } finally {
-            this.initialized = true;
             if (typeof loader !== 'undefined') loader.hide();
         }
     },
@@ -140,8 +139,6 @@ const adminReports = {
                 };
                 
                 if (typeof loader !== 'undefined') loader.hide();
-                
-                // Background fetch to refresh stale data
                 this._backgroundFetch(targetMonth, cacheKey);
                 return;
             }
@@ -161,6 +158,7 @@ const adminReports = {
                 api.getAllLeaves(targetMonth),
                 api.getAllIzin(targetMonth)
             ]);
+            console.log(`[_backgroundFetch] Data fetched:`, { attRes, jurRes, leaRes, iznRes });
 
             attendances = (attRes && attRes.data) ? attRes.data : [];
             jurnals = (jurRes && jurRes.data) ? jurRes.data : [];
@@ -168,6 +166,7 @@ const adminReports = {
             izinList = (iznRes && iznRes.data) ? iznRes.data : [];
 
             this.processAllData(targetMonth, attendances, jurnals, leaves, izinList, cacheKey);
+            console.log(`[_backgroundFetch] Done.`);
 
         } catch (e) {
             console.error('Error loading report data:', e);
@@ -181,7 +180,6 @@ const adminReports = {
      * Helper for background refresh without blocking UI
      */
     async _backgroundFetch(targetMonth, cacheKey) {
-        console.log(`[_backgroundFetch] Starting for ${targetMonth}`);
         try {
             const [empRes, attRes, jurRes, leaRes, iznRes] = await Promise.all([
                 api.getEmployees(),
@@ -191,15 +189,11 @@ const adminReports = {
                 api.getAllIzin(targetMonth)
             ]);
 
-            console.log(`[_backgroundFetch] Data fetched:`, { empRes, attRes, jurRes, leaRes, iznRes });
-
-            this.rawEmployees = (empRes && empRes.data) ? empRes.data : [];
+            this.rawEmployees = empRes.data || [];
             this.processAllData(
                 targetMonth, 
-                (attRes && attRes.data) ? attRes.data : [], 
-                (jurRes && jurRes.data) ? jurRes.data : [], 
-                (leaRes && leaRes.data) ? leaRes.data : [], 
-                (iznRes && iznRes.data) ? iznRes.data : [], 
+                attRes.data || [], jurRes.data || [], 
+                leaRes.data || [], iznRes.data || [], 
                 cacheKey
             );
             
@@ -210,10 +204,11 @@ const adminReports = {
             // Re-render the active tab silently
             const currentHash = window.location.hash;
             if (currentHash.includes('attendance')) this.renderAttendanceReports();
-            if (currentHash.includes('jurnal')) this.renderJurnalReports();
+            if (currentHash.includes('jurnal')) {
+                this.renderJurnalReports();
+            }
             if (currentHash.includes('leave')) this.renderLeaveReports();
             
-            console.log(`[_backgroundFetch] Done.`);
         } catch (e) {
             console.warn('Background refresh failed:', e);
         }
@@ -237,8 +232,8 @@ const adminReports = {
         };
 
         // 1. Process Attendance Summary
-        this.attendanceData = (this.rawEmployees || []).map(emp => {
-            const empAtt = (attendances || []).filter(a => String(a.userId) === String(emp.id));
+        this.attendanceData = this.rawEmployees.map(emp => {
+            const empAtt = attendances.filter(a => String(a.userId) === String(emp.id));
             let present = 0, late = 0, noClockOut = 0, noClockIn = 0;
             
             // PRIORITY: Use assigned location from spreadsheet Column H (emp.lokasiKerja)
@@ -274,8 +269,8 @@ const adminReports = {
             // Final location display logic: prefer assigned location, fallback to last recorded if assigned is '-'
             const displayLocation = (assignedLocation !== '-') ? assignedLocation : (lastRecordedLocation || '-');
 
-            const empLeaves = (leaves || []).filter(l => String(l.userId) === String(emp.id) && l.status === 'approved');
-            const empIzin = (izinList || []).filter(i => String(i.userId) === String(emp.id) && i.status === 'approved');
+            const empLeaves = leaves.filter(l => String(l.userId) === String(emp.id) && l.status === 'approved');
+            const empIzin = izinList.filter(i => String(i.userId) === String(emp.id) && i.status === 'approved');
 
             let absentCount = 0;
             empLeaves.forEach(l => absentCount += parseInt(l.duration) || 1);
@@ -752,7 +747,7 @@ const adminReports = {
         if (typeof loader !== 'undefined') loader.show('Memuat rincian...');
         try {
             const result = await api.getAttendance(userId);
-            const data = (result && result.data) ? result.data : [];
+            const data = result.data || [];
             const month = this.filters.attendance.month;
             const filtered = data.filter(a => a.date && a.date.startsWith(month));
 
@@ -763,6 +758,9 @@ const adminReports = {
                 
                 const cIn = a.clockIn || '';
                 const cOut = a.clockOut || '';
+                
+                // Attach calculated fields for export
+                a._exportStatus = statusText;
                 
                 return `
                 <tr>
@@ -775,8 +773,21 @@ const adminReports = {
                 `;
             }).join('') || '<tr><td colspan="5" class="text-center">Tidak ada data untuk bulan ini</td></tr>';
 
+            // Base64 encode data for custom export
+            const exportData = btoa(encodeURIComponent(JSON.stringify(filtered.map(a => ({
+                Tanggal: a.date,
+                Shift: a.shift || '-',
+                'Absen Masuk': a.clockIn || '-',
+                'Absen Pulang': a.clockOut || '-',
+                Status: a._exportStatus || a.status
+            })))));
+
             modal.show('Rincian Absensi: ' + emp.name, `
                 <div class="attendance-detail-view">
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:16px;">
+                        <button type="button" class="btn-secondary btn-sm" onclick="adminReports.printDetail()"><i class="fas fa-print"></i> Cetak</button>
+                        <button type="button" class="btn-primary btn-sm" onclick="adminReports.exportDetail('${emp.name}', '${exportData}')"><i class="fas fa-file-excel"></i> Export Rincian</button>
+                    </div>
                     <div class="table-responsive">
                         <table class="report-table">
                             <thead><tr><th>Tanggal</th><th>Shift</th><th>Masuk</th><th>Pulang</th><th>Status</th></tr></thead>
@@ -801,14 +812,22 @@ const adminReports = {
                 <p style="margin-bottom:8px;"><strong>Tanggal:</strong> ${item.date}</p>
                 <div class="detail-section" style="margin-top:16px;">
                     <label style="font-weight:600; color:var(--text-muted); display:block; margin-bottom:8px;">Aktivitas:</label>
-                    <div style="background:#f9fafb; padding:12px; border-radius:8px; border:1px solid #e5e7eb; white-space:pre-wrap;">${item.tasks}</div>
+                    <div style="background:#f3f4f6; padding:12px; border-radius:8px; line-height:1.5; color:var(--text-primary);">${item.tasks}</div>
                 </div>
                 ${photoUrl ? `
-                <div class="detail-section" style="margin-top:16px;">
-                    <label style="font-weight:600; color:var(--text-muted); display:block; margin-bottom:8px;">Lampiran Foto:</label>
-                    <img src="${normalizeImageUrl(photoUrl)}" style="width:100%; border-radius:8px; cursor:pointer;" onclick="adminReports.viewPhoto('${photoUrl}')">
-                </div>
-                ` : ''}
+                <div class="detail-section" style="margin-top:20px;">
+                    <label style="font-weight:600; color:var(--text-muted); display:block; margin-bottom:10px;">Foto Dokumentasi:</label>
+                    <div style="cursor:pointer; position:relative;" onclick="adminReports.viewPhoto('${photoUrl}')" title="Klik untuk memperbesar">
+                        <img src="${normalizeImageUrl(photoUrl)}" style="width:100%; border-radius:12px; box-shadow:var(--shadow); display:block;">
+                        <span style="position:absolute; bottom:12px; right:12px; background:rgba(0,0,0,0.6); color:white; padding:4px 10px; border-radius:30px; font-size:11px;">
+                            <i class="fas fa-search-plus"></i> Perbesar
+                        </span>
+                    </div>
+                </div>` : `
+                <div class="detail-section" style="margin-top:20px; text-align:center; padding:20px; background:#f9fafb; border-radius:12px; border:2px dashed #e5e7eb;">
+                    <i class="fas fa-image" style="font-size:24px; color:#d1d5db; margin-bottom:8px; display:block;"></i>
+                    <p style="font-size:13px; color:var(--text-muted);">Tidak ada lampiran foto</p>
+                </div>`}
             </div>
         `);
     },
@@ -819,176 +838,407 @@ const adminReports = {
 
         modal.show('Detail Pengajuan: ' + item.name, `
             <div class="leave-detail-view">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div><label style="font-size:12px; color:var(--text-muted);">Jenis</label><div><strong>${item.type}</strong></div></div>
-                    <div><label style="font-size:12px; color:var(--text-muted);">Status</label><div><span class="status-badge ${item.status}">${item.status.toUpperCase()}</span></div></div>
-                </div>
-                <div style="margin-bottom:16px;"><label style="font-size:12px; color:var(--text-muted);">Periode</label><div><strong>${item.dates}</strong> (${item.duration} hari)</div></div>
-                <div style="margin-bottom:16px;"><label style="font-size:12px; color:var(--text-muted);">Alasan/Keterangan</label><div style="background:#f9fafb; padding:12px; border-radius:8px; border:1px solid #e5e7eb;">${item.reason || '-'}</div></div>
-                ${item.attachment ? `
-                    <div style="margin-top:16px;">
-                        <label style="font-size:12px; color:var(--text-muted); display:block; margin-bottom:8px;">Lampiran:</label>
-                        <img src="${normalizeImageUrl(item.attachment)}" style="width:100%; border-radius:8px; cursor:pointer;" onclick="adminReports.viewPhoto('${item.attachment}')">
-                    </div>
-                ` : ''}
+                <p><strong>NIP:</strong> ${item.nip || '-'}</p>
+                <p><strong>Tipe:</strong> ${item.type}</p>
+                <p><strong>Periode:</strong> ${item.dates} (${item.duration} hari)</p>
+                <p><strong>Alasan:</strong> ${item.reason || '-'}</p>
+                ${item._source === 'izin' ? `
+                    <p><strong>Alamat Izin:</strong> ${item.alamatIzin || '-'}</p>
+                    <p><strong>Telepon:</strong> ${item.telpIzin || '-'}</p>
+                ` : `
+                    <p><strong>Alamat Cuti:</strong> ${item.alamatCuti || '-'}</p>
+                    <p><strong>Telepon:</strong> ${item.telpCuti || '-'}</p>
+                `}
+                <p><strong>Status:</strong> ${item.status.toUpperCase()}</p>
             </div>
         `);
     },
 
-    viewPhoto(url) {
-        if (!url) return;
-        modal.show('Lihat Foto', `
-            <div style="text-align:center;">
-                <img src="${normalizeImageUrl(url)}" style="max-width:100%; border-radius:8px;">
-            </div>
-        `, 'large');
+    async approveLeaveItem(id, source) {
+        if (!confirm('Setujui pengajuan ini?')) return;
+        try {
+            const item = this.leaveData.find(l => String(l.id) === String(id));
+            const action = source === 'leave' ? 'approveLeave' : 'approveIzin';
+            const res = await api.request(action, { id });
+            if (res.success) {
+                toast.success('Pengajuan disetujui');
+                
+                // Notify Employee
+                if (item && item.userId) {
+                    const typeLabel = item.type || (source === 'leave' ? 'Cuti' : 'Izin');
+                    notifications.add(item.userId, 'Admin', `telah MENYETUJUI pengajuan ${typeLabel} Anda`, 'success');
+                }
+
+                await this.loadData(this.filters.leave.month, true);
+                this.renderLeaveReports();
+            } else { toast.error(res.error || 'Gagal menyetujui'); }
+        } catch (e) { toast.error('Kesalahan sistem'); }
+    },
+
+    async rejectLeaveItem(id, source) {
+        const reason = prompt('Masukkan alasan penolakan:');
+        if (reason === null) return;
+        try {
+            const item = this.leaveData.find(l => String(l.id) === String(id));
+            const action = source === 'leave' ? 'rejectLeave' : 'rejectIzin';
+            const res = await api.request(action, { id, reason });
+            if (res.success) {
+                toast.success('Pengajuan ditolak');
+
+                // Notify Employee
+                if (item && item.userId) {
+                    const typeLabel = item.type || (source === 'leave' ? 'Cuti' : 'Izin');
+                    notifications.add(item.userId, 'Admin', `telah MENOLAK pengajuan ${typeLabel} Anda. Alasan: ${reason}`, 'error');
+                }
+
+                await this.loadData(this.filters.leave.month, true);
+                this.renderLeaveReports();
+            } else { toast.error(res.error || 'Gagal menolak'); }
+        } catch (e) { toast.error('Kesalahan sistem'); }
+    },
+
+    async approveJurnalItem(id) {
+        if (!confirm('Setujui jurnal ini?')) return;
+        try {
+            const res = await api.request('approveJournal', { id });
+            if (res.success) {
+                toast.success('Jurnal disetujui');
+                await this.loadData(this.filters.jurnal.month, true);
+                this.renderJurnalReports();
+            } else { toast.error(res.error || 'Gagal menyetujui'); }
+        } catch (e) { toast.error('Kesalahan sistem'); }
+    },
+
+    async rejectJurnalItem(id) {
+        if (!confirm('Tolak jurnal ini?')) return;
+        try {
+            const res = await api.request('rejectJournal', { id });
+            if (res.success) {
+                toast.success('Jurnal ditolak');
+                await this.loadData(this.filters.jurnal.month, true);
+                this.renderJurnalReports();
+            } else { toast.error(res.error || 'Gagal menolak'); }
+        } catch (e) { toast.error('Kesalahan sistem'); }
     },
 
     /**
-     * Data Management
+     * Common Utilities
      */
     getEmployeeInfo(userId) {
-        const emp = (this.rawEmployees || []).find(e => String(e.id) === String(userId));
-        return emp || { name: 'Pegawai', department: '-' };
+        return this.rawEmployees.find(e => String(e.id) === String(userId)) || { name: 'Pegawai', department: '-' };
+    },
+
+    _normalizeDate(d) {
+        if (!d) return '';
+        if (typeof d === 'string' && d.includes('T')) return d.split('T')[0];
+        return d;
     },
 
     updateDynamicDeptFilter() {
         if (!this.rawEmployees || this.rawEmployees.length === 0) return;
         const depts = [...new Set(this.rawEmployees.map(e => e.department).filter(d => d))].sort();
         const select = document.getElementById('report-dept-filter');
-        if (!select) return;
-        
-        const current = select.value;
-        select.innerHTML = '<option value="">Semua Bidang</option>';
-        depts.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d;
-            opt.textContent = d;
-            if (d === current) opt.selected = true;
-            select.appendChild(opt);
-        });
+        if (select) {
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Semua Bidang</option>' +
+                depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            select.value = currentVal;
+        }
     },
 
     populateEmployeeFilter() {
-        const selects = ['jurnal-employee-filter'];
-        selects.forEach(id => {
-            const select = document.getElementById(id);
-            if (!select) return;
-            const current = select.value;
-            select.innerHTML = '<option value="">Semua Pegawai</option>';
-            (this.rawEmployees || []).sort((a,b) => a.name.localeCompare(b.name)).forEach(e => {
-                const opt = document.createElement('option');
-                opt.value = e.name;
-                opt.textContent = e.name;
-                if (e.name === current) opt.selected = true;
-                select.appendChild(opt);
-            });
-        });
-    },
-
-    /**
-     * Actions
-     */
-    async approveJurnalItem(id) {
-        if (!confirm('Setujui laporan kinerja ini?')) return;
-        try {
-            if (typeof loader !== 'undefined') loader.show('Memproses...');
-            const res = await api.request('approveJurnal', { id });
-            if (res.success) {
-                toast.success('Laporan disetujui');
-                await this.loadData(this.filters.jurnal.month, true);
-                this.renderJurnalReports();
-            } else {
-                toast.error(res.error || 'Gagal menyetujui');
-            }
-        } finally {
-            if (typeof loader !== 'undefined') loader.hide();
-        }
-    },
-
-    async rejectJurnalItem(id) {
-        const reason = prompt('Alasan penolakan:');
-        if (reason === null) return;
-        try {
-            if (typeof loader !== 'undefined') loader.show('Memproses...');
-            const res = await api.request('rejectJurnal', { id, reason });
-            if (res.success) {
-                toast.success('Laporan ditolak');
-                await this.loadData(this.filters.jurnal.month, true);
-                this.renderJurnalReports();
-            } else {
-                toast.error(res.error || 'Gagal menolak');
-            }
-        } finally {
-            if (typeof loader !== 'undefined') loader.hide();
-        }
-    },
-
-    async approveLeaveItem(id, source) {
-        if (!confirm('Setujui pengajuan ini?')) return;
-        try {
-            if (typeof loader !== 'undefined') loader.show('Memproses...');
-            const action = source === 'leave' ? 'approveLeave' : 'approveIzin';
-            const res = await api.request(action, { id });
-            if (res.success) {
-                toast.success('Pengajuan disetujui');
-                await this.loadData(this.filters.leave.month, true);
-                this.renderLeaveReports();
-            } else {
-                toast.error(res.error || 'Gagal menyetujui');
-            }
-        } finally {
-            if (typeof loader !== 'undefined') loader.hide();
-        }
-    },
-
-    async rejectLeaveItem(id, source) {
-        const reason = prompt('Alasan penolakan:');
-        if (reason === null) return;
-        try {
-            if (typeof loader !== 'undefined') loader.show('Memproses...');
-            const action = source === 'leave' ? 'rejectLeave' : 'rejectIzin';
-            const res = await api.request(action, { id, reason });
-            if (res.success) {
-                toast.success('Pengajuan ditolak');
-                await this.loadData(this.filters.leave.month, true);
-                this.renderLeaveReports();
-            } else {
-                toast.error(res.error || 'Gagal menolak');
-            }
-        } finally {
-            if (typeof loader !== 'undefined') loader.hide();
+        const select = document.getElementById('jurnal-employee-filter');
+        if (select) {
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Semua Pegawai</option>' +
+                this.rawEmployees.map(emp => `<option value="${emp.name}">${emp.name}</option>`).join('');
+            select.value = currentVal;
         }
     },
 
     exportToExcel(type) {
-        toast.info('Sedang menyiapkan file Excel...');
-        // Logic will be handled by a global utility or hidden iframe
-        const month = this.filters[type].month;
-        window.open(`${API_BASE_URL}?action=exportReports&type=${type}&month=${month}`, '_blank');
+        let data = [];
+        const typeLabels = { attendance: 'Absensi', jurnal: 'Laporan_Kinerja', leave: 'Cuti_Izin' };
+        let filename = `Rekap_${typeLabels[type] || type}_${this.filters[type]?.month || ''}.xls`;
+        
+        if (type === 'attendance') {
+            const raw = this.getFilteredAttendance();
+            data = raw.map((r, i) => ({
+                'No': i + 1,
+                'Nama Karyawan': r.name,
+                'NIP': r.nip || '-',
+                'Bidang': r.department,
+                'Lokasi Kantor': r.location || '-',
+                'Hadir (On-Time)': r.present,
+                'Terlambat': r.late,
+                'T.A.M': r.noClockIn,
+                'T.A.P': r.noClockOut,
+                'Cuti/Izin/Sakit': r.absent,
+                'Total': r.total
+            }));
+        }
+        else if (type === 'jurnal') {
+            const raw = this.getFilteredJurnal();
+            data = raw.map((r, i) => ({
+                'No': i + 1,
+                'Tanggal': r.date,
+                'Nama Pegawai': r.employeeName,
+                'Bidang': r.department,
+                'Uraian Laporan Pekerjaan': r.tasks,
+                'Status': (r.status || '').toUpperCase()
+            }));
+        }
+        else if (type === 'leave') {
+            const raw = this.getFilteredLeave();
+            data = raw.map((r, i) => ({
+                'No': i + 1,
+                'Nama Pegawai': r.name,
+                'Bidang': r.department,
+                'Jenis': r.type,
+                'Tanggal': r.dates,
+                'Durasi (Hari)': r.duration,
+                'Alasan': r.reason || '-',
+                'Status': (r.status || '').toUpperCase()
+            }));
+        }
+
+        if (data.length === 0) {
+            toast.warning('Tidak ada data untuk diexport');
+            return;
+        }
+
+        // Build a proper HTML table for Excel with styling
+        const headers = Object.keys(data[0]);
+        const monthDisplay = this.filters[type]?.month || '';
+        
+        let tableHtml = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>${typeLabels[type] || type}</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+  td, th { mso-number-format:"\\@"; }
+  .num { mso-number-format:"0"; }
+</style>
+</head>
+<body>
+<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse; font-family:Arial,sans-serif; font-size:11pt;">
+  <thead>
+    <tr>
+      <td colspan="${headers.length}" style="font-size:14pt; font-weight:bold; text-align:center; padding:10px; background:#1a56db; color:#fff; border:1px solid #0f3c8c;">
+        Rekap ${typeLabels[type] || type} — Periode: ${monthDisplay}
+      </td>
+    </tr>
+    <tr style="background:#e5e7eb;">
+      ${headers.map(h => `<th style="font-weight:bold; padding:8px 12px; border:1px solid #bbb; text-align:center; white-space:nowrap;">${h}</th>`).join('')}
+    </tr>
+  </thead>
+  <tbody>
+    ${data.map((r, idx) => `
+    <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+      ${Object.entries(r).map(([key, v]) => {
+        const isNum = typeof v === 'number';
+        return `<td style="padding:6px 10px; border:1px solid #ddd;${isNum ? ' text-align:center;' : ''}" ${isNum ? 'class="num"' : ''}>${v}</td>`;
+      }).join('')}
+    </tr>`).join('')}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="${headers.length}" style="font-size:9pt; color:#888; padding:8px; border:1px solid #ddd;">
+        Diekspor pada: ${new Date().toLocaleString('id-ID')} | Total Data: ${data.length} baris
+      </td>
+    </tr>
+  </tfoot>
+</table>
+</body>
+</html>`;
+
+        const blob = new Blob(['\ufeff', tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success(`Data ${typeLabels[type] || type} berhasil diekspor ke Excel`);
     },
 
     async downloadAttendancePDF() {
         const month = this.filters.attendance.month;
-        const url = `${API_BASE_URL}?action=downloadAttendancePDF&month=${month}`;
-        window.open(url, '_blank');
-    },
+        const dept = this.filters.attendance.dept;
+        const location = this.filters.attendance.location;
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Absensi PDF...');
 
-    async downloadJournalPDF() {
-        const month = this.filters.jurnal.month;
-        const url = `${API_BASE_URL}?action=downloadJournalPDF&month=${month}`;
-        window.open(url, '_blank');
+        try {
+            const res = await api.request('downloadAttendancePDF', {
+                month: month,
+                dept: dept,
+                location: location
+            });
+
+            if (res.success && res.data) {
+                this._downloadBase64PDF(res.data, res.filename || `Rekap_Absensi_${month}.pdf`);
+                toast.success('Rekap Absensi Berhasil Diunduh!');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh PDF Recap');
+            }
+        } catch (e) {
+            console.error('Error downloading Attendance PDF:', e);
+            toast.error('Terjadi kesalahan sistem');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
     },
 
     async downloadLeavePDF() {
         const month = this.filters.leave.month;
-        const url = `${API_BASE_URL}?action=downloadLeavePDF&month=${month}`;
-        window.open(url, '_blank');
+        const type = this.filters.leave.type;
+        const status = this.filters.leave.status;
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan Rekap Cuti/Izin PDF...');
+
+        try {
+            const res = await api.request('downloadLeavePDF', {
+                month: month,
+                type: type,
+                status: status
+            });
+
+            if (res.success && res.data) {
+                this._downloadBase64PDF(res.data, res.filename || `Rekap_Cuti_Izin_${month}.pdf`);
+                toast.success('Rekap Cuti & Izin Berhasil Diunduh!');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh PDF');
+            }
+        } catch (e) {
+            console.error('Error downloading Leave PDF:', e);
+            toast.error('Terjadi kesalahan sistem');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    _downloadBase64PDF(base64Data, filename) {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    },
+
+    viewPhoto(url) {
+        if (typeof modal !== 'undefined') {
+            modal.show('Foto Lampiran', `<div class="photo-detail-view"><img src="${normalizeImageUrl(url)}" style="width:100%; border-radius:8px;"></div>`);
+        }
+    },
+
+    async downloadJournalPDF() {
+        const employeeName = this.filters.jurnal.employee;
+        const month = this.filters.jurnal.month;
+
+        if (!employeeName) {
+            toast.error('Harap pilih salah satu pegawai terlebih dahulu!');
+            return;
+        }
+
+        const employee = this.rawEmployees.find(e => e.name === employeeName);
+        if (!employee) {
+            toast.error('Data pegawai tidak ditemukan');
+            return;
+        }
+
+        if (typeof loader !== 'undefined') loader.show('Menyiapkan dokumen PDF...');
+
+        try {
+            const res = await api.request('downloadJournalPDF', {
+                userId: employee.id,
+                month: month
+            });
+
+            if (res.success && res.data) {
+                const byteCharacters = atob(res.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = res.filename || `Jurnal_${employee.name}_${month}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                toast.success('Pencetakan PDF Jurnal Berhasil!');
+            } else {
+                toast.error(res.error || 'Gagal mengunduh PDF');
+            }
+        } catch (e) {
+            console.error('Error downloading PDF:', e);
+            toast.error('Terjadi kesalahan saat mengunduh PDF');
+        } finally {
+            if (typeof loader !== 'undefined') loader.hide();
+        }
+    },
+
+    /**
+     * Modal-Specific Actions
+     */
+    printDetail() {
+        window.print();
+    },
+
+    exportDetail(employeeName, base64Data) {
+        try {
+            const decodedData = JSON.parse(decodeURIComponent(atob(base64Data)));
+            if (decodedData.length === 0) {
+                toast.warning('Tidak ada data rincian untuk diexport');
+                return;
+            }
+            
+            const headers = Object.keys(decodedData[0]).join(',');
+            const rows = decodedData.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const csv = headers + '\n' + rows;
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Rincian_Absensi_${employeeName.replace(/\\s+/g, '_')}_${this.filters.attendance.month}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            toast.success('Rincian berhasil diekspor');
+        } catch(e) {
+            console.error("Export detail failed:", e);
+            toast.error("Gagal mengekspor rincian");
+        }
     }
 };
 
-// Expose to window
 window.adminReports = adminReports;
+
+// Router compatibility exports
 window.initAttendanceReports = () => adminReports.initAttendanceReports();
 window.initJurnalReports = () => adminReports.initJurnalReports();
 window.initLeaveReports = () => adminReports.initLeaveReports();
