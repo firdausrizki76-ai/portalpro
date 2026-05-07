@@ -248,8 +248,14 @@ const absensi = {
 
             // Determine current state
             const isAlfaTime = this.checkAlfaStatus(todayAttendance.shift);
+            const serverStatus = (todayAttendance.status || '').toLowerCase();
             
-            if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
+            if (serverStatus === 'cuti' || serverStatus === 'izin') {
+                // Karyawan sedang dalam masa Cuti/Izin yang disetujui
+                this.currentState = 'cuti-izin';
+                this._activeLeaveType = todayAttendance.leaveType || todayAttendance.status;
+                this._activeLeaveInfo = todayAttendance.leaveInfo || '';
+            } else if (todayAttendance.shift === 'Libur' && !todayAttendance.clockIn) {
                 this.currentState = 'libur';
             } else if (todayAttendance.clockOut) {
                 this.currentState = 'completed';
@@ -430,6 +436,21 @@ const absensi = {
 
     handleClockIn() {
         if (this.attendanceData.clockIn) return;
+        if (this.currentState === 'completed') return;
+        if (this.currentState === 'cuti-izin') {
+            modal.show(
+                'Sedang Cuti/Izin',
+                '<div style="text-align: center; padding: 20px;">' +
+                '<i class="fas fa-calendar-times" style="font-size: 48px; color: #F59E0B; margin-bottom: 20px;"></i>' +
+                '<p style="font-size: 16px; line-height: 1.6; color: #333;">' +
+                'Anda tidak dapat melakukan absensi karena sedang dalam masa <strong>' + (this._activeLeaveType || 'Cuti/Izin') + '</strong>.' +
+                (this._activeLeaveInfo ? '<br><small style="color:#666">' + this._activeLeaveInfo + '</small>' : '') +
+                '</p>' +
+                '</div>',
+                [{ label: 'Mengerti', class: 'btn-primary', onClick: () => modal.close() }]
+            );
+            return;
+        }
 
         // Double check Alfa status right before proceeding
         if (this.checkAlfaStatus(this.attendanceData.shift)) {
@@ -712,6 +733,16 @@ const absensi = {
             statusRing.className = 'status-ring';
 
             switch (this.currentState) {
+                case 'cuti-izin':
+                    statusRing.classList.add('waiting');
+                    statusRing.style.borderColor = '#F59E0B';
+                    if (statusText) statusText.textContent = 'Sedang ' + (this._activeLeaveType || 'Cuti/Izin');
+                    if (statusSubtext) {
+                        let subHtml = 'Anda sedang dalam masa ' + (this._activeLeaveType || 'Cuti/Izin') + '.';
+                        if (this._activeLeaveInfo) subHtml += '<br><small style="color:#94a3b8">' + this._activeLeaveInfo + '</small>';
+                        statusSubtext.innerHTML = subHtml;
+                    }
+                    break;
                 case 'libur':
                     statusRing.classList.add('waiting');
                     if (statusText) statusText.textContent = 'Hari Libur';
@@ -763,18 +794,20 @@ const absensi = {
 
         // Clock In button
         if (btnClockIn) {
-            const isClockedIn = this.attendanceData.clockIn !== null && this.attendanceData.clockIn !== undefined;
+            const isClockedIn = this.attendanceData.clockIn !== null && this.attendanceData.clockIn !== undefined && this.attendanceData.clockIn !== '';
             const isAlfa = this.currentState === 'alfa';
             const isLibur = this.currentState === 'libur';
+            const isCompleted = this.currentState === 'completed';
+            const isCutiIzin = this.currentState === 'cuti-izin';
             const isTooEarly = this.checkTooEarlyStatus(this.attendanceData.shift);
 
-            btnClockIn.disabled = isClockedIn || isLibur || isAlfa || isTooEarly;
+            btnClockIn.disabled = isClockedIn || isLibur || isAlfa || isTooEarly || isCompleted || isCutiIzin;
 
-            if (isClockedIn) {
+            if (isClockedIn || isCompleted) {
                 btnClockIn.classList.add('completed');
                 const timeEl = document.getElementById('clock-in-time');
                 if (timeEl) timeEl.textContent = this.attendanceData.clockIn;
-            } else if (isLibur) {
+            } else if (isLibur || isCutiIzin) {
                 btnClockIn.classList.add('completed');
             } else if (isTooEarly) {
                 btnClockIn.innerHTML = `

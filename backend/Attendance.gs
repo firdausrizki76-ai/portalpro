@@ -59,15 +59,69 @@ function getTodayAttendance(userId) {
     return { success: true, data: todayRecord };
   }
   
-  // Check if Alfa (more than 1 hour after shift start)
-  let status = 'waiting';
-  
   // Get user's shift
   let shiftName = 'Pagi'; // default
   const employee = findRow('Employees', 'id', userId) || findRow('Employees', 'email', userId);
   if (employee && employee.shift) {
     shiftName = employee.shift;
   }
+
+  // ===== CEK CUTI / IZIN AKTIF =====
+  // Jika karyawan sedang Cuti/Izin, langsung kembalikan status khusus
+  const allLeaves = getAllRows('Leaves');
+  const activeLeave = allLeaves.find(l => {
+    if (String(l.status) !== 'approved') return false;
+    if (String(l.userId) !== String(userId)) return false;
+    const start = String(l.startDate || '');
+    const end = String(l.endDate || start);
+    return today >= start && today <= end;
+  });
+  if (activeLeave) {
+    const leaveLabel = activeLeave.typeLabel || activeLeave.type || 'Cuti';
+    return {
+      success: true,
+      data: {
+        id: null, userId: userId, date: today,
+        shift: shiftName,
+        clockIn: '', clockOut: '', locationName: '',
+        status: 'Cuti',
+        leaveType: leaveLabel,
+        leaveInfo: (activeLeave.startDate || '') + ' s/d ' + (activeLeave.endDate || ''),
+        verificationInPhoto: '', verificationInLocation: '', verificationInTimestamp: '',
+        verificationOutPhoto: '', verificationOutLocation: '', verificationOutTimestamp: ''
+      }
+    };
+  }
+
+  const allIzin = getAllRows('Izin');
+  const activeIzin = allIzin.find(i => {
+    if (String(i.status) !== 'approved') return false;
+    if (String(i.userId) !== String(userId)) return false;
+    const type = String(i.type || '').toLowerCase();
+    if (['wfh', 'wfa', 'dinas'].includes(type)) return false;
+    const start = String(i.startDate || i.date || '');
+    const end = String(i.endDate || start);
+    return today >= start && today <= end;
+  });
+  if (activeIzin) {
+    const izinLabel = activeIzin.typeLabel || activeIzin.type || 'Izin';
+    return {
+      success: true,
+      data: {
+        id: null, userId: userId, date: today,
+        shift: shiftName,
+        clockIn: '', clockOut: '', locationName: '',
+        status: 'Izin',
+        leaveType: izinLabel,
+        leaveInfo: (activeIzin.startDate || activeIzin.date || '') + ' s/d ' + (activeIzin.endDate || ''),
+        verificationInPhoto: '', verificationInLocation: '', verificationInTimestamp: '',
+        verificationOutPhoto: '', verificationOutLocation: '', verificationOutTimestamp: ''
+      }
+    };
+  }
+
+  // Check if Alfa (more than 1 hour after shift start)
+  let status = 'waiting';
   
   const shifts = getAllRows('Shifts');
   const userShift = shifts.find(s => String(s.name) === shiftName);
@@ -165,6 +219,41 @@ function saveAttendanceData(data) {
         return { success: false, error: 'anda tidak bisa absen karena hari ini anda dijadwalkan libur' };
     }
 
+    // ===== CEK CUTI / IZIN AKTIF =====
+    // Blokir absensi jika karyawan sedang dalam masa Cuti atau Izin yang sudah disetujui
+    const todayStr = Utilities.formatDate(nowJakarta, 'Asia/Jakarta', 'yyyy-MM-dd');
+    
+    // Cek Cuti (Leaves) - tipe: annual, sick, maternity, large, important
+    const allLeaves = getAllRows('Leaves');
+    const activeLeave = allLeaves.find(l => {
+      if (String(l.status) !== 'approved') return false;
+      if (String(l.userId) !== String(data.userId)) return false;
+      const start = String(l.startDate || '');
+      const end = String(l.endDate || start);
+      return todayStr >= start && todayStr <= end;
+    });
+    if (activeLeave) {
+      const leaveLabel = activeLeave.typeLabel || activeLeave.type || 'Cuti';
+      return { success: false, error: 'Anda tidak dapat absen karena sedang dalam masa ' + leaveLabel + ' (' + (activeLeave.startDate || '') + ' s/d ' + (activeLeave.endDate || '') + ')' };
+    }
+    
+    // Cek Izin (non-WFH/WFA/Dinas) - misalnya sakit, dinas luar, dll
+    const allIzin = getAllRows('Izin');
+    const activeIzin = allIzin.find(i => {
+      if (String(i.status) !== 'approved') return false;
+      if (String(i.userId) !== String(data.userId)) return false;
+      const type = String(i.type || '').toLowerCase();
+      // WFH/WFA/Dinas boleh absen (mereka absen remote), yang lain tidak
+      if (['wfh', 'wfa', 'dinas'].includes(type)) return false;
+      const start = String(i.startDate || i.date || '');
+      const end = String(i.endDate || start);
+      return todayStr >= start && todayStr <= end;
+    });
+    if (activeIzin) {
+      const izinLabel = activeIzin.typeLabel || activeIzin.type || 'Izin';
+      return { success: false, error: 'Anda tidak dapat absen karena sedang dalam masa ' + izinLabel + ' (' + (activeIzin.startDate || activeIzin.date || '') + ' s/d ' + (activeIzin.endDate || '') + ')' };
+    }
+
     const shifts = getAllRows('Shifts');
     const userShift = shifts.find(s => String(s.name) === String(data.shift));
     let shiftStartMin = 480, shiftEndMin = 1020;
@@ -179,9 +268,13 @@ function saveAttendanceData(data) {
         }
     }
 
+    const isCrossMidnight = shiftStartMin > shiftEndMin;
+
+    // Validasi Clock-In: hanya boleh 60 menit sebelum shift sampai jam shift berakhir
     if (data.clockIn && !data.clockOut) {
-        const isCrossMidnight = shiftStartMin > shiftEndMin;
         if (isCrossMidnight) {
+            // Shift malam contoh: 22:00 - 06:00
+            // Boleh clock-in: dari 21:00 sampai 06:00 (keesokan hari)
             if (nowTotalMin < shiftStartMin - 60 && nowTotalMin > shiftEndMin) {
                 return { success: false, error: 'anda sudah berada di luar range jam absen masuk' };
             }
@@ -192,9 +285,40 @@ function saveAttendanceData(data) {
         }
     }
 
+    // Validasi Clock-Out: toleransi 8 jam setelah shift berakhir (untuk cover lupa absen)
     if (data.clockOut) {
-        if (nowTotalMin > shiftEndMin + 60) {
-            return { success: false, error: 'anda sudah berada di luar range jam kerja' };
+        const clockOutTolerance = 480; // 8 jam = 480 menit
+        if (isCrossMidnight) {
+            // Shift malam contoh: 22:00 (start=1320) - 06:00 (end=360)
+            // Batas clock-out: 06:00 + 480 = 14:00 (jam 2 siang)
+            // Jadi setelah shift selesai jam 06:00, masih bisa clock-out sampai jam 14:00
+            const maxClockOut = shiftEndMin + clockOutTolerance;
+            if (maxClockOut <= 1440) {
+                // Tidak melewati midnight lagi, cek langsung
+                // Boleh: antara 00:00 dan maxClockOut, ATAU setelah shiftStart (malam ini)
+                if (nowTotalMin > maxClockOut && nowTotalMin < shiftStartMin) {
+                    return { success: false, error: 'anda sudah berada di luar range jam absen pulang (batas: ' + Math.floor(maxClockOut/60) + ':' + String(maxClockOut%60).padStart(2,'0') + ')' };
+                }
+            }
+            // Jika maxClockOut > 1440, artinya masih sangat longgar, jadi selalu boleh
+        } else {
+            // Shift biasa contoh: 08:00 (start=480) - 17:00 (end=1020)
+            // Batas clock-out: 17:00 + 480 = 01:00 keesokan hari (1500 -> 1500-1440 = 60)
+            const maxClockOut = shiftEndMin + clockOutTolerance;
+            if (maxClockOut > 1440) {
+                // Melewati midnight: 17:00 + 8jam = 01:00
+                const nextDayLimit = maxClockOut - 1440;
+                // Boleh clock-out: dari shiftEnd sampai midnight, lalu dari 00:00 sampai nextDayLimit
+                // TIDAK boleh: setelah nextDayLimit sampai sebelum shiftStart
+                if (nowTotalMin > nextDayLimit && nowTotalMin < shiftStartMin) {
+                    return { success: false, error: 'anda sudah berada di luar range jam absen pulang (batas: ' + String(Math.floor(nextDayLimit/60)).padStart(2,'0') + ':' + String(nextDayLimit%60).padStart(2,'0') + ')' };
+                }
+            } else {
+                // Tidak melewati midnight
+                if (nowTotalMin > maxClockOut) {
+                    return { success: false, error: 'anda sudah berada di luar range jam absen pulang (batas: ' + String(Math.floor(maxClockOut/60)).padStart(2,'0') + ':' + String(maxClockOut%60).padStart(2,'0') + ')' };
+                }
+            }
         }
     }
 
