@@ -153,19 +153,21 @@ function autoProcessRequests() {
   const tz = getSpreadsheet().getSpreadsheetTimeZone();
   const todayStr = Utilities.formatDate(now, tz, "yyyy-MM-dd");
 
-  // 1. Process Journals (Auto-approve > 6 hours)
+  // 1. Process Journals (Auto-approve jika sudah melewati hari tanggal dibuatnya)
   const journals = getAllRows('Journals');
   let journalCount = 0;
   journals.forEach(j => {
     const status = (j.status || 'pending').toLowerCase();
     if (status === 'pending' || status === 'filled') {
-      const updatedAt = j.updatedAt ? new Date(j.updatedAt) : null;
-      if (updatedAt) {
-        const diffMs = now.getTime() - updatedAt.getTime();
-        const diffHrs = diffMs / (1000 * 60 * 60);
+      // Gunakan tanggal jurnal (date), bukan updatedAt
+      const journalDate = j.date ? new Date(j.date) : null;
+      if (journalDate) {
+        // Format tanggal jurnal ke yyyy-MM-dd untuk perbandingan
+        const journalDateStr = Utilities.formatDate(journalDate, tz, "yyyy-MM-dd");
         
-        if (diffHrs >= 6) {
-          console.log(`[AutoProcess] Auto-approving Journal ID ${j.id} (Age: ${diffHrs.toFixed(1)} hrs)`);
+        // Auto-approve jika hari ini sudah melewati tanggal jurnal
+        if (todayStr > journalDateStr) {
+          console.log(`[AutoProcess] Auto-approving Journal ID ${j.id} (JournalDate: ${journalDateStr}, Today: ${todayStr})`);
           updateRow('Journals', j.id, { status: 'approved' });
           journalCount++;
         }
