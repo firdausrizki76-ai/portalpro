@@ -1489,9 +1489,20 @@
                                 <div class="filter-group"><label>Periode</label><input type="month" id="leave-month"></div>
                                 <div class="filter-group"><label>Jenis</label><select id="leave-type-filter">
                                         <option value="">Semua</option>
-                                        <option value="cuti">Cuti</option>
-                                        <option value="izin">Izin</option>
-                                        <option value="sakit">Sakit</option>
+                                        <optgroup label="Cuti">
+                                            <option value="cuti tahunan">Cuti Tahunan</option>
+                                            <option value="cuti sakit">Cuti Sakit</option>
+                                            <option value="cuti besar">Cuti Besar</option>
+                                            <option value="cuti melahirkan">Cuti Melahirkan</option>
+                                            <option value="cuti penting">Cuti Penting</option>
+                                            <option value="cuti">Cuti Lainnya</option>
+                                        </optgroup>
+                                        <optgroup label="Izin">
+                                            <option value="wfh">WFH</option>
+                                            <option value="wfa">WFA</option>
+                                            <option value="dinas">Dinas</option>
+                                            <option value="izin">Izin Lainnya</option>
+                                        </optgroup>
                                     </select></div>
                                 <div class="filter-group"><label>Status</label><select id="leave-status-filter">
                                         <option value="">Semua</option>
